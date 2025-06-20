@@ -1,0 +1,48 @@
+﻿<Window x:Class="Bucking_Unit_App.MainWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        Title="Операторская статистика" Height="400" Width="600">
+    <Grid>
+        <Grid.ColumnDefinitions>
+            <ColumnDefinition Width="2*"/>
+            <ColumnDefinition Width="3*"/>
+        </Grid.ColumnDefinitions>
+
+        <StackPanel Grid.Column="0" Margin="10">
+            <TextBlock Text="Данные оператора" FontSize="16" FontWeight="Bold"/>
+            <TextBlock Text="ФИО:"/>
+            <TextBox x:Name="txtFIO" IsReadOnly="True" Margin="0,0,0,5"/>
+            <TextBlock Text="Номер карты:"/>
+            <TextBox x:Name="txtIdCard" IsReadOnly="True" Margin="0,0,0,5"/>
+            <TextBlock Text="Табельный номер:"/>
+            <TextBox x:Name="txtTabNumber" IsReadOnly="True" Margin="0,0,0,5"/>
+            <TextBlock Text="Подразделение:"/>
+            <TextBox x:Name="txtDepartment" IsReadOnly="True" Margin="0,0,0,5"/>
+            <TextBlock Text="Должность:"/>
+            <TextBox x:Name="txtEmployName" IsReadOnly="True" Margin="0,0,0,5"/>
+            <TextBlock Text="Статистика" FontSize="16" FontWeight="Bold" Margin="0,20,0,0"/>
+            <StackPanel>
+                <TextBlock Text="Общие штуки"/>
+                <TextBox x:Name="txtShiftItems" IsReadOnly="True"/>
+                <TextBox x:Name="txtMonthItems" IsReadOnly="True"/>
+            </StackPanel>
+            <StackPanel>
+                <TextBlock Text="Общие простои"/>
+                <TextBox x:Name="txtShiftDowntime" IsReadOnly="True"/>
+                <TextBox x:Name="txtMonthDowntime" IsReadOnly="True"/>
+            </StackPanel>
+        </StackPanel>
+
+        <Grid Grid.Column="1" Margin="10">
+            <Grid.RowDefinitions>
+                <RowDefinition Height="Auto"/>
+                <RowDefinition Height="*"/>
+            </Grid.RowDefinitions>
+            <StackPanel Grid.Row="0">
+                <TextBlock Text="График теста" FontSize="16" FontWeight="Bold"/>
+                <Button x:Name="btnShowGraph" Content="Показать" Click="btnShowGraph_Click"/>
+            </StackPanel>
+            <Canvas x:Name="canvasGraph" Grid.Row="1"/>
+        </Grid>
+    </Grid>
+</Window>
