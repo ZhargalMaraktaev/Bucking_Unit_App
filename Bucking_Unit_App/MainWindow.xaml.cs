@@ -404,63 +404,150 @@ namespace Bucking_Unit_App
             try
             {
                 conn.Open();
-                string query = @"
-                    SELECT 
-    -- ShiftCount: Количество операций за текущие производственные сутки
-    SUM(CASE 
-        WHEN DATEDIFF(DAY, 
-            DATEADD(HOUR, 8, CAST(CAST(GETDATE() AS DATE) AS DATETIME)), 
-            DATEADD(HOUR, 8, CAST(CAST(StartDateTime AS DATE) AS DATETIME))
-        ) = 0 
-        THEN 1 ELSE 0 
-    END) as ShiftCount,
-    -- ShiftDowntime: Общее время простоя за текущие производственные сутки (в минутах)
-    SUM(CASE 
-        WHEN DATEDIFF(DAY, 
-            DATEADD(HOUR, 8, CAST(CAST(GETDATE() AS DATE) AS DATETIME)), 
-            DATEADD(HOUR, 8, CAST(CAST(DateFrom AS DATE) AS DATETIME))
-        ) = 0 
-        THEN Duration ELSE 0 
-    END) as ShiftDowntime,
-    -- MonthCount: Количество операций за текущий месяц
-    SUM(CASE 
-        WHEN DATEDIFF(MONTH, StartDateTime, GETDATE()) = 0 
-        THEN 1 ELSE 0 
-    END) as MonthCount,
-    -- MonthDowntime: Общее время простоя за текущий месяц (в минутах)
-    SUM(CASE 
-        WHEN DATEDIFF(MONTH, DateFrom, GETDATE()) = 0 
-        THEN Duration ELSE 0 
-    END) as MonthDowntime
-FROM Pilot.dbo.MuftN3_REP m
-LEFT JOIN Pilot.dbo.Downtime d ON m.OperatorId = d.OperatorId
-WHERE m.OperatorId = (SELECT id FROM Pilot.dbo.dic_SKUD WHERE TabNumber = @TabNumber)
-AND (m.StartDateTime IS NOT NULL OR d.DateFrom IS NOT NULL)";
 
-                using (SqlCommand cmd = new SqlCommand(query, conn))
+                string selectOperatorIdQuery = "SELECT id FROM Pilot.dbo.dic_SKUD WHERE TabNumber = @TabNumber";
+                int? operatorId = null;
+
+                using (var cmd = new SqlCommand(selectOperatorIdQuery, conn))
                 {
                     cmd.Parameters.AddWithValue("@TabNumber", currentOperator.PersonnelNumber);
-                    using (SqlDataReader reader = cmd.ExecuteReader())
+                    var result = await cmd.ExecuteScalarAsync();
+                    if (result != null)
+                        operatorId = Convert.ToInt32(result);
+                    else
+                        Dispatcher.Invoke(() => MessageBox.Show("⚠️ OperatorId не найден для TabNumber: " + currentOperator.PersonnelNumber));
+                }
+                // Вызываем процедуры
+                using (SqlCommand cmdDailyDowntime = new SqlCommand("GetDailyDowntimeByOperator", conn))
+                {
+                    cmdDailyDowntime.CommandType = CommandType.StoredProcedure;
+                    cmdDailyDowntime.Parameters.AddWithValue("@OperatorId", operatorId);
+                    using (SqlDataReader reader = await cmdDailyDowntime.ExecuteReaderAsync())
                     {
-                        if (reader.Read())
+                        if (await reader.ReadAsync())
                         {
+                            bool isDayShift = false;
+                            decimal dayShiftDowntime = 0;
+                            decimal nightShiftDowntime = 0;
+
+                            int isDayShiftOrdinal = reader.GetOrdinal("IsDayShift");
+                            int dayShiftDowntimeOrdinal = reader.GetOrdinal("DayShiftDowntimeMinutes");
+                            int nightShiftDowntimeOrdinal = reader.GetOrdinal("NightShiftDowntimeMinutes");
+
+                            if (!reader.IsDBNull(isDayShiftOrdinal))
+                            {
+                                isDayShift = reader.GetBoolean(isDayShiftOrdinal);
+                            }
+                            if (!reader.IsDBNull(dayShiftDowntimeOrdinal))
+                            {
+                                dayShiftDowntime = reader.GetDecimal(dayShiftDowntimeOrdinal);
+                            }
+                            if (!reader.IsDBNull(nightShiftDowntimeOrdinal))
+                            {
+                                nightShiftDowntime = reader.GetDecimal(nightShiftDowntimeOrdinal);
+                            }
+
                             Dispatcher.Invoke(() =>
                             {
-                                txtShiftItems.Text = reader["ShiftCount"]?.ToString() ?? "0";
-                                txtShiftDowntime.Text = reader["ShiftDowntime"]?.ToString() ?? "0";
-                                txtMonthItems.Text = reader["MonthCount"]?.ToString() ?? "0";
-                                txtMonthDowntime.Text = reader["MonthDowntime"]?.ToString() ?? "0";
+                                txtShiftDowntime.Text = (isDayShift ? (double)dayShiftDowntime : (double)nightShiftDowntime).ToString("F2");
                             });
                         }
                         else
                         {
+                            Dispatcher.Invoke(() => txtShiftDowntime.Text = "0.00");
+                        }
+                    }
+                }
+
+                using (SqlCommand cmdMonthlyDowntime = new SqlCommand("GetMonthlyDowntimeByOperator", conn))
+                {
+                    cmdMonthlyDowntime.CommandType = CommandType.StoredProcedure;
+                    cmdMonthlyDowntime.Parameters.AddWithValue("@OperatorId", operatorId);
+                    using (SqlDataReader reader = await cmdMonthlyDowntime.ExecuteReaderAsync())
+                    {
+                        if (await reader.ReadAsync())
+                        {
+                            bool isDayShift = false;
+                            decimal dayShiftDowntime = 0;
+                            decimal nightShiftDowntime = 0;
+
+                            int isDayShiftOrdinal = reader.GetOrdinal("IsDayShift");
+                            int dayShiftDowntimeOrdinal = reader.GetOrdinal("DayShiftDowntimeMinutes");
+                            int nightShiftDowntimeOrdinal = reader.GetOrdinal("NightShiftDowntimeMinutes");
+
+                            if (!reader.IsDBNull(isDayShiftOrdinal))
+                            {
+                                isDayShift = reader.GetBoolean(isDayShiftOrdinal);
+                            }
+                            if (!reader.IsDBNull(dayShiftDowntimeOrdinal))
+                            {
+                                dayShiftDowntime = reader.GetDecimal(dayShiftDowntimeOrdinal);
+                            }
+                            if (!reader.IsDBNull(nightShiftDowntimeOrdinal))
+                            {
+                                nightShiftDowntime = reader.GetDecimal(nightShiftDowntimeOrdinal);
+                            }
+
                             Dispatcher.Invoke(() =>
                             {
-                                txtShiftItems.Text = "0";
-                                txtShiftDowntime.Text = "0";
-                                txtMonthItems.Text = "0";
-                                txtMonthDowntime.Text = "0";
+                                txtMonthDowntime.Text = (isDayShift ? (double)dayShiftDowntime : (double)nightShiftDowntime).ToString("F2");
                             });
+                        }
+                        else
+                        {
+                            Dispatcher.Invoke(() => txtMonthDowntime.Text = "0.00");
+                        }
+                    }
+                }
+
+                using (SqlCommand cmdDailyOperation = new SqlCommand("GetDailyShiftOperationCount", conn))
+                {
+                    cmdDailyOperation.CommandType = CommandType.StoredProcedure;
+                    cmdDailyOperation.Parameters.AddWithValue("@OperatorId", operatorId);
+                    using (SqlDataReader reader = await cmdDailyOperation.ExecuteReaderAsync())
+                    {
+                        if (await reader.ReadAsync())
+                        {
+                            int shiftOperationCount = 0;
+                            int shiftOperationCountOrdinal = reader.GetOrdinal("ShiftOperationCount");
+                            if (!reader.IsDBNull(shiftOperationCountOrdinal))
+                            {
+                                shiftOperationCount = reader.GetInt32(shiftOperationCountOrdinal);
+                            }
+                            Dispatcher.Invoke(() =>
+                            {
+                                txtShiftItems.Text = shiftOperationCount.ToString();
+                            });
+                        }
+                        else
+                        {
+                            Dispatcher.Invoke(() => txtShiftItems.Text = "0");
+                        }
+                    }
+                }
+
+                using (SqlCommand cmdMonthlyOperation = new SqlCommand("GetMonthlyShiftOperationCount", conn))
+                {
+                    cmdMonthlyOperation.CommandType = CommandType.StoredProcedure;
+                    cmdMonthlyOperation.Parameters.AddWithValue("@OperatorId", operatorId);
+                    using (SqlDataReader reader = await cmdMonthlyOperation.ExecuteReaderAsync())
+                    {
+                        if (await reader.ReadAsync())
+                        {
+                            int shiftOperationCount = 0;
+                            int shiftOperationCountOrdinal = reader.GetOrdinal("ShiftOperationCount");
+                            if (!reader.IsDBNull(shiftOperationCountOrdinal))
+                            {
+                                shiftOperationCount = reader.GetInt32(shiftOperationCountOrdinal);
+                            }
+                            Dispatcher.Invoke(() =>
+                            {
+                                txtMonthItems.Text = shiftOperationCount.ToString();
+                            });
+                        }
+                        else
+                        {
+                            Dispatcher.Invoke(() => txtMonthItems.Text = "0");
                         }
                     }
                 }
@@ -474,7 +561,6 @@ AND (m.StartDateTime IS NOT NULL OR d.DateFrom IS NOT NULL)";
                 conn.Close();
             }
         }
-
         private void cbOperator_SelectionChanged(object sender, SelectionChangedEventArgs e)
         {
         }
