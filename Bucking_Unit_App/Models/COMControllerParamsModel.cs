@@ -2,7 +2,7 @@
 using System.Drawing;
 using System.IO.Ports;
 
-namespace Bucking_Unit_App.COM_Controller
+namespace Bucking_Unit_App.Models
 {
     public class COMControllerParamsModel
     {
@@ -76,11 +76,11 @@ namespace Bucking_Unit_App.COM_Controller
         // Конструктор инициализирует настройки
         public COMControllerParamsModel(string portName, int baudRate, Parity parity, int dataBits, StopBits stopBits)
         {
-            this.PortName = portName;
-            this.BaudRate = baudRate;
-            this.Parity = parity;
-            this.DataBits = dataBits;
-            this.StopBits = stopBits;
+            PortName = portName;
+            BaudRate = baudRate;
+            Parity = parity;
+            DataBits = dataBits;
+            StopBits = stopBits;
         }
     }
 }

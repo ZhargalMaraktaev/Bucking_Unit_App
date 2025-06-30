@@ -1,7 +1,7 @@
 ﻿using System.Drawing;
 using System.Text.Json.Serialization;
 
-namespace Bucking_Unit_App._1C_Controller
+namespace Bucking_Unit_App.Models
 {
     public class Employee1CModel
     {

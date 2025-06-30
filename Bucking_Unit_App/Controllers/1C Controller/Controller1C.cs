@@ -4,6 +4,7 @@ using System.Net.Http;
 using System.Text;
 using System.Text.Json;
 using System.Xml;
+using Bucking_Unit_App.Models;
 
 namespace Bucking_Unit_App._1C_Controller
 {

@@ -1,4 +1,4 @@
-﻿using Bucking_Unit_App.COM_Controller;
+﻿using Bucking_Unit_App.Models;
 
 namespace Bucking_Unit_App.COM_Controller
 {

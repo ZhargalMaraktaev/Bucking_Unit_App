@@ -3,7 +3,8 @@ using System.Collections.Concurrent; // Для потокобезопасной 
 using System.Diagnostics; // Для записи в журнал событий Windows
 using System.IO.Ports; // Для работы с COM-портами
 using System.Text; // Для работы с буфером строк
-using System.Text.RegularExpressions; // Для поиска шаблонов в строках
+using System.Text.RegularExpressions;
+using Bucking_Unit_App.Models; // Для поиска шаблонов в строках
 
 namespace Bucking_Unit_App.COM_Controller
 {
