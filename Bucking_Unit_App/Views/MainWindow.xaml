@@ -1,53 +1,95 @@
 ﻿<Window x:Class="Bucking_Unit_App.Views.MainWindow"
         xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-        Title="Операторская статистика" Height="485" Width="600">
+        xmlns:lvc="clr-namespace:LiveChartsCore.SkiaSharpView.WPF;assembly=LiveChartsCore.SkiaSharpView.WPF"
+        Title="Операторская статистика" Height="720" Width="1280">
     <Grid>
+        <Grid.RowDefinitions>
+            <RowDefinition Height="*"/>
+            <RowDefinition Height="4"/>
+            <!-- Линия-разделитель -->
+            <RowDefinition Height="*"/>
+        </Grid.RowDefinitions>
         <Grid.ColumnDefinitions>
             <ColumnDefinition Width="2*"/>
+            <ColumnDefinition Width="4"/>
+            <!-- Линия-разделитель -->
             <ColumnDefinition Width="3*"/>
         </Grid.ColumnDefinitions>
 
-        <StackPanel Grid.Column="0" Margin="10">
-            <TextBlock Text="Данные оператора" FontSize="16" FontWeight="Bold"/>
-            <TextBlock Text="ФИО:"/>
-            <TextBox x:Name="txtFIO" IsReadOnly="True" Margin="0,0,0,5"/>
-            <TextBlock Text="Номер карты:"/>
-            <TextBox x:Name="txtIdCard" IsReadOnly="True" Margin="0,0,0,5"/>
-            <TextBlock Text="Табельный номер:"/>
-            <TextBox x:Name="txtTabNumber" IsReadOnly="True" Margin="0,0,0,5"/>
-            <TextBlock Text="Подразделение:"/>
-            <TextBox x:Name="txtDepartment" IsReadOnly="True" Margin="0,0,0,5"/>
-            <TextBlock Text="Должность:"/>
-            <TextBox x:Name="txtEmployName" IsReadOnly="True" Margin="0,0,0,5"/>
-            <TextBlock Text="Статистика" FontSize="16" FontWeight="Bold" Margin="0,20,0,0"/>
-            <StackPanel>
-                <TextBlock Text="Общие штуки"/>
-                <TextBlock Text="За смену:"/>
-                <TextBox x:Name="txtShiftItems" IsReadOnly="True"/>
-                <TextBlock Text="За месяц:"/>
-                <TextBox x:Name="txtMonthItems" IsReadOnly="True"/>
+        <!-- Секция "Данные оператора" (слева вверху) -->
+        <Border Grid.Row="0" Grid.Column="0" BorderBrush="Gray" BorderThickness="1">
+            <StackPanel Margin="10">
+                <TextBlock Text="Данные оператора" FontSize="16" FontWeight="Bold"/>
+                <TextBlock Text="Номер пропуска:"/>
+                <TextBox x:Name="txtIdCard" IsReadOnly="True" Margin="0,0,0,5"/>
+                <TextBlock Text="Табельный номер:"/>
+                <TextBox x:Name="txtTabNumber" IsReadOnly="True" Margin="0,0,0,5"/>
+                <TextBlock Text="ФИО:"/>
+                <TextBox x:Name="txtFIO" IsReadOnly="True" Margin="0,0,0,5"/>
+                <TextBlock Text="Подразделение:"/>
+                <TextBox x:Name="txtDepartment" IsReadOnly="True" Margin="0,0,0,5"/>
+                <TextBlock Text="Должность:"/>
+                <TextBox x:Name="txtEmployName" IsReadOnly="True" Margin="0,0,0,5"/>
             </StackPanel>
-            <StackPanel>
-                <TextBlock Text="Общие простои"/>
-                <TextBlock Text="За смену:"/>
-                <TextBox x:Name="txtShiftDowntime" IsReadOnly="True"/>
-                <TextBlock Text="За месяц:"/>
-                <TextBox x:Name="txtMonthDowntime" IsReadOnly="True"/>
-            </StackPanel>
-        </StackPanel>
+        </Border>
 
-        <Grid Grid.Column="1" Margin="10">
-            <Grid.RowDefinitions>
-                <RowDefinition Height="Auto"/>
-                <RowDefinition Height="*"/>
-            </Grid.RowDefinitions>
-            <StackPanel Grid.Row="0">
-                <TextBlock Text="График теста" FontSize="16" FontWeight="Bold"/>
-                <ComboBox x:Name="cbPipeCounter" SelectionChanged="cbPipeCounter_SelectionChanged" Margin="10"/>
-                <Button x:Name="btnShowGraph" Content="Show Graph" Click="btnShowGraph_Click" Margin="10"/>
+        <!-- Линия между секциями (горизонтальная) -->
+        <Rectangle Grid.Row="1" Grid.Column="0" Grid.ColumnSpan="2" Fill="Gray" Height="1"/>
+
+        <!-- Секция "Статистика" (слева внизу) -->
+        <Border Grid.Row="2" Grid.Column="0" BorderBrush="Gray" BorderThickness="1">
+            <StackPanel Margin="10">
+                <TextBlock Text="Статистика" FontSize="16" FontWeight="Bold"/>
+                <StackPanel>
+                    <TextBlock Text="Общие штуки"/>
+                    <TextBlock Text="За смену:"/>
+                    <TextBox x:Name="txtShiftItems" IsReadOnly="True"/>
+                    <TextBlock Text="За месяц:"/>
+                    <TextBox x:Name="txtMonthItems" IsReadOnly="True"/>
+                </StackPanel>
+                <StackPanel>
+                    <TextBlock Text="Общие простои"/>
+                    <TextBlock Text="За смену:"/>
+                    <TextBox x:Name="txtShiftDowntime" IsReadOnly="True"/>
+                    <TextBlock Text="За месяц:"/>
+                    <TextBox x:Name="txtMonthDowntime" IsReadOnly="True"/>
+                </StackPanel>
             </StackPanel>
-            <Canvas x:Name="canvasGraph" Grid.Row="1"/>
-        </Grid>
+        </Border>
+
+        <!-- Линия между секциями (вертикальная) -->
+        <Rectangle Grid.Row="0" Grid.RowSpan="3" Grid.Column="1" Fill="Gray" Width="1"/>
+
+        <!-- Секция "График испытаний" (справа) -->
+        <Border Grid.Row="0" Grid.RowSpan="3" Grid.Column="2" BorderBrush="Gray" BorderThickness="1">
+            <Grid HorizontalAlignment="Left" Width="476">
+                <Grid.RowDefinitions>
+                    <RowDefinition Height="Auto"/>
+                    <RowDefinition Height="*"/>
+                </Grid.RowDefinitions>
+                <StackPanel Grid.Row="0" Margin="10">
+                    <TextBlock Text="График испытаний" FontSize="16" FontWeight="Bold"/>
+                    <TextBlock Text="Выбор года:"/>
+                    <ComboBox x:Name="cbYear" SelectionChanged="cbYear_SelectionChanged" Margin="0,0,0,5">
+                        <ComboBoxItem>2023</ComboBoxItem>
+                        <ComboBoxItem>2024</ComboBoxItem>
+                        <ComboBoxItem>2025</ComboBoxItem>
+                    </ComboBox>
+                    <TextBlock Text="Номер трубы:"/>
+                    <TextBox x:Name="txtPipeCounter" TextChanged="txtPipeCounter_TextChanged" Margin="0,0,0,5"/>
+                    <ListBox x:Name="lbPipeCounterSuggestions" Height="100" Visibility="Collapsed" SelectionChanged="lbPipeCounterSuggestions_SelectionChanged" Margin="0,0,0,5"/>
+                    <StackPanel Orientation="Horizontal" Margin="0,0,0,5">
+                        <Button x:Name="btnShowGraph" Content="Показать график" Click="btnShowGraph_Click" Margin="0,0,5,0"/>
+                        <Button x:Name="btnSaveGraph" Content="Сохранить" Click="btnSaveGraph_Click" Margin="0,0,5,0"/>
+                        <Button x:Name="btnResetGraph" Content="Сбросить" Click="btnResetGraph_Click"/>
+                    </StackPanel>
+                    <ProgressBar x:Name="progressBar" Height="20" Visibility="Collapsed"/>
+                </StackPanel>
+                <Canvas x:Name="canvasGraph" Grid.Row="1" Margin="10">
+                    <lvc:CartesianChart x:Name="chartControl" Width="450" Height="400" />
+                </Canvas>
+            </Grid>
+        </Border>
     </Grid>
 </Window>

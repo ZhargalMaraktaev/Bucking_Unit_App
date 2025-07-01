@@ -25,12 +25,10 @@ namespace Bucking_Unit_App.Services
             _pipeCounter = pipeCounter; // Присваиваем int? напрямую
         }
 
-        public Window GenerateGraphWindow()
+        public (ObservableCollection<ObservablePoint> TorquePoints, Axis[] XAxes, Axis[] YAxes) GetGraphData(DateTime startTime, DateTime endTime)
         {
             try
             {
-                (DateTime startTime, DateTime endTime) = GetTimeRange();
-                Console.WriteLine($"StartTime: {startTime}, EndTime: {endTime}, PipeCounter: {_pipeCounter}");
                 var synchronizedData = FetchSynchronizedData(startTime, endTime);
 
                 if (!synchronizedData.Any())
@@ -38,67 +36,44 @@ namespace Bucking_Unit_App.Services
                     throw new InvalidOperationException($"Нет данных для построения графика. Период: {startTime} - {endTime}, PipeCounter: {_pipeCounter?.ToString() ?? "All"}");
                 }
 
-                Console.WriteLine($"Data count: {synchronizedData.Count}");
-                var turnsPoints = new ObservableCollection<ObservablePoint>(synchronizedData.Select(d => new ObservablePoint(d.DateTime.ToOADate(), d.Turns)));
                 var torquePoints = new ObservableCollection<ObservablePoint>(synchronizedData.Select(d => new ObservablePoint(d.DateTime.ToOADate(), d.Torque)));
 
-                var cartesianChart = new CartesianChart
+                var xAxes = new Axis[]
                 {
-                    Series = new ISeries[]
+                    new Axis
                     {
-                new LineSeries<ObservablePoint>
-                {
-                    Values = turnsPoints,
-                    Name = "Turns",
-                    XToolTipLabelFormatter = (chartPoint) => new DateTime((long)(chartPoint.Index * TimeSpan.TicksPerDay)).ToString("yyyy-MM-dd HH:mm:ss")
-                },
-                new LineSeries<ObservablePoint>
-                {
-                    Values = torquePoints,
-                    Name = "Torque",
-                    XToolTipLabelFormatter = (chartPoint) => new DateTime((long)(chartPoint.Index * TimeSpan.TicksPerDay)).ToString("yyyy-MM-dd HH:mm:ss")
-                }
-                    },
-                    XAxes = new Axis[]
-                    {
-                new Axis
-                {
-                    Labeler = value => new DateTime((long)(value * TimeSpan.TicksPerDay)).ToString("HH:mm:ss"),
-                    LabelsRotation = 45,
-                    MinLimit = synchronizedData.Min(d => d.DateTime.ToOADate()),
-                    MaxLimit = synchronizedData.Max(d => d.DateTime.ToOADate())
-                }
-                    },
-                    YAxes = new Axis[]
-                    {
-                new Axis
-                {
-                    Labeler = value => value.ToString("F2"),
-                    MinLimit = 0,
-                    MaxLimit = Math.Max(synchronizedData.Max(d => d.Turns), synchronizedData.Max(d => d.Torque)) * 1.1
-                }
-                    },
-                    LegendPosition = LegendPosition.Top
+                        Labeler = value =>
+                        {
+                            var dateTime = new DateTime((long)(value * TimeSpan.TicksPerDay));
+                            var dataPoint = synchronizedData.FirstOrDefault(d => Math.Abs(d.DateTime.ToOADate() - value) < 0.00001); // Примерное соответствие
+                            return dataPoint.Turns.ToString("F2");
+                        },
+                        LabelsRotation = 45,
+                        MinLimit = synchronizedData.Min(d => d.DateTime.ToOADate()),
+                        MaxLimit = synchronizedData.Max(d => d.DateTime.ToOADate())
+                    }
                 };
 
-                var window = new Window
+                var yAxes = new Axis[]
                 {
-                    Title = $"Graph of Tag Values for PipeCounter {_pipeCounter?.ToString() ?? "All"}",
-                    Width = 800,
-                    Height = 600,
-                    Content = cartesianChart
+                    new Axis
+                    {
+                        Labeler = value => value.ToString("F2"),
+                        MinLimit = 0,
+                        MaxLimit = synchronizedData.Max(d => d.Torque) * 1.1
+                    }
                 };
-                Console.WriteLine("Window created successfully.");
-                return window;
+
+                return (torquePoints, xAxes, yAxes);
             }
             catch (Exception ex)
             {
-                Console.WriteLine($"Error generating graph: {ex.Message}\nStackTrace: {ex.StackTrace}");
+                MessageBox.Show($"Error generating graph data: {ex.Message}\nStackTrace: {ex.StackTrace}");
                 throw;
             }
         }
 
-        private (DateTime StartTime, DateTime EndTime) GetTimeRange()
+        public (DateTime StartTime, DateTime EndTime) GetTimeRange()
         {
             using var conn = new SqlConnection(_connectionString.Replace("Runtime", "Pilot"));
             conn.Open();
@@ -116,7 +91,7 @@ namespace Bucking_Unit_App.Services
             return (DateTime.Today, DateTime.Now); // Значение по умолчанию, если данных нет
         }
 
-        private List<(DateTime DateTime, double Turns, double Torque)> FetchSynchronizedData(DateTime startTime, DateTime endTime)
+        public List<(DateTime DateTime, double Turns, double Torque)> FetchSynchronizedData(DateTime startTime, DateTime endTime)
         {
             var data = new List<(DateTime DateTime, double Turns, double Torque)>();
             using var conn = new SqlConnection(_connectionString);
