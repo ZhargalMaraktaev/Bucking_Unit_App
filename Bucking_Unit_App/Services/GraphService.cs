@@ -48,6 +48,7 @@ namespace Bucking_Unit_App.Services
                             var dataPoint = synchronizedData.FirstOrDefault(d => Math.Abs(d.DateTime.ToOADate() - value) < 0.00001); // Примерное соответствие
                             return dataPoint.Turns.ToString("F2");
                         },
+                        Name = "Количество оборотов", // Подпись для оси X
                         LabelsRotation = 45,
                         MinLimit = synchronizedData.Min(d => d.DateTime.ToOADate()),
                         MaxLimit = synchronizedData.Max(d => d.DateTime.ToOADate())
@@ -59,6 +60,7 @@ namespace Bucking_Unit_App.Services
                     new Axis
                     {
                         Labeler = value => value.ToString("F2"),
+                        Name = "Крутящий момент", // Подпись для оси Y
                         MinLimit = 0,
                         MaxLimit = synchronizedData.Max(d => d.Torque) * 1.1
                     }
@@ -101,7 +103,7 @@ namespace Bucking_Unit_App.Services
             // Обрезаем миллисекунды у adjustedStartTime и adjustedEndTime
             adjustedStartTime = new DateTime(adjustedStartTime.Year, adjustedStartTime.Month, adjustedStartTime.Day, adjustedStartTime.Hour, adjustedStartTime.Minute, adjustedStartTime.Second, DateTimeKind.Utc);
             adjustedEndTime = new DateTime(adjustedEndTime.Year, adjustedEndTime.Month, adjustedEndTime.Day, adjustedEndTime.Hour, adjustedEndTime.Minute, adjustedEndTime.Second, DateTimeKind.Utc);
-            Console.WriteLine($"Adjusted Time Range - Start: {adjustedStartTime:yyyy-MM-ddTHH:mm:ss}, End: {adjustedEndTime:yyyy-MM-ddTHH:mm:ss}");
+            MessageBox.Show($"Adjusted Time Range - Start: {adjustedStartTime:yyyy-MM-ddTHH:mm:ss}, End: {adjustedEndTime:yyyy-MM-ddTHH:mm:ss}");
 
             // Получаем все данные за интервал
             var cmd = new SqlCommand(
@@ -165,7 +167,7 @@ namespace Bucking_Unit_App.Services
                 currentTime = new DateTime(currentTime.Year, currentTime.Month, currentTime.Day, currentTime.Hour, currentTime.Minute, currentTime.Second, DateTimeKind.Utc);
             }
 
-            Console.WriteLine($"Total records generated: {data.Count}");
+            MessageBox.Show($"Total records generated: {data.Count}");
             if (data.Count == 0)
             {
                 Console.WriteLine($"Available Tags: {GetAvailableTags()}");

@@ -8,7 +8,6 @@ using Bucking_Unit_App.Interfaces;
 namespace Bucking_Unit_App.Services
 {
     // StatsService.cs
-    // StatsService.cs
     public class StatsService
     {
         private readonly IStatsRepository _statsRepository;
@@ -52,6 +51,20 @@ namespace Bucking_Unit_App.Services
                 _lastKnownRepId = await _statsRepository.GetLastKnownRepIdAsync();
                 _lastKnownDowntimeId = await _statsRepository.GetLastKnownDowntimeIdAsync();
             }
+        }
+
+        // Новый метод для обновления статистики всех операторов
+        public async Task UpdateStatsForAllOperatorsAsync(Action<Dictionary<int, (bool IsDayShift, decimal DayShiftDowntime, decimal NightShiftDowntime)>,
+            Dictionary<int, (bool IsDayShift, decimal DayShiftDowntime, decimal NightShiftDowntime)>,
+            Dictionary<int, (bool IsDayShift, int ShiftOperationCount)>,
+            Dictionary<int, (bool IsDayShift, int ShiftOperationCount)>> updateAllUI)
+        {
+            var dailyDowntime = await _statsRepository.GetDailyDowntimeByAllOperatorsAsync();
+            var monthlyDowntime = await _statsRepository.GetMonthlyDowntimeByAllOperatorsAsync();
+            var dailyOperationCount = await _statsRepository.GetDailyShiftOperationCountByAllOperatorsAsync();
+            var monthlyOperationCount = await _statsRepository.GetMonthlyShiftOperationCountByAllOperatorsAsync();
+
+            updateAllUI(dailyDowntime, monthlyDowntime, dailyOperationCount, monthlyOperationCount);
         }
     }
 }

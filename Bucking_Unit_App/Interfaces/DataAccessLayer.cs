@@ -188,7 +188,9 @@ namespace Bucking_Unit_App.Interfaces
             string updateQuery = @"
             UPDATE Pilot.dbo.Downtime
             SET OperatorId = @OperatorId
-            WHERE OperatorId IS NULL AND Id >= @LastKnownId";
+            WHERE OperatorId IS NULL 
+            AND Id >= @LastKnownId 
+            AND SectorId = 8"; // Добавлен фильтр по SectorId
             using var cmd = new SqlCommand(updateQuery, conn);
             cmd.Parameters.AddWithValue("@OperatorId", operatorId);
             cmd.Parameters.AddWithValue("@LastKnownId", lastKnownDowntimeId);
@@ -201,6 +203,84 @@ namespace Bucking_Unit_App.Interfaces
             using var cmd = new SqlCommand(query, conn);
             cmd.Parameters.AddWithValue("@TabNumber", tabNumber);
             return (int)await cmd.ExecuteScalarAsync() > 0;
+        }
+
+        // Новый метод для GetDailyDowntimeByAllOperators
+        public async Task<Dictionary<int, (bool IsDayShift, decimal DayShiftDowntime, decimal NightShiftDowntime)>> GetDailyDowntimeByAllOperatorsAsync()
+        {
+            var result = new Dictionary<int, (bool IsDayShift, decimal DayShiftDowntime, decimal NightShiftDowntime)>();
+            using var conn = new SqlConnection(_connectionString);
+            await conn.OpenAsync();
+            using var cmd = new SqlCommand("GetDailyDowntimeByAllOperators", conn);
+            cmd.CommandType = CommandType.StoredProcedure;
+            using var reader = await cmd.ExecuteReaderAsync();
+            while (await reader.ReadAsync())
+            {
+                result[reader.GetInt32(reader.GetOrdinal("OperatorId"))] = (
+                    reader.GetBoolean(reader.GetOrdinal("IsDayShift")),
+                    reader.IsDBNull(reader.GetOrdinal("DayShiftDowntimeMinutes")) ? 0 : reader.GetDecimal(reader.GetOrdinal("DayShiftDowntimeMinutes")),
+                    reader.IsDBNull(reader.GetOrdinal("NightShiftDowntimeMinutes")) ? 0 : reader.GetDecimal(reader.GetOrdinal("NightShiftDowntimeMinutes"))
+                );
+            }
+            return result;
+        }
+
+        // Новый метод для GetMonthlyDowntimeByAllOperators
+        public async Task<Dictionary<int, (bool IsDayShift, decimal DayShiftDowntime, decimal NightShiftDowntime)>> GetMonthlyDowntimeByAllOperatorsAsync()
+        {
+            var result = new Dictionary<int, (bool IsDayShift, decimal DayShiftDowntime, decimal NightShiftDowntime)>();
+            using var conn = new SqlConnection(_connectionString);
+            await conn.OpenAsync();
+            using var cmd = new SqlCommand("GetMonthlyDowntimeByAllOperators", conn);
+            cmd.CommandType = CommandType.StoredProcedure;
+            using var reader = await cmd.ExecuteReaderAsync();
+            while (await reader.ReadAsync())
+            {
+                result[reader.GetInt32(reader.GetOrdinal("OperatorId"))] = (
+                    reader.GetBoolean(reader.GetOrdinal("IsDayShift")),
+                    reader.IsDBNull(reader.GetOrdinal("DayShiftDowntimeMinutes")) ? 0 : reader.GetDecimal(reader.GetOrdinal("DayShiftDowntimeMinutes")),
+                    reader.IsDBNull(reader.GetOrdinal("NightShiftDowntimeMinutes")) ? 0 : reader.GetDecimal(reader.GetOrdinal("NightShiftDowntimeMinutes"))
+                );
+            }
+            return result;
+        }
+
+        // Новый метод для GetDailyShiftOperationCountByAllOperators
+        public async Task<Dictionary<int, (bool IsDayShift, int ShiftOperationCount)>> GetDailyShiftOperationCountByAllOperatorsAsync()
+        {
+            var result = new Dictionary<int, (bool IsDayShift, int ShiftOperationCount)>();
+            using var conn = new SqlConnection(_connectionString);
+            await conn.OpenAsync();
+            using var cmd = new SqlCommand("GetDailyShiftOperationCountByAllOperators", conn);
+            cmd.CommandType = CommandType.StoredProcedure;
+            using var reader = await cmd.ExecuteReaderAsync();
+            while (await reader.ReadAsync())
+            {
+                result[reader.GetInt32(reader.GetOrdinal("OperatorId"))] = (
+                    reader.GetBoolean(reader.GetOrdinal("IsDayShift")),
+                    reader.IsDBNull(reader.GetOrdinal("ShiftOperationCount")) ? 0 : reader.GetInt32(reader.GetOrdinal("ShiftOperationCount"))
+                );
+            }
+            return result;
+        }
+
+        // Новый метод для GetMonthlyShiftOperationCountByAllOperators
+        public async Task<Dictionary<int, (bool IsDayShift, int ShiftOperationCount)>> GetMonthlyShiftOperationCountByAllOperatorsAsync()
+        {
+            var result = new Dictionary<int, (bool IsDayShift, int ShiftOperationCount)>();
+            using var conn = new SqlConnection(_connectionString);
+            await conn.OpenAsync();
+            using var cmd = new SqlCommand("GetMonthlyShiftOperationCountByAllOperators", conn);
+            cmd.CommandType = CommandType.StoredProcedure;
+            using var reader = await cmd.ExecuteReaderAsync();
+            while (await reader.ReadAsync())
+            {
+                result[reader.GetInt32(reader.GetOrdinal("OperatorId"))] = (
+                    reader.GetBoolean(reader.GetOrdinal("IsDayShift")),
+                    reader.IsDBNull(reader.GetOrdinal("ShiftOperationCount")) ? 0 : reader.GetInt32(reader.GetOrdinal("ShiftOperationCount"))
+                );
+            }
+            return result;
         }
     }
 }

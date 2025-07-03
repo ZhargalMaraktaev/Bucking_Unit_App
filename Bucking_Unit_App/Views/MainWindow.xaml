@@ -20,17 +20,41 @@
         <!-- Секция "Данные оператора" (слева вверху) -->
         <Border Grid.Row="0" Grid.Column="0" BorderBrush="Gray" BorderThickness="1">
             <StackPanel Margin="10">
-                <TextBlock Text="Данные оператора" FontSize="16" FontWeight="Bold"/>
-                <TextBlock Text="Номер пропуска:"/>
-                <TextBox x:Name="txtIdCard" IsReadOnly="True" Margin="0,0,0,5"/>
-                <TextBlock Text="Табельный номер:"/>
-                <TextBox x:Name="txtTabNumber" IsReadOnly="True" Margin="0,0,0,5"/>
-                <TextBlock Text="ФИО:"/>
-                <TextBox x:Name="txtFIO" IsReadOnly="True" Margin="0,0,0,5"/>
-                <TextBlock Text="Подразделение:"/>
-                <TextBox x:Name="txtDepartment" IsReadOnly="True" Margin="0,0,0,5"/>
-                <TextBlock Text="Должность:"/>
-                <TextBox x:Name="txtEmployName" IsReadOnly="True" Margin="0,0,0,5"/>
+                <TextBlock Text="Данные оператора" FontSize="25" FontWeight="Bold" TextAlignment="Center"/>
+                <StackPanel x:Name="operatorDataPanel" Visibility="Collapsed">
+                    <StackPanel Orientation="Horizontal" Margin="0,0,0,5">
+                        <Label Content="Номер карты:" VerticalAlignment="Center" Width="100" FontSize="15" Padding="0,5,0,0"/>
+                        <Label x:Name="lblIdCard" Content="" VerticalAlignment="Center" Margin="5,5,0,0" FontSize="15"/>
+                    </StackPanel>
+                    <StackPanel Orientation="Horizontal" Margin="0,0,0,5">
+                        <Label Content="Табельный №:" VerticalAlignment="Center" Width="100" FontSize="15" Padding="0,5,0,0"/>
+                        <Label x:Name="lblTabNumber" Content="" VerticalAlignment="Center" Margin="5,5,0,0" FontSize="15"/>
+                    </StackPanel>
+                    <StackPanel Orientation="Horizontal" Margin="0,0,0,5">
+                        <Label Content="ФИО:" VerticalAlignment="Center" Width="100" FontSize="15"/>
+                        <Label x:Name="lblFIO" Content="" VerticalAlignment="Center" Margin="5,0,0,0" FontSize="15"/>
+                    </StackPanel>
+                    <StackPanel Orientation="Horizontal" Margin="0,0,0,5">
+                        <Label Content="Отдел:" VerticalAlignment="Center" Width="100" FontSize="15" Padding="0,10,0,0"/>
+                        <TextBlock x:Name="lblDepartment" Text="" VerticalAlignment="Center" Margin="10,5,0,0" TextWrapping="Wrap" Width="200" FontSize="15"/>
+                    </StackPanel>
+                    <StackPanel Orientation="Horizontal" Margin="0,0,0,5">
+                        <Label Content="Должность:" VerticalAlignment="Center" Width="100" FontSize="15"/>
+                        <Label x:Name="lblEmployName" Content="" VerticalAlignment="Center" Margin="5,0,0,0" FontSize="15"/>
+                    </StackPanel>
+                </StackPanel>
+                <!-- TextBox для "ВСТАВЬТЕ ПРОПУСК" с смещением текста вниз -->
+                <TextBox x:Name="txtInsertCardPrompt" Text="ВСТАВЬТЕ ПРОПУСК" 
+                         Foreground="Red" Background="White" 
+                         FontSize="24" FontWeight="Bold" 
+                         VerticalAlignment="Bottom" HorizontalAlignment="Center" 
+                         Height="200" Width="400" 
+                         Visibility="Visible" TextAlignment="Center" IsReadOnly="True" BorderThickness="0">
+                    <TextBox.Margin>
+                        <Thickness Left="0" Top="100" Right="0" Bottom="0"/>
+                        <!-- Смещение текста вниз на 100 пикселей -->
+                    </TextBox.Margin>
+                </TextBox>
             </StackPanel>
         </Border>
 
@@ -40,21 +64,82 @@
         <!-- Секция "Статистика" (слева внизу) -->
         <Border Grid.Row="2" Grid.Column="0" BorderBrush="Gray" BorderThickness="1">
             <StackPanel Margin="10">
-                <TextBlock Text="Статистика" FontSize="16" FontWeight="Bold"/>
-                <StackPanel>
-                    <TextBlock Text="Общие штуки"/>
-                    <TextBlock Text="За смену:"/>
-                    <TextBox x:Name="txtShiftItems" IsReadOnly="True"/>
-                    <TextBlock Text="За месяц:"/>
-                    <TextBox x:Name="txtMonthItems" IsReadOnly="True"/>
-                </StackPanel>
-                <StackPanel>
-                    <TextBlock Text="Общие простои"/>
-                    <TextBlock Text="За смену:"/>
-                    <TextBox x:Name="txtShiftDowntime" IsReadOnly="True"/>
-                    <TextBlock Text="За месяц:"/>
-                    <TextBox x:Name="txtMonthDowntime" IsReadOnly="True"/>
-                </StackPanel>
+                <TextBlock Text="Статистика" FontSize="25" FontWeight="Bold" TextAlignment="Center"/>
+                <Grid x:Name="statsDataPanel" Visibility="Collapsed">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="*"/>
+                        <ColumnDefinition Width="*"/>
+                    </Grid.ColumnDefinitions>
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="Auto"/>
+                        <RowDefinition Height="Auto"/>
+                    </Grid.RowDefinitions>
+                    <StackPanel Grid.Row="0" Grid.Column="0" Margin="0,0,5,0">
+                        <StackPanel Orientation="Horizontal" Margin="0,0,0,5">
+                            <Label Content="За смену (штуки):" VerticalAlignment="Center" Width="120" FontSize="15" Padding="0,5,0,0"/>
+                            <Label x:Name="lblShiftItems" Content="" VerticalAlignment="Center" Margin="5,5,0,0" FontSize="15"/>
+                        </StackPanel>
+                        <StackPanel Orientation="Horizontal" Margin="0,0,0,5">
+                            <Label Content="За смену (простои):" VerticalAlignment="Center" Width="135" FontSize="15" Padding="0,5,0,0"/>
+                            <Label x:Name="lblShiftDowntime" Content="" VerticalAlignment="Center" Margin="5,5,0,0" FontSize="15"/>
+                        </StackPanel>
+                    </StackPanel>
+                    <StackPanel Grid.Row="0" Grid.Column="1" Margin="5,0,0,0">
+                        <StackPanel Orientation="Horizontal" Margin="0,0,0,5">
+                            <Label Content="За месяц (штуки):" VerticalAlignment="Center" Width="120" FontSize="15" Padding="0,5,0,0"/>
+                            <Label x:Name="lblMonthItems" Content="" VerticalAlignment="Center" Margin="5,5,0,0" FontSize="15"/>
+                        </StackPanel>
+                        <StackPanel Orientation="Horizontal" Margin="0,0,0,5">
+                            <Label Content="За месяц (простои):" VerticalAlignment="Center" Width="135" FontSize="15" Padding="0,5,0,0"/>
+                            <Label x:Name="lblMonthDowntime" Content="" VerticalAlignment="Center" Margin="5,5,0,0" FontSize="15"/>
+                        </StackPanel>
+                    </StackPanel>
+                </Grid>
+                <!-- TextBox для "ОТСУТСТВУЮТ ДАННЫЕ СТАТИСТИКИ" -->
+                <TextBox x:Name="txtNoStatsPrompt" Text="ВСТАВЬТЕ ПРОПУСК" 
+                         Foreground="Red" Background="White" 
+                         FontSize="24" FontWeight="Bold" 
+                         VerticalAlignment="Bottom" HorizontalAlignment="Center" 
+                         Height="40" Width="400" 
+                         Visibility="Visible" TextAlignment="Center" IsReadOnly="True" BorderThickness="0">
+                    <TextBox.Margin>
+                        <Thickness Left="0" Top="100" Right="0" Bottom="0"/>
+                        <!-- Смещение текста вниз на 100 пикселей -->
+                    </TextBox.Margin>
+                </TextBox>
+
+                <!-- Секция "Общая статистика" внутри того же Border -->
+                <TextBlock Text="Общая статистика" FontSize="25" FontWeight="Bold" Margin="0,10,0,0" TextAlignment="Center"/>
+                <Grid x:Name="allStatsDataPanel" Visibility="Visible">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="*"/>
+                        <ColumnDefinition Width="*"/>
+                    </Grid.ColumnDefinitions>
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="Auto"/>
+                        <RowDefinition Height="Auto"/>
+                    </Grid.RowDefinitions>
+                    <StackPanel Grid.Row="0" Grid.Column="0" Margin="0,0,5,0">
+                        <StackPanel Orientation="Horizontal" Margin="0,0,0,5">
+                            <Label Content="За смену (штуки):" VerticalAlignment="Center" Width="120" FontSize="15" Padding="0,5,0,0"/>
+                            <Label x:Name="lblAllShiftItems" Content="" VerticalAlignment="Center" Margin="5,5,0,0" FontSize="15"/>
+                        </StackPanel>
+                        <StackPanel Orientation="Horizontal" Margin="0,0,0,5">
+                            <Label Content="За смену (простои):" VerticalAlignment="Center" Width="135" FontSize="15" Padding="0,5,0,0"/>
+                            <Label x:Name="lblAllShiftDowntime" Content="" VerticalAlignment="Center" Margin="5,5,0,0" FontSize="15"/>
+                        </StackPanel>
+                    </StackPanel>
+                    <StackPanel Grid.Row="0" Grid.Column="1" Margin="5,0,0,0">
+                        <StackPanel Orientation="Horizontal" Margin="0,0,0,5">
+                            <Label Content="За месяц (штуки):" VerticalAlignment="Center" Width="120" FontSize="15" Padding="0,5,0,0"/>
+                            <Label x:Name="lblAllMonthItems" Content="" VerticalAlignment="Center" Margin="5,5,0,0" FontSize="15"/>
+                        </StackPanel>
+                        <StackPanel Orientation="Horizontal" Margin="0,0,0,5">
+                            <Label Content="За месяц (простои):" VerticalAlignment="Center" Width="135" FontSize="15" Padding="0,5,0,0"/>
+                            <Label x:Name="lblAllMonthDowntime" Content="" VerticalAlignment="Center" Margin="5,5,0,0" FontSize="15"/>
+                        </StackPanel>
+                    </StackPanel>
+                </Grid>
             </StackPanel>
         </Border>
 
@@ -63,31 +148,33 @@
 
         <!-- Секция "График испытаний" (справа) -->
         <Border Grid.Row="0" Grid.RowSpan="3" Grid.Column="2" BorderBrush="Gray" BorderThickness="1">
-            <Grid HorizontalAlignment="Left" Width="476">
+            <Grid>
                 <Grid.RowDefinitions>
                     <RowDefinition Height="Auto"/>
                     <RowDefinition Height="*"/>
                 </Grid.RowDefinitions>
                 <StackPanel Grid.Row="0" Margin="10">
-                    <TextBlock Text="График испытаний" FontSize="16" FontWeight="Bold"/>
-                    <TextBlock Text="Выбор года:"/>
-                    <ComboBox x:Name="cbYear" SelectionChanged="cbYear_SelectionChanged" Margin="0,0,0,5">
-                        <ComboBoxItem>2023</ComboBoxItem>
-                        <ComboBoxItem>2024</ComboBoxItem>
-                        <ComboBoxItem>2025</ComboBoxItem>
-                    </ComboBox>
-                    <TextBlock Text="Номер трубы:"/>
-                    <TextBox x:Name="txtPipeCounter" TextChanged="txtPipeCounter_TextChanged" Margin="0,0,0,5"/>
-                    <ListBox x:Name="lbPipeCounterSuggestions" Height="100" Visibility="Collapsed" SelectionChanged="lbPipeCounterSuggestions_SelectionChanged" Margin="0,0,0,5"/>
+                    <TextBlock Text="График испытаний" FontSize="25" FontWeight="Bold" TextAlignment="Center"/>
+                    <TextBlock Text="Текущая труба:" FontSize="15"/>
+                    <Label x:Name="txtCurrentPipe" Margin="0,0,0,5" FontSize="15"/>
+                    <Label x:Name="lblStatus" Content="Проводится наворот муфты..." Margin="0,0,0,5" Visibility="Collapsed" FontSize="15"/>
+                    <ListBox x:Name="lbPipeCounterSuggestions" Height="100" Visibility="Collapsed" SelectionChanged="lbPipeCounterSuggestions_SelectionChanged" Margin="0,0,0,5" FontSize="15"/>
                     <StackPanel Orientation="Horizontal" Margin="0,0,0,5">
-                        <Button x:Name="btnShowGraph" Content="Показать график" Click="btnShowGraph_Click" Margin="0,0,5,0"/>
-                        <Button x:Name="btnSaveGraph" Content="Сохранить" Click="btnSaveGraph_Click" Margin="0,0,5,0"/>
-                        <Button x:Name="btnResetGraph" Content="Сбросить" Click="btnResetGraph_Click"/>
+                        <Button x:Name="btnShowGraph" Content="Показать график" Click="btnShowGraph_Click" Margin="0,0,5,0" FontSize="15"/>
+                        <Button x:Name="btnSaveGraph" Content="Сохранить" Click="btnSaveGraph_Click" Margin="0,0,5,0" FontSize="15"/>
+                        <Button x:Name="btnResetGraph" Content="Сбросить" Click="btnResetGraph_Click" Margin="0,0,5,0" FontSize="15"/>
+                        <Button x:Name="btnResumeUpdate" Content="Возобновить обновление" Click="btnResumeUpdate_Click" Margin="0,0,0,0" FontSize="15"/>
+                        <ComboBox x:Name="cbYear" SelectionChanged="cbYear_SelectionChanged" Margin="10,0,10,0" Width="100" FontSize="15">
+                            <ComboBoxItem>2023</ComboBoxItem>
+                            <ComboBoxItem>2024</ComboBoxItem>
+                            <ComboBoxItem>2025</ComboBoxItem>
+                        </ComboBox>
+                        <TextBox x:Name="txtPipeCounter" PreviewMouseDown="txtPipeCounter_PreviewMouseDown" TextChanged="txtPipeCounter_TextChanged" Margin="0,0,0,0" Width="100" FontSize="15"/>
                     </StackPanel>
                     <ProgressBar x:Name="progressBar" Height="20" Visibility="Collapsed"/>
                 </StackPanel>
                 <Canvas x:Name="canvasGraph" Grid.Row="1" Margin="10">
-                    <lvc:CartesianChart x:Name="chartControl" Width="450" Height="400" />
+                    <lvc:CartesianChart x:Name="chartControl" />
                 </Canvas>
             </Grid>
         </Border>
