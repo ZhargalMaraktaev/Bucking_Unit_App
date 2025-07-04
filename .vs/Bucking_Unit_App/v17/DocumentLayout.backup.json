@@ -15,12 +15,20 @@
       "RelativeMoniker": "D:0:0:{08C6461E-F5D0-410F-9E8E-BC3E1A7EDBE3}|Bucking_Unit_App\\Bucking_Unit_App.csproj|solutionrelative:bucking_unit_app\\services\\graphservice.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
     },
     {
-      "AbsoluteMoniker": "D:0:0:{08C6461E-F5D0-410F-9E8E-BC3E1A7EDBE3}|Bucking_Unit_App\\Bucking_Unit_App.csproj|c:\\users\\z.maraktaev\\source\\repos\\bucking_unit_app\\bucking_unit_app\\services\\operatorservice.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
-      "RelativeMoniker": "D:0:0:{08C6461E-F5D0-410F-9E8E-BC3E1A7EDBE3}|Bucking_Unit_App\\Bucking_Unit_App.csproj|solutionrelative:bucking_unit_app\\services\\operatorservice.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
+      "AbsoluteMoniker": "D:0:0:{08C6461E-F5D0-410F-9E8E-BC3E1A7EDBE3}|Bucking_Unit_App\\Bucking_Unit_App.csproj|c:\\users\\z.maraktaev\\source\\repos\\bucking_unit_app\\bucking_unit_app\\controllers\\com controller\\comcontroller.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
+      "RelativeMoniker": "D:0:0:{08C6461E-F5D0-410F-9E8E-BC3E1A7EDBE3}|Bucking_Unit_App\\Bucking_Unit_App.csproj|solutionrelative:bucking_unit_app\\controllers\\com controller\\comcontroller.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{08C6461E-F5D0-410F-9E8E-BC3E1A7EDBE3}|Bucking_Unit_App\\Bucking_Unit_App.csproj|c:\\users\\z.maraktaev\\source\\repos\\bucking_unit_app\\bucking_unit_app\\models\\comcontrollerparamsmodel.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
+      "RelativeMoniker": "D:0:0:{08C6461E-F5D0-410F-9E8E-BC3E1A7EDBE3}|Bucking_Unit_App\\Bucking_Unit_App.csproj|solutionrelative:bucking_unit_app\\models\\comcontrollerparamsmodel.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
     },
     {
       "AbsoluteMoniker": "D:0:0:{08C6461E-F5D0-410F-9E8E-BC3E1A7EDBE3}|Bucking_Unit_App\\Bucking_Unit_App.csproj|c:\\users\\z.maraktaev\\source\\repos\\bucking_unit_app\\bucking_unit_app\\services\\statsservice.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
       "RelativeMoniker": "D:0:0:{08C6461E-F5D0-410F-9E8E-BC3E1A7EDBE3}|Bucking_Unit_App\\Bucking_Unit_App.csproj|solutionrelative:bucking_unit_app\\services\\statsservice.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{08C6461E-F5D0-410F-9E8E-BC3E1A7EDBE3}|Bucking_Unit_App\\Bucking_Unit_App.csproj|c:\\users\\z.maraktaev\\source\\repos\\bucking_unit_app\\bucking_unit_app\\services\\operatorservice.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
+      "RelativeMoniker": "D:0:0:{08C6461E-F5D0-410F-9E8E-BC3E1A7EDBE3}|Bucking_Unit_App\\Bucking_Unit_App.csproj|solutionrelative:bucking_unit_app\\services\\operatorservice.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
     },
     {
       "AbsoluteMoniker": "D:0:0:{08C6461E-F5D0-410F-9E8E-BC3E1A7EDBE3}|Bucking_Unit_App\\Bucking_Unit_App.csproj|c:\\users\\z.maraktaev\\source\\repos\\bucking_unit_app\\bucking_unit_app\\interfaces\\dataaccesslayer.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
@@ -33,14 +41,6 @@
     {
       "AbsoluteMoniker": "D:0:0:{08C6461E-F5D0-410F-9E8E-BC3E1A7EDBE3}|Bucking_Unit_App\\Bucking_Unit_App.csproj|c:\\users\\z.maraktaev\\source\\repos\\bucking_unit_app\\bucking_unit_app\\interfaces\\iemployeerepository.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
       "RelativeMoniker": "D:0:0:{08C6461E-F5D0-410F-9E8E-BC3E1A7EDBE3}|Bucking_Unit_App\\Bucking_Unit_App.csproj|solutionrelative:bucking_unit_app\\interfaces\\iemployeerepository.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
-    },
-    {
-      "AbsoluteMoniker": "D:0:0:{08C6461E-F5D0-410F-9E8E-BC3E1A7EDBE3}|Bucking_Unit_App\\Bucking_Unit_App.csproj|c:\\users\\z.maraktaev\\source\\repos\\bucking_unit_app\\bucking_unit_app\\controllers\\com controller\\comcontroller.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
-      "RelativeMoniker": "D:0:0:{08C6461E-F5D0-410F-9E8E-BC3E1A7EDBE3}|Bucking_Unit_App\\Bucking_Unit_App.csproj|solutionrelative:bucking_unit_app\\controllers\\com controller\\comcontroller.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
-    },
-    {
-      "AbsoluteMoniker": "D:0:0:{08C6461E-F5D0-410F-9E8E-BC3E1A7EDBE3}|Bucking_Unit_App\\Bucking_Unit_App.csproj|c:\\users\\z.maraktaev\\source\\repos\\bucking_unit_app\\bucking_unit_app\\models\\comcontrollerparamsmodel.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
-      "RelativeMoniker": "D:0:0:{08C6461E-F5D0-410F-9E8E-BC3E1A7EDBE3}|Bucking_Unit_App\\Bucking_Unit_App.csproj|solutionrelative:bucking_unit_app\\models\\comcontrollerparamsmodel.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
     },
     {
       "AbsoluteMoniker": "D:0:0:{08C6461E-F5D0-410F-9E8E-BC3E1A7EDBE3}|Bucking_Unit_App\\Bucking_Unit_App.csproj|c:\\users\\z.maraktaev\\source\\repos\\bucking_unit_app\\bucking_unit_app\\app.xaml.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
@@ -77,7 +77,7 @@
       "DocumentGroups": [
         {
           "DockedWidth": 200,
-          "SelectedChildIndex": 11,
+          "SelectedChildIndex": 10,
           "Children": [
             {
               "$type": "Bookmark",
@@ -93,8 +93,7 @@
               "RelativeToolTip": "Bucking_Unit_App\\App.xaml.cs",
               "ViewState": "AgIAAAAAAAAAAAAAAAAAAA4AAAAAAAAAAAAAAA==",
               "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
-              "WhenOpened": "2025-06-27T10:09:08.012Z",
-              "EditorCaption": ""
+              "WhenOpened": "2025-06-27T10:09:08.012Z"
             },
             {
               "$type": "Document",
@@ -104,10 +103,9 @@
               "RelativeDocumentMoniker": "Bucking_Unit_App\\Bucking_Unit_App.csproj",
               "ToolTip": "C:\\Users\\z.maraktaev\\source\\repos\\Bucking_Unit_App\\Bucking_Unit_App\\Bucking_Unit_App.csproj",
               "RelativeToolTip": "Bucking_Unit_App\\Bucking_Unit_App.csproj",
-              "ViewState": "AgIAAAAAAAAAAAAAAAAAAAsAAAAfAAAAAAAAAA==",
+              "ViewState": "AgIAAAAAAAAAAAAAAAAAAAwAAAAfAAAAAAAAAA==",
               "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000758|",
-              "WhenOpened": "2025-06-26T11:16:46.461Z",
-              "EditorCaption": ""
+              "WhenOpened": "2025-06-26T11:16:46.461Z"
             },
             {
               "$type": "Document",
@@ -117,7 +115,7 @@
               "RelativeDocumentMoniker": "Bucking_Unit_App\\Services\\GraphService.cs",
               "ToolTip": "C:\\Users\\z.maraktaev\\source\\repos\\Bucking_Unit_App\\Bucking_Unit_App\\Services\\GraphService.cs",
               "RelativeToolTip": "Bucking_Unit_App\\Services\\GraphService.cs",
-              "ViewState": "AgIAAJYAAAAAAAAAAAAQwL8AAAABAAAAAAAAAA==",
+              "ViewState": "AgIAADoAAAAAAAAAAAAqwGgAAADFAAAAAAAAAA==",
               "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
               "WhenOpened": "2025-06-26T10:16:41.663Z",
               "EditorCaption": ""
@@ -132,8 +130,7 @@
               "RelativeToolTip": "..\\Bucking_Unit_App.Tests\\Bucking_Unit_App.Tests\\Bucking_Unit_App.Tests.csproj",
               "ViewState": "AgIAAAAAAAAAAAAAAAAAABoAAAAAAAAAAAAAAA==",
               "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000758|",
-              "WhenOpened": "2025-06-26T06:43:55.821Z",
-              "EditorCaption": ""
+              "WhenOpened": "2025-06-26T06:43:55.821Z"
             },
             {
               "$type": "Document",
@@ -149,54 +146,41 @@
             },
             {
               "$type": "Document",
-              "DocumentIndex": 4,
+              "DocumentIndex": 5,
               "Title": "StatsService.cs",
               "DocumentMoniker": "C:\\Users\\z.maraktaev\\source\\repos\\Bucking_Unit_App\\Bucking_Unit_App\\Services\\StatsService.cs",
               "RelativeDocumentMoniker": "Bucking_Unit_App\\Services\\StatsService.cs",
               "ToolTip": "C:\\Users\\z.maraktaev\\source\\repos\\Bucking_Unit_App\\Bucking_Unit_App\\Services\\StatsService.cs",
               "RelativeToolTip": "Bucking_Unit_App\\Services\\StatsService.cs",
-              "ViewState": "AgIAAB4AAAAAAAAAAAAowEAAAAA/AAAAAAAAAA==",
+              "ViewState": "AgIAAAAAAAAAAAAAAAAAABUAAAAIAAAAAAAAAA==",
               "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
               "WhenOpened": "2025-06-25T12:06:22.286Z",
               "EditorCaption": ""
             },
             {
               "$type": "Document",
-              "DocumentIndex": 3,
+              "DocumentIndex": 6,
               "Title": "OperatorService.cs",
               "DocumentMoniker": "C:\\Users\\z.maraktaev\\source\\repos\\Bucking_Unit_App\\Bucking_Unit_App\\Services\\OperatorService.cs",
               "RelativeDocumentMoniker": "Bucking_Unit_App\\Services\\OperatorService.cs",
               "ToolTip": "C:\\Users\\z.maraktaev\\source\\repos\\Bucking_Unit_App\\Bucking_Unit_App\\Services\\OperatorService.cs",
               "RelativeToolTip": "Bucking_Unit_App\\Services\\OperatorService.cs",
-              "ViewState": "AgIAAA4AAAAAAAAAAAAQwCIAAAAMAAAAAAAAAA==",
+              "ViewState": "AgIAAAAAAAAAAAAAAAAAABYAAAAIAAAAAAAAAA==",
               "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
               "WhenOpened": "2025-06-25T12:05:35.155Z",
               "EditorCaption": ""
             },
             {
               "$type": "Document",
-              "DocumentIndex": 5,
+              "DocumentIndex": 7,
               "Title": "DataAccessLayer.cs",
               "DocumentMoniker": "C:\\Users\\z.maraktaev\\source\\repos\\Bucking_Unit_App\\Bucking_Unit_App\\Interfaces\\DataAccessLayer.cs",
               "RelativeDocumentMoniker": "Bucking_Unit_App\\Interfaces\\DataAccessLayer.cs",
               "ToolTip": "C:\\Users\\z.maraktaev\\source\\repos\\Bucking_Unit_App\\Bucking_Unit_App\\Interfaces\\DataAccessLayer.cs",
               "RelativeToolTip": "Bucking_Unit_App\\Interfaces\\DataAccessLayer.cs",
-              "ViewState": "AgIAAAsAAAAAAAAAAAAQwDgAAABoAAAAAAAAAA==",
+              "ViewState": "AgIAAAAAAAAAAAAAAAAAABMAAAAIAAAAAAAAAA==",
               "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
               "WhenOpened": "2025-06-25T12:04:47.064Z",
-              "EditorCaption": ""
-            },
-            {
-              "$type": "Document",
-              "DocumentIndex": 6,
-              "Title": "IStatsRepository.cs",
-              "DocumentMoniker": "C:\\Users\\z.maraktaev\\source\\repos\\Bucking_Unit_App\\Bucking_Unit_App\\Interfaces\\IStatsRepository.cs",
-              "RelativeDocumentMoniker": "Bucking_Unit_App\\Interfaces\\IStatsRepository.cs",
-              "ToolTip": "C:\\Users\\z.maraktaev\\source\\repos\\Bucking_Unit_App\\Bucking_Unit_App\\Interfaces\\IStatsRepository.cs",
-              "RelativeToolTip": "Bucking_Unit_App\\Interfaces\\IStatsRepository.cs",
-              "ViewState": "AgIAAAAAAAAAAAAAAAAAABwAAAABAAAAAAAAAA==",
-              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
-              "WhenOpened": "2025-06-25T12:04:02.114Z",
               "EditorCaption": ""
             },
             {
@@ -205,8 +189,8 @@
               "Title": "MainWindow.xaml",
               "DocumentMoniker": "C:\\Users\\z.maraktaev\\source\\repos\\Bucking_Unit_App\\Bucking_Unit_App\\Views\\MainWindow.xaml",
               "RelativeDocumentMoniker": "Bucking_Unit_App\\Views\\MainWindow.xaml",
-              "ToolTip": "C:\\Users\\z.maraktaev\\source\\repos\\Bucking_Unit_App\\Bucking_Unit_App\\Views\\MainWindow.xaml",
-              "RelativeToolTip": "Bucking_Unit_App\\Views\\MainWindow.xaml",
+              "ToolTip": "C:\\Users\\z.maraktaev\\source\\repos\\Bucking_Unit_App\\Bucking_Unit_App\\Views\\MainWindow.xaml*",
+              "RelativeToolTip": "Bucking_Unit_App\\Views\\MainWindow.xaml*",
               "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.003549|",
               "WhenOpened": "2025-07-02T10:14:15.846Z",
               "EditorCaption": ""
@@ -219,14 +203,26 @@
               "RelativeDocumentMoniker": "Bucking_Unit_App\\Views\\MainWindow.xaml.cs",
               "ToolTip": "C:\\Users\\z.maraktaev\\source\\repos\\Bucking_Unit_App\\Bucking_Unit_App\\Views\\MainWindow.xaml.cs*",
               "RelativeToolTip": "Bucking_Unit_App\\Views\\MainWindow.xaml.cs*",
-              "ViewState": "AgIAAI4AAAAAAAAAAAAcwKQAAAAUAAAAAAAAAA==",
+              "ViewState": "AgIAADAAAAAAAAAAAAAewD8AAABVAAAAAAAAAA==",
               "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
               "WhenOpened": "2025-06-18T11:33:54.312Z",
               "EditorCaption": ""
             },
             {
               "$type": "Document",
-              "DocumentIndex": 7,
+              "DocumentIndex": 8,
+              "Title": "IStatsRepository.cs",
+              "DocumentMoniker": "C:\\Users\\z.maraktaev\\source\\repos\\Bucking_Unit_App\\Bucking_Unit_App\\Interfaces\\IStatsRepository.cs",
+              "RelativeDocumentMoniker": "Bucking_Unit_App\\Interfaces\\IStatsRepository.cs",
+              "ToolTip": "C:\\Users\\z.maraktaev\\source\\repos\\Bucking_Unit_App\\Bucking_Unit_App\\Interfaces\\IStatsRepository.cs",
+              "RelativeToolTip": "Bucking_Unit_App\\Interfaces\\IStatsRepository.cs",
+              "ViewState": "AgIAAAAAAAAAAAAAAAAAABwAAAABAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
+              "WhenOpened": "2025-06-25T12:04:02.114Z"
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 9,
               "Title": "IEmployeeRepository.cs",
               "DocumentMoniker": "C:\\Users\\z.maraktaev\\source\\repos\\Bucking_Unit_App\\Bucking_Unit_App\\Interfaces\\IEmployeeRepository.cs",
               "RelativeDocumentMoniker": "Bucking_Unit_App\\Interfaces\\IEmployeeRepository.cs",
@@ -234,8 +230,7 @@
               "RelativeToolTip": "Bucking_Unit_App\\Interfaces\\IEmployeeRepository.cs",
               "ViewState": "AgIAAAAAAAAAAAAAAAAqwAsAAAAmAAAAAAAAAA==",
               "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
-              "WhenOpened": "2025-06-25T12:03:18.617Z",
-              "EditorCaption": ""
+              "WhenOpened": "2025-06-25T12:03:18.617Z"
             },
             {
               "$type": "Document",
@@ -247,8 +242,7 @@
               "RelativeToolTip": "Bucking_Unit_App\\Models\\Employee1CModel.cs",
               "ViewState": "AgIAABIAAAAAAAAAAAAowAUAAAARAAAAAAAAAA==",
               "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
-              "WhenOpened": "2025-06-19T12:20:01.511Z",
-              "EditorCaption": ""
+              "WhenOpened": "2025-06-19T12:20:01.511Z"
             },
             {
               "$type": "Document",
@@ -260,18 +254,17 @@
               "RelativeToolTip": "Bucking_Unit_App\\Controllers\\1C Controller\\Controller1C.cs",
               "ViewState": "AgIAAAAAAAAAAAAAAAAAABoAAAAXAAAAAAAAAA==",
               "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
-              "WhenOpened": "2025-06-18T11:48:46.468Z",
-              "EditorCaption": ""
+              "WhenOpened": "2025-06-18T11:48:46.468Z"
             },
             {
               "$type": "Document",
-              "DocumentIndex": 9,
+              "DocumentIndex": 4,
               "Title": "COMControllerParamsModel.cs",
               "DocumentMoniker": "C:\\Users\\z.maraktaev\\source\\repos\\Bucking_Unit_App\\Bucking_Unit_App\\Models\\COMControllerParamsModel.cs",
               "RelativeDocumentMoniker": "Bucking_Unit_App\\Models\\COMControllerParamsModel.cs",
               "ToolTip": "C:\\Users\\z.maraktaev\\source\\repos\\Bucking_Unit_App\\Bucking_Unit_App\\Models\\COMControllerParamsModel.cs",
               "RelativeToolTip": "Bucking_Unit_App\\Models\\COMControllerParamsModel.cs",
-              "ViewState": "AgIAAD4AAAAAAAAAAAAWwFMAAAAIAAAAAAAAAA==",
+              "ViewState": "AgIAADkAAAAAAAAAAAA6wFMAAAAIAAAAAAAAAA==",
               "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
               "WhenOpened": "2025-06-18T11:41:41.225Z",
               "EditorCaption": ""
@@ -286,18 +279,17 @@
               "RelativeToolTip": "Bucking_Unit_App\\Controllers\\COM Controller\\COMEventArgs.cs",
               "ViewState": "AgIAAAAAAAAAAAAAAAAAAAIAAAAKAAAAAAAAAA==",
               "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
-              "WhenOpened": "2025-06-18T11:41:22.731Z",
-              "EditorCaption": ""
+              "WhenOpened": "2025-06-18T11:41:22.731Z"
             },
             {
               "$type": "Document",
-              "DocumentIndex": 8,
+              "DocumentIndex": 3,
               "Title": "COMController.cs",
               "DocumentMoniker": "C:\\Users\\z.maraktaev\\source\\repos\\Bucking_Unit_App\\Bucking_Unit_App\\Controllers\\COM Controller\\COMController.cs",
               "RelativeDocumentMoniker": "Bucking_Unit_App\\Controllers\\COM Controller\\COMController.cs",
               "ToolTip": "C:\\Users\\z.maraktaev\\source\\repos\\Bucking_Unit_App\\Bucking_Unit_App\\Controllers\\COM Controller\\COMController.cs",
               "RelativeToolTip": "Bucking_Unit_App\\Controllers\\COM Controller\\COMController.cs",
-              "ViewState": "AgIAAC8AAAAAAAAAAIAwwE4AAAAIAAAAAAAAAA==",
+              "ViewState": "AgIAADAAAAAAAAAAAAAqwE4AAAAIAAAAAAAAAA==",
               "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
               "WhenOpened": "2025-06-18T11:41:05.935Z",
               "EditorCaption": ""

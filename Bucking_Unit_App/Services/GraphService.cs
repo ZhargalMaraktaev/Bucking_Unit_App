@@ -103,7 +103,6 @@ namespace Bucking_Unit_App.Services
             // Обрезаем миллисекунды у adjustedStartTime и adjustedEndTime
             adjustedStartTime = new DateTime(adjustedStartTime.Year, adjustedStartTime.Month, adjustedStartTime.Day, adjustedStartTime.Hour, adjustedStartTime.Minute, adjustedStartTime.Second, DateTimeKind.Utc);
             adjustedEndTime = new DateTime(adjustedEndTime.Year, adjustedEndTime.Month, adjustedEndTime.Day, adjustedEndTime.Hour, adjustedEndTime.Minute, adjustedEndTime.Second, DateTimeKind.Utc);
-            MessageBox.Show($"Adjusted Time Range - Start: {adjustedStartTime:yyyy-MM-ddTHH:mm:ss}, End: {adjustedEndTime:yyyy-MM-ddTHH:mm:ss}");
 
             // Получаем все данные за интервал
             var cmd = new SqlCommand(
@@ -166,8 +165,6 @@ namespace Bucking_Unit_App.Services
                 currentTime = currentTime.AddSeconds(1);
                 currentTime = new DateTime(currentTime.Year, currentTime.Month, currentTime.Day, currentTime.Hour, currentTime.Minute, currentTime.Second, DateTimeKind.Utc);
             }
-
-            MessageBox.Show($"Total records generated: {data.Count}");
             if (data.Count == 0)
             {
                 Console.WriteLine($"Available Tags: {GetAvailableTags()}");

@@ -154,23 +154,57 @@
                     <RowDefinition Height="*"/>
                 </Grid.RowDefinitions>
                 <StackPanel Grid.Row="0" Margin="10">
-                    <TextBlock Text="График испытаний" FontSize="25" FontWeight="Bold" TextAlignment="Center"/>
-                    <TextBlock Text="Текущая труба:" FontSize="15"/>
-                    <Label x:Name="txtCurrentPipe" Margin="0,0,0,5" FontSize="15"/>
+                    <TextBlock Text="График испытаний" FontSize="25" FontWeight="Bold" TextAlignment="Center" Height="51"/>
                     <Label x:Name="lblStatus" Content="Проводится наворот муфты..." Margin="0,0,0,5" Visibility="Collapsed" FontSize="15"/>
                     <ListBox x:Name="lbPipeCounterSuggestions" Height="100" Visibility="Collapsed" SelectionChanged="lbPipeCounterSuggestions_SelectionChanged" Margin="0,0,0,5" FontSize="15"/>
-                    <StackPanel Orientation="Horizontal" Margin="0,0,0,5">
-                        <Button x:Name="btnShowGraph" Content="Показать график" Click="btnShowGraph_Click" Margin="0,0,5,0" FontSize="15"/>
-                        <Button x:Name="btnSaveGraph" Content="Сохранить" Click="btnSaveGraph_Click" Margin="0,0,5,0" FontSize="15"/>
-                        <Button x:Name="btnResetGraph" Content="Сбросить" Click="btnResetGraph_Click" Margin="0,0,5,0" FontSize="15"/>
-                        <Button x:Name="btnResumeUpdate" Content="Возобновить обновление" Click="btnResumeUpdate_Click" Margin="0,0,0,0" FontSize="15"/>
-                        <ComboBox x:Name="cbYear" SelectionChanged="cbYear_SelectionChanged" Margin="10,0,10,0" Width="100" FontSize="15">
-                            <ComboBoxItem>2023</ComboBoxItem>
-                            <ComboBoxItem>2024</ComboBoxItem>
-                            <ComboBoxItem>2025</ComboBoxItem>
-                        </ComboBox>
-                        <TextBox x:Name="txtPipeCounter" PreviewMouseDown="txtPipeCounter_PreviewMouseDown" TextChanged="txtPipeCounter_TextChanged" Margin="0,0,0,0" Width="100" FontSize="15"/>
-                    </StackPanel>
+                    <Grid Margin="0,0,0,5">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="180"/>
+                            <!-- Для ComboBox -->
+                            <ColumnDefinition Width="180"/>
+                            <!-- Для TextBox -->
+                            <ColumnDefinition Width="*"/>
+                            <!-- Для btnShowGraph -->
+                            <ColumnDefinition Width="*"/>
+                            <!-- Для btnResumeUpdate -->
+                            <ColumnDefinition Width="*"/>
+                            <!-- Для btnResetGraph -->
+                            <ColumnDefinition Width="*"/>
+                            <!-- Для btnSaveGraph -->
+                            <ColumnDefinition Width="*"/>
+                            <!-- Для btnOpenFolder -->
+                        </Grid.ColumnDefinitions>
+                        <ComboBox x:Name="cbYear" Grid.Column="0" SelectionChanged="cbYear_SelectionChanged" Margin="10,0,5,0" Width="Auto" FontSize="15" 
+          ItemsSource="{Binding}" DisplayMemberPath="Year" SelectedValuePath="Year"/>
+                        <TextBox x:Name="txtPipeCounter" Grid.Column="1" PreviewMouseDown="txtPipeCounter_PreviewMouseDown" LostFocus="txtPipeCounter_LostFocus" TextChanged="txtPipeCounter_TextChanged" Margin="5,0,5,0" Width="Auto" FontSize="15" Padding="0,5,0,0"/>
+                        <Button x:Name="btnShowGraph" Grid.Column="2" Click="btnShowGraph_Click" Margin="5,0,5,0" FontSize="15" BorderThickness="0" Background="White" HorizontalAlignment="Stretch" HorizontalContentAlignment="Stretch">
+                            <StackPanel Orientation="Horizontal" HorizontalAlignment="Center">
+                                <Image x:Name="imgShowGraph" Source="C:\Users\z.maraktaev\source\repos\Bucking_Unit_App\Bucking_Unit_App\Images\graph.png" Width="45" Height="45" Margin="0,0,0,0" Stretch="Uniform"/>
+                            </StackPanel>
+                        </Button>
+                        <Button x:Name="btnResumeUpdate" Grid.Column="3" Click="btnResumeUpdate_Click" Margin="5,0,5,0" FontSize="15" BorderThickness="0" Background="White" HorizontalAlignment="Stretch" HorizontalContentAlignment="Stretch">
+                            <StackPanel Orientation="Horizontal" HorizontalAlignment="Center">
+                                <Image x:Name="imgResumeUpdate" Source="C:\Users\z.maraktaev\source\repos\Bucking_Unit_App\Bucking_Unit_App\Images\refresh.png" Width="45" Height="45" Margin="0,0,0,0" Stretch="Uniform"/>
+                            </StackPanel>
+                        </Button>
+                        <Button x:Name="btnResetGraph" Grid.Column="4" Click="btnResetGraph_Click" Margin="5,0,5,0" FontSize="15" BorderThickness="0" Background="White" HorizontalAlignment="Stretch" HorizontalContentAlignment="Stretch">
+                            <StackPanel Orientation="Horizontal" HorizontalAlignment="Center">
+                                <Image x:Name="imgResetGraph" Source="C:\Users\z.maraktaev\source\repos\Bucking_Unit_App\Bucking_Unit_App\Images\reset.png" Width="45" Height="45" Margin="0,0,0,0" Stretch="Uniform"/>
+                            </StackPanel>
+                        </Button>
+                        <Button x:Name="btnSaveGraph" Grid.Column="5" Click="btnSaveGraph_Click" Margin="5,0,5,0" FontSize="15" BorderThickness="0" Background="White" HorizontalAlignment="Stretch" HorizontalContentAlignment="Stretch">
+                            <StackPanel Orientation="Horizontal" HorizontalAlignment="Center">
+                                <Image x:Name="imgSaveGraph" Source="C:\Users\z.maraktaev\source\repos\Bucking_Unit_App\Bucking_Unit_App\Images\save.png" Width="45" Height="45" Margin="0,0,0,0" Stretch="Uniform"/>
+                            </StackPanel>
+                        </Button>
+                        <Button x:Name="btnOpenFolder" Grid.Column="6" Click="btnOpenFolder_Click" Margin="5,0,5,0" FontSize="15" BorderThickness="0" Background="White" HorizontalAlignment="Stretch" HorizontalContentAlignment="Stretch">
+                            <StackPanel Orientation="Horizontal" HorizontalAlignment="Center">
+                                <Image x:Name="imgOpenFolder" Source="C:\Users\z.maraktaev\source\repos\Bucking_Unit_App\Bucking_Unit_App\Images\folder.png" Width="45" Height="45" Margin="0,0,0,0" Stretch="Uniform"/>
+                            </StackPanel>
+                        </Button>
+                    </Grid>
+                    <TextBlock Text="Текущая труба:" FontSize="15"/>
+                    <Label x:Name="txtCurrentPipe" Margin="0,0,0,5" FontSize="15"/>
                     <ProgressBar x:Name="progressBar" Height="20" Visibility="Collapsed"/>
                 </StackPanel>
                 <Canvas x:Name="canvasGraph" Grid.Row="1" Margin="10">

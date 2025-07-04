@@ -25,8 +25,8 @@ using PdfSharpCore.Drawing;
 using PdfSharpCore.Pdf;
 using System.IO;
 using Microsoft.Win32;
-using System.Reflection;
 using System.Windows.Media.Imaging;
+using FontAwesome.WPF;
 
 namespace Bucking_Unit_App.Views
 {
@@ -56,9 +56,52 @@ namespace Bucking_Unit_App.Views
             _comController.StateChanged += ComController_StateChanged;
             _comController.IsReading = true;
             _operatorService.OnOperatorChanged += OperatorService_OnOperatorChanged;
-            cbYear.SelectedIndex = 2; // Устанавливаем 2025 по умолчанию
+            txtPipeCounter.Text = string.Empty; // Устанавливаем пустой текст изначально
+            Loaded += Window_Loaded; // Добавляем обработчик загрузки
+            LoadYearsFromDatabase(); // Загружаем годы из базы данных
             StartCurrentPipeUpdateLoop(); // Запускаем цикл обновления текущей трубы
             StartAllStatsUpdateLoop(); // Запускаем цикл обновления общей статистики
+            txtPipeCounter.LostFocus += txtPipeCounter_LostFocus; // Привязка события
+        }
+
+        private void Window_Loaded(object sender, RoutedEventArgs e)
+        {
+            var images = new[] { imgShowGraph, imgSaveGraph, imgResetGraph, imgResumeUpdate, imgOpenFolder };
+            foreach (var image in images)
+            {
+                if (image?.Source == null)
+                {
+                    MessageBox.Show($"Изображение для кнопки {image?.Name} не загружено!");
+                }
+            }
+        }
+
+        private async void LoadYearsFromDatabase()
+        {
+            try
+            {
+                using (var conn = new SqlConnection(_connectionString))
+                {
+                    await conn.OpenAsync();
+                    string query = "SELECT DISTINCT Year FROM MuftN3_REP WHERE Year IS NOT NULL ORDER BY Year"; // Измените название колонки, если отличается
+                    SqlDataAdapter adapter = new SqlDataAdapter(query, conn);
+                    System.Data.DataTable dt = new System.Data.DataTable();
+                    adapter.Fill(dt);
+                    Dispatcher.Invoke(() =>
+                    {
+                        cbYear.ItemsSource = dt.DefaultView;
+                        if (dt.Rows.Count > 0)
+                        {
+                            cbYear.SelectedIndex = 0; // Выбираем первый год по умолчанию
+                            _selectedYear = Convert.ToInt32(dt.Rows[0]["Year"]); // Устанавливаем выбранный год
+                        }
+                    });
+                }
+            }
+            catch (Exception ex)
+            {
+                Dispatcher.Invoke(() => MessageBox.Show($"Ошибка загрузки годов из базы данных: {ex.Message}"));
+            }
         }
 
         private void txtPipeCounter_PreviewMouseDown(object sender, System.Windows.Input.MouseButtonEventArgs e)
@@ -69,8 +112,8 @@ namespace Bucking_Unit_App.Views
                 ProcessStartInfo processInfo = new ProcessStartInfo
                 {
                     FileName = "osk.exe",
-                    UseShellExecute = true, // Необходимо для Verb
-                    Verb = "runas" // Запрос повышения привилегий
+                    UseShellExecute = true,
+                    Verb = "runas"
                 };
                 Process.Start(processInfo);
             }
@@ -80,43 +123,74 @@ namespace Bucking_Unit_App.Views
             }
         }
 
-        private async void txtPipeCounter_TextChanged(object sender, TextChangedEventArgs e)
+        private void txtPipeCounter_LostFocus(object sender, System.Windows.RoutedEventArgs e)
         {
-            var textBox = (TextBox)sender;
-            string filter = textBox.Text.Trim();
-            if (string.IsNullOrEmpty(filter) || !int.TryParse(new string(filter.Where(char.IsDigit).ToArray()), out _))
+            try
             {
-                Dispatcher.Invoke(() => lbPipeCounterSuggestions.ItemsSource = null); // Сбрасываем ItemsSource
-                Dispatcher.Invoke(() => lbPipeCounterSuggestions.Visibility = Visibility.Collapsed);
-                return;
-            }
-
-            Dispatcher.Invoke(() => progressBar.Visibility = Visibility.Visible);
-            Dispatcher.Invoke(() => lbPipeCounterSuggestions.ItemsSource = null); // Сбрасываем перед новой загрузкой
-
-            await Task.Run(async () =>
-            {
-                var filtered = new Dictionary<int, string>();
-                using (var conn = new SqlConnection(_connectionString))
+                // Ищем все процессы с именем "osk"
+                foreach (var process in Process.GetProcessesByName("osk"))
                 {
-                    await conn.OpenAsync();
-                    var cmd = new SqlCommand(
-                        $"SELECT TOP 1000 PipeCounter FROM Pilot.dbo.MuftN3_REP WHERE PipeCounter LIKE '%{filter}%' AND PipeCounter IS NOT NULL ORDER BY PipeCounter", conn);
-                    using var reader = await cmd.ExecuteReaderAsync();
-                    while (await reader.ReadAsync())
+                    try
                     {
-                        int pipeCounter = reader.GetInt32(0);
-                        filtered[pipeCounter] = $"Pipe {pipeCounter}";
+                        process.Kill(); // Завершаем процесс
+                        process.WaitForExit(1000); // Ждем завершения (до 1 секунды)
+                    }
+                    catch (Exception ex)
+                    {
+                        // Игнорируем ошибки, если процесс уже закрыт или недоступен
+                        System.Diagnostics.Debug.WriteLine($"Ошибка при закрытии osk.exe: {ex.Message}");
                     }
                 }
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show($"Не удалось закрыть экранную клавиатуру: {ex.Message}");
+            }
+        }
 
-                Dispatcher.Invoke(() =>
-                {
-                    lbPipeCounterSuggestions.ItemsSource = filtered.Select(kvp => new KeyValuePair<int, string>(kvp.Key, kvp.Value));
-                    lbPipeCounterSuggestions.Visibility = filtered.Any() ? Visibility.Visible : Visibility.Collapsed;
-                    progressBar.Visibility = Visibility.Collapsed;
-                });
-            });
+
+        private bool _isTextChangeProgrammatic = false;
+
+        private async void txtPipeCounter_TextChanged(object sender, TextChangedEventArgs e)
+        {
+            //System.Diagnostics.Debug.WriteLine($"TextChanged triggered. Text: {((TextBox)sender).Text}, Programmatic: {_isTextChangeProgrammatic}, IsKeyboardFocusWithin: {((TextBox)sender).IsKeyboardFocusWithin}");
+            //if (_isTextChangeProgrammatic || !((TextBox)sender).IsKeyboardFocusWithin) return; // Игнорируем программные изменения и изменения без фокуса клавиатуры
+
+            //var textBox = (TextBox)sender;
+            //string filter = textBox.Text.Trim();
+            //if (string.IsNullOrEmpty(filter) || !int.TryParse(new string(filter.Where(char.IsDigit).ToArray()), out _))
+            //{
+            //    Dispatcher.Invoke(() => lbPipeCounterSuggestions.ItemsSource = null);
+            //    Dispatcher.Invoke(() => lbPipeCounterSuggestions.Visibility = Visibility.Collapsed);
+            //    return;
+            //}
+
+            //Dispatcher.Invoke(() => progressBar.Visibility = Visibility.Visible);
+            //Dispatcher.Invoke(() => lbPipeCounterSuggestions.ItemsSource = null);
+
+            //await Task.Run(async () =>
+            //{
+            //    var filtered = new Dictionary<int, string>();
+            //    using (var conn = new SqlConnection(_connectionString))
+            //    {
+            //        await conn.OpenAsync();
+            //        var cmd = new SqlCommand(
+            //            $"SELECT TOP 1000 PipeCounter FROM Pilot.dbo.MuftN3_REP WHERE PipeCounter LIKE '%{filter}%' AND PipeCounter IS NOT NULL ORDER BY PipeCounter", conn);
+            //        using var reader = await cmd.ExecuteReaderAsync();
+            //        while (await reader.ReadAsync())
+            //        {
+            //            int pipeCounter = reader.GetInt32(0);
+            //            filtered[pipeCounter] = pipeCounter.ToString(); // Только число, без "Pipe"
+            //        }
+            //    }
+
+            //    Dispatcher.Invoke(() =>
+            //    {
+            //        lbPipeCounterSuggestions.ItemsSource = filtered.Select(kvp => new KeyValuePair<int, string>(kvp.Key, kvp.Value));
+            //        lbPipeCounterSuggestions.Visibility = filtered.Any() ? Visibility.Visible : Visibility.Collapsed;
+            //        progressBar.Visibility = Visibility.Collapsed;
+            //    });
+            //});
         }
 
         private void lbPipeCounterSuggestions_SelectionChanged(object sender, SelectionChangedEventArgs e)
@@ -125,22 +199,24 @@ namespace Bucking_Unit_App.Views
             {
                 _selectedPipeCounter = selected.Key;
                 txtPipeCounter.Text = selected.Value;
-                lbPipeCounterSuggestions.ItemsSource = null; // Сбрасываем ItemsSource после выбора
+                lbPipeCounterSuggestions.ItemsSource = null;
                 lbPipeCounterSuggestions.Visibility = Visibility.Collapsed;
-                // Автоматически обновляем график при выборе трубы
                 btnShowGraph_Click(null, null);
             }
         }
 
-        private void cbYear_SelectionChanged(object sender, SelectionChangedEventArgs e)
+        private void cbYear_SelectionChanged(object sender, System.Windows.Controls.SelectionChangedEventArgs e)
         {
-            if (cbYear.SelectedItem is ComboBoxItem item)
+            if (cbYear.SelectedItem != null)
             {
-                _selectedYear = int.Parse(item.Content.ToString());
-                Console.WriteLine($"Selected year: {_selectedYear}");
-                // Автоматически обновляем график при изменении года
-                if (_selectedPipeCounter.HasValue)
-                    btnShowGraph_Click(null, null);
+                System.Data.DataRowView selectedRow = cbYear.SelectedItem as System.Data.DataRowView;
+                if (selectedRow != null)
+                {
+                    _selectedYear = Convert.ToInt32(selectedRow["Year"]);
+                    Console.WriteLine($"Выбранный год: {_selectedYear}");
+                    if (_selectedPipeCounter.HasValue)
+                        btnShowGraph_Click(null, null);
+                }
             }
         }
 
@@ -161,13 +237,13 @@ namespace Bucking_Unit_App.Views
                 StopOperatorUpdateLoop();
                 Dispatcher.Invoke(() =>
                 {
-                    lblStatus.Visibility = Visibility.Collapsed; // Скрываем статус при сбросе
+                    lblStatus.Visibility = Visibility.Collapsed;
                     _currentPipeCounter = null;
                     //_selectedPipeCounter = null;
                     operatorDataPanel.Visibility = Visibility.Collapsed;
                     statsDataPanel.Visibility = Visibility.Collapsed;
-                    txtInsertCardPrompt.Visibility = Visibility.Visible; // Показываем подсказку для оператора
-                    txtNoStatsPrompt.Visibility = Visibility.Visible; // Показываем подсказку для статистики
+                    txtInsertCardPrompt.Visibility = Visibility.Visible;
+                    txtNoStatsPrompt.Visibility = Visibility.Visible;
                     lblIdCard.Content = string.Empty;
                     lblTabNumber.Content = string.Empty;
                     lblFIO.Content = string.Empty;
@@ -199,8 +275,8 @@ namespace Bucking_Unit_App.Views
                     lblMonthDowntime.Content = string.Empty;
                     operatorDataPanel.Visibility = Visibility.Collapsed;
                     statsDataPanel.Visibility = Visibility.Collapsed;
-                    txtInsertCardPrompt.Visibility = Visibility.Visible; // Показываем подсказку для оператора
-                    txtNoStatsPrompt.Visibility = Visibility.Visible; // Показываем подсказку для статистики
+                    txtInsertCardPrompt.Visibility = Visibility.Visible;
+                    txtNoStatsPrompt.Visibility = Visibility.Visible;
                 }
                 else
                 {
@@ -209,9 +285,8 @@ namespace Bucking_Unit_App.Views
                     lblFIO.Content = operatorInfo?.FullName ?? string.Empty;
                     lblDepartment.Text = operatorInfo?.Department ?? string.Empty;
                     lblEmployName.Content = operatorInfo?.Position ?? string.Empty;
-                    txtInsertCardPrompt.Visibility = Visibility.Collapsed; // Скрываем подсказку для оператора
-                    operatorDataPanel.Visibility = Visibility.Visible; // Показываем данные оператора
-                    // Статистика обновляется в StartOperatorUpdateLoop
+                    txtInsertCardPrompt.Visibility = Visibility.Collapsed;
+                    operatorDataPanel.Visibility = Visibility.Visible;
                 }
             });
         }
@@ -266,7 +341,7 @@ namespace Bucking_Unit_App.Views
 
         private void StartCurrentPipeUpdateLoop()
         {
-            _currentPipeUpdateCts?.Dispose(); // Очищаем предыдущий, если есть
+            _currentPipeUpdateCts?.Dispose();
             _currentPipeUpdateCts = new CancellationTokenSource();
             var token = _currentPipeUpdateCts.Token;
 
@@ -275,14 +350,14 @@ namespace Bucking_Unit_App.Views
                 while (!token.IsCancellationRequested)
                 {
                     await UpdateCurrentPipeCounter();
-                    await Task.Delay(5000, token); // Обновление каждые 5 секунд
+                    await Task.Delay(5000, token);
                 }
             }, token);
         }
 
         private void StartAllStatsUpdateLoop()
         {
-            _allStatsUpdateCts?.Dispose(); // Очищаем предыдущий, если есть
+            _allStatsUpdateCts?.Dispose();
             _allStatsUpdateCts = new CancellationTokenSource();
             var token = _allStatsUpdateCts.Token;
 
@@ -322,7 +397,7 @@ namespace Bucking_Unit_App.Views
                             lblAllMonthDowntime.Content = totalMonthDowntime.ToString("F2");
                         });
                     });
-                    await Task.Delay(5000, token); // Обновление каждые 5 секунд
+                    await Task.Delay(5000, token);
                 }
             }, token);
         }
@@ -334,18 +409,16 @@ namespace Bucking_Unit_App.Views
                 using (var conn = new SqlConnection(_runtimeConnectionString))
                 {
                     await conn.OpenAsync();
-                    var cmd = new SqlCommand("SELECT [Value] FROM [Runtime].[dbo].[v_Live] WHERE [TagName] = 'NOT_MN3_TUBE_NUM'", conn);
+                    var cmd = new SqlCommand("SELECT TOP 1 PipeCounter FROM Pilot.dbo.MuftN3_REP WHERE PipeCounter IS NOT NULL ORDER BY PipeCounter DESC", conn);
                     var result = await cmd.ExecuteScalarAsync();
                     if (result != null && result != DBNull.Value && int.TryParse(result.ToString(), out int pipeCounter))
                     {
-                        // Обновляем _currentPipeCounter и отображаем сразу
                         Dispatcher.Invoke(() =>
                         {
                             _currentPipeCounter = pipeCounter;
-                            txtCurrentPipe.Content = $"Pipe {_currentPipeCounter}";
+                            txtCurrentPipe.Content = $"{_currentPipeCounter}"; // Только число
                         });
 
-                        // Проверяем наличие StartDateTime и EndDateTime в MuftN3_REP
                         using (var pilotConn = new SqlConnection(_connectionString))
                         {
                             await pilotConn.OpenAsync();
@@ -359,25 +432,26 @@ namespace Bucking_Unit_App.Views
                             {
                                 if (count > 0)
                                 {
-                                    // Скрываем статус, так как данные доступны
                                     lblStatus.Visibility = Visibility.Collapsed;
-                                    // Обновляем _selectedPipeCounter и строим график, если труба изменилась
                                     if (_selectedPipeCounter != _currentPipeCounter)
                                     {
                                         _selectedPipeCounter = _currentPipeCounter;
-                                        txtPipeCounter.Text = _currentPipeCounter.HasValue ? $"Pipe {_currentPipeCounter.Value}" : string.Empty;
-                                        btnShowGraph_Click(null, null);
+                                        _isTextChangeProgrammatic = true; // Устанавливаем флаг перед изменением
+                                        txtPipeCounter.Text = _currentPipeCounter.HasValue ? _currentPipeCounter.Value.ToString() : string.Empty; // Синхронизируем с текущей трубой
+                                        _isTextChangeProgrammatic = false; // Сбрасываем флаг после изменения
+                                        btnShowGraph_Click(null, null); // Автоматически отображаем график
                                     }
                                 }
                                 else
                                 {
-                                    // Показываем статус, если данные отсутствуют
                                     lblStatus.Visibility = Visibility.Visible;
                                     if (_selectedPipeCounter != null && _selectedPipeCounter != pipeCounter)
                                     {
                                         _selectedPipeCounter = null;
+                                        _isTextChangeProgrammatic = true; // Устанавливаем флаг перед изменением
                                         txtPipeCounter.Text = string.Empty;
                                         canvasGraph.Children.Clear();
+                                        _isTextChangeProgrammatic = false; // Сбрасываем флаг после изменения
                                     }
                                 }
                             });
@@ -395,17 +469,47 @@ namespace Bucking_Unit_App.Views
         {
             try
             {
+                // Если sender не null, считаем, что это ручной клик (пользователь ввел значение)
+                if (sender != null)
+                {
+                    string inputText = txtPipeCounter.Text.Trim();
+                    if (string.IsNullOrEmpty(inputText) || !int.TryParse(inputText, out int pipeCounter))
+                    {
+                        MessageBox.Show("Пожалуйста, введите корректный номер трубы (только цифры).");
+                        return;
+                    }
+
+                    // Проверка существования трубы в базе данных
+                    using (var conn = new SqlConnection(_connectionString))
+                    {
+                        await conn.OpenAsync();
+                        var checkCmd = new SqlCommand(
+                            "SELECT COUNT(*) FROM [Pilot].[dbo].[MuftN3_REP] WHERE PipeCounter = @PipeCounter AND StartDateTime IS NOT NULL AND EndDateTime IS NOT NULL",
+                            conn);
+                        checkCmd.Parameters.AddWithValue("@PipeCounter", pipeCounter);
+                        var count = (int)await checkCmd.ExecuteScalarAsync();
+
+                        if (count == 0)
+                        {
+                            MessageBox.Show($"Труба с номером {pipeCounter} не найдена в базе данных.");
+                            return;
+                        }
+
+                        // Устанавливаем выбранную трубу
+                        _selectedPipeCounter = pipeCounter;
+                    }
+                }
+                // Если sender == null, это автоматический вызов из UpdateCurrentPipeCounter, используем _selectedPipeCounter
+
+                string runtimeConnectionString = "Data Source=192.168.11.222,1433;Initial Catalog=Runtime;User ID=UserNotTrend;Password=NotTrend";
+
                 if (!_selectedPipeCounter.HasValue)
                 {
                     MessageBox.Show("Пожалуйста, выберите или укажите текущую трубу.");
                     return;
                 }
 
-                string runtimeConnectionString = "Data Source=192.168.11.222,1433;Initial Catalog=Runtime;User ID=UserNotTrend;Password=NotTrend";
-                MessageBox.Show($"Attempting to create GraphService with PipeCounter: {_selectedPipeCounter}, Year: {_selectedYear}");
-
                 var graphService = new GraphService(runtimeConnectionString, _selectedPipeCounter);
-                MessageBox.Show("GraphService created successfully.");
 
                 var (startTime, endTime) = graphService.GetTimeRange();
                 if (startTime.Year > _selectedYear || endTime.Year < _selectedYear)
@@ -424,7 +528,7 @@ namespace Bucking_Unit_App.Views
                         {
                             Series = new ISeries[]
                             {
-                        new StepLineSeries<ObservablePoint, CircleGeometry> // Используем StepLineSeries для ступенчатого графика
+                        new StepLineSeries<ObservablePoint, CircleGeometry>
                         {
                             Values = torquePoints,
                             Name = "Крутящий момент",
@@ -434,11 +538,11 @@ namespace Bucking_Unit_App.Views
                                 double torqueValue = torqueValueNullable ?? 0.0;
                                 return torqueValue.ToString("F2");
                             },
-                            Stroke = new SolidColorPaint(SKColors.Red), // Цвет линии
-                            Fill = new SolidColorPaint(SKColors.White), // Цвет заполнения под линией
-                            GeometrySize = 0.5f, // Размер точек
-                            GeometryFill = new SolidColorPaint(SKColors.Black), // Цвет заполнения точек
-                            GeometryStroke = new SolidColorPaint(SKColors.Black) // Цвет обводки точек
+                            Stroke = new SolidColorPaint(SKColors.Red),
+                            Fill = new SolidColorPaint(SKColors.White),
+                            GeometrySize = 0.5f,
+                            GeometryFill = new SolidColorPaint(SKColors.Black),
+                            GeometryStroke = new SolidColorPaint(SKColors.Black)
                         }
                             },
                             XAxes = xAxes,
@@ -462,21 +566,18 @@ namespace Bucking_Unit_App.Views
         {
             try
             {
-                // Проверяем, есть ли график для сохранения
                 if (canvasGraph.Children.Count == 0 || !(canvasGraph.Children[0] is CartesianChart chart))
                 {
                     MessageBox.Show("График отсутствует. Сначала создайте график.", "Ошибка", MessageBoxButton.OK, MessageBoxImage.Warning);
                     return;
                 }
 
-                // Убедимся, что размеры графика заданы (если не заданы, используем минимальные значения)
                 if (chart.Width <= 0 || chart.Height <= 0)
                 {
-                    chart.Width = 800; // Минимальная ширина
-                    chart.Height = 600; // Минимальная высота
+                    chart.Width = 800;
+                    chart.Height = 600;
                 }
 
-                // Открываем диалог для выбора места сохранения (WPF-вариант)
                 SaveFileDialog saveFileDialog = new SaveFileDialog
                 {
                     Filter = "PDF files (*.pdf)|*.pdf",
@@ -486,20 +587,16 @@ namespace Bucking_Unit_App.Views
 
                 if (saveFileDialog.ShowDialog() == true)
                 {
-                    // Создаем RenderTargetBitmap для рендеринга графика
                     RenderTargetBitmap renderBitmap = new RenderTargetBitmap(
                         (int)chart.Width,
                         (int)chart.Height,
-                        96, // DPI X
-                        96, // DPI Y
+                        96, 96,
                         PixelFormats.Pbgra32);
 
-                    // Измеряем и располагаем элемент для рендеринга
                     chart.Measure(new Size(chart.Width, chart.Height));
                     chart.Arrange(new Rect(new Size(chart.Width, chart.Height)));
                     renderBitmap.Render(chart);
 
-                    // Преобразуем RenderTargetBitmap в поток
                     using (var memoryStream = new MemoryStream())
                     {
                         BitmapEncoder encoder = new PngBitmapEncoder();
@@ -507,31 +604,24 @@ namespace Bucking_Unit_App.Views
                         encoder.Save(memoryStream);
                         memoryStream.Position = 0;
 
-                        // Создаем PDF-документ
                         using (var pdfDocument = new PdfDocument())
                         {
-                            // Добавляем новую страницу
                             var page = pdfDocument.AddPage();
-                            page.Size = PdfSharpCore.PageSize.A4; // Размер страницы A4
+                            page.Size = PdfSharpCore.PageSize.A4;
                             var gfx = XGraphics.FromPdfPage(page);
 
-                            // Преобразуем поток в XImage и добавляем в PDF
                             using (var xImage = XImage.FromStream(() => memoryStream))
                             {
-                                // Масштабируем изображение, чтобы оно помещалось на странице
                                 double scale = Math.Min(page.Width / xImage.PixelWidth, page.Height / xImage.PixelHeight);
                                 double newWidth = xImage.PixelWidth * scale;
                                 double newHeight = xImage.PixelHeight * scale;
 
-                                // Центрируем изображение на странице
                                 double x = (page.Width - newWidth) / 2;
                                 double y = (page.Height - newHeight) / 2;
 
-                                // Рисуем изображение на странице
                                 gfx.DrawImage(xImage, x, y, newWidth, newHeight);
                             }
 
-                            // Сохраняем PDF
                             pdfDocument.Save(saveFileDialog.FileName);
                             MessageBox.Show($"График успешно сохранен как {saveFileDialog.FileName}", "Успех", MessageBoxButton.OK, MessageBoxImage.Information);
                         }
@@ -552,9 +642,8 @@ namespace Bucking_Unit_App.Views
                 _selectedPipeCounter = null;
                 txtPipeCounter.Text = string.Empty;
                 txtCurrentPipe.Content = "Не указано";
-                lblStatus.Visibility = Visibility.Collapsed; // Скрываем статус при сбросе
+                lblStatus.Visibility = Visibility.Collapsed;
                 _currentPipeCounter = null;
-                // Останавливаем цикл обновления текущей трубы
                 _currentPipeUpdateCts?.Cancel();
                 _currentPipeUpdateCts?.Dispose();
                 _currentPipeUpdateCts = null;
@@ -563,7 +652,6 @@ namespace Bucking_Unit_App.Views
 
         private void btnResumeUpdate_Click(object sender, RoutedEventArgs e)
         {
-            // Возобновляем цикл обновления текущей трубы
             if (_currentPipeUpdateCts == null || _currentPipeUpdateCts.IsCancellationRequested)
             {
                 StartCurrentPipeUpdateLoop();
@@ -572,6 +660,28 @@ namespace Bucking_Unit_App.Views
             else
             {
                 MessageBox.Show("Обновление уже активно.");
+            }
+        }
+
+        private void btnOpenFolder_Click(object sender, RoutedEventArgs e)
+        {
+            try
+            {
+                string lastFolder = null;
+                if (!string.IsNullOrEmpty(lastFolder))
+                {
+                    lastFolder = Path.GetDirectoryName(lastFolder);
+                }
+                else
+                {
+                    lastFolder = Environment.GetFolderPath(Environment.SpecialFolder.MyDocuments);
+                }
+
+                Process.Start("explorer.exe", lastFolder);
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show($"Ошибка при открытии папки: {ex.Message}", "Ошибка", MessageBoxButton.OK, MessageBoxImage.Error);
             }
         }
     }
