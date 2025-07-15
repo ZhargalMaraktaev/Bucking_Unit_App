@@ -2,7 +2,7 @@
 using System.Collections.Generic;
 using System.Data;
 using System.Data.SqlClient;
-using System.Diagnostics; // Для Process.Start
+using System.Diagnostics;
 using System.Threading;
 using System.Threading.Tasks;
 using System.Windows;
@@ -27,6 +27,10 @@ using System.IO;
 using Microsoft.Win32;
 using System.Windows.Media.Imaging;
 using FontAwesome.WPF;
+using Sharp7;
+using Bucking_Unit_App.SiemensPLC.Models;
+using static Bucking_Unit_App.SiemensPLC.Models.SiemensPLCModels.PLCReadWriteModel;
+using Bucking_Unit_App.Utilities;
 
 namespace Bucking_Unit_App.Views
 {
@@ -38,12 +42,21 @@ namespace Bucking_Unit_App.Views
         private readonly OperatorService _operatorService;
         private readonly StatsService _statsService;
         private CancellationTokenSource _operatorUpdateCts;
-        private CancellationTokenSource _allStatsUpdateCts; // Новый токен для общей статистики
+        private CancellationTokenSource _allStatsUpdateCts;
         private int? _selectedPipeCounter = null;
-        private int _selectedYear = DateTime.Now.Year; // Значение по умолчанию
-        private int? _currentPipeCounter = null; // Для хранения текущей трубы
+        private int _selectedYear = DateTime.Now.Year;
+        private int? _currentPipeCounter = null;
         private readonly string _runtimeConnectionString = "Data Source=192.168.11.222,1433;Initial Catalog=Runtime;User ID=UserNotTrend;Password=NotTrend";
-        private CancellationTokenSource _currentPipeUpdateCts; // Поле для управления циклом текущей трубы
+        private CancellationTokenSource _currentPipeUpdateCts;
+        private S7Client s7Client;
+        private CancellationTokenSource _cts;
+        private PLCDataWindow _plcDataWindow;
+        private ReadFromPLC _plcReader;
+        private Task _plcUpdateTask;
+        private Task _operatorUpdateTask;
+        private Task _allStatsUpdateTask;
+        private Task _currentPipeUpdateTask;
+        private CancellationTokenSource _connectionCheckCts;
 
         public MainWindow()
         {
@@ -56,12 +69,229 @@ namespace Bucking_Unit_App.Views
             _comController.StateChanged += ComController_StateChanged;
             _comController.IsReading = true;
             _operatorService.OnOperatorChanged += OperatorService_OnOperatorChanged;
-            txtPipeCounter.Text = string.Empty; // Устанавливаем пустой текст изначально
-            Loaded += Window_Loaded; // Добавляем обработчик загрузки
-            LoadYearsFromDatabase(); // Загружаем годы из базы данных
-            StartCurrentPipeUpdateLoop(); // Запускаем цикл обновления текущей трубы
-            StartAllStatsUpdateLoop(); // Запускаем цикл обновления общей статистики
-            txtPipeCounter.LostFocus += txtPipeCounter_LostFocus; // Привязка события
+            txtPipeCounter.Text = string.Empty;
+            Loaded += Window_Loaded;
+            LoadYearsFromDatabase();
+            StartCurrentPipeUpdateLoop();
+            StartAllStatsUpdateLoop();
+            StartPLCUpdateLoop();
+            txtPipeCounter.LostFocus += txtPipeCounter_LostFocus;
+        }
+
+        private bool TryConnectToPLC()
+        {
+            System.Diagnostics.Debug.WriteLine("MainWindow: Попытка подключения к PLC...");
+            int result = s7Client.ConnectTo("192.168.11.241", 0, 1);
+            if (result != 0)
+            {
+                string errorText = s7Client.ErrorText(result);
+                System.Diagnostics.Debug.WriteLine($"MainWindow: Ошибка подключения к PLC, код: {result}, текст: {errorText}");
+                return false;
+            }
+            System.Diagnostics.Debug.WriteLine("MainWindow: Успешное подключение к PLC.");
+            return true;
+        }
+
+        private async void StartConnectionStatusCheck()
+        {
+            _connectionCheckCts = new CancellationTokenSource();
+            try
+            {
+                while (!_connectionCheckCts.Token.IsCancellationRequested)
+                {
+                    if (!s7Client.Connected)
+                    {
+                        TryConnectToPLC();
+                    }
+                    // Уведомляем PLCDataWindow об изменении статуса
+                    if (_plcDataWindow != null && _plcDataWindow.IsLoaded)
+                    {
+                        _plcDataWindow.Dispatcher.Invoke(() =>
+                        {
+                            if (_plcDataWindow != null) // Проверяем, что окно не закрыто
+                            {
+                                var lblConnectionStatus = _plcDataWindow.FindName("lblConnectionStatus") as System.Windows.Controls.Label;
+                                if (lblConnectionStatus != null)
+                                {
+                                    lblConnectionStatus.Content = s7Client.Connected ? "Подключено к ПЛК" : "Ошибка подключения к ПЛК";
+                                    lblConnectionStatus.Foreground = s7Client.Connected ? Brushes.Green : Brushes.Red;
+                                }
+                            }
+                        });
+                    }
+                    await Task.Delay(1000, _connectionCheckCts.Token);
+                }
+            }
+            catch (TaskCanceledException)
+            {
+                System.Diagnostics.Debug.WriteLine("MainWindow: Проверка состояния подключения остановлена.");
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"MainWindow: Ошибка в проверке состояния подключения: {ex.Message}");
+            }
+        }
+
+        private async void StartPLCUpdateLoop()
+        {
+            s7Client = new S7Client();
+            _plcReader = new Services.ReadFromPLC(s7Client);
+            var writer = new Services.WriteToPLC(s7Client);
+
+            if (!TryConnectToPLC())
+            {
+                Dispatcher.Invoke(() =>
+                {
+                    MessageBox.Show("Ошибка подключения к PLC. Периодическое чтение не запущено.");
+                    System.Diagnostics.Debug.WriteLine("MainWindow: Периодическое чтение не запущено из-за ошибки подключения.");
+                });
+                return;
+            }
+
+            _plcReader.AddAddress("TorqueUpperLimitHMI", new SiemensPLCModels.DBAddressModel.TorqueUpperLimitHMI(s7Client));
+            _plcReader.AddAddress("Torque", new SiemensPLCModels.DBAddressModel.ActualTorqueHMI(s7Client));
+            writer.AddAddress("TorqueSetpoint", new SiemensPLCModels.DBAddressModel.TorqueUpperLimitHMI(s7Client));
+
+            _cts = new CancellationTokenSource();
+            try
+            {
+                _plcUpdateTask = _plcReader.StartPeriodicReadAsync(TimeSpan.FromSeconds(1), (key, result) =>
+                {
+                    // Обработка для PLCDataWindow выполняется в самом окне
+                }, _cts.Token);
+
+                // Запускаем проверку состояния подключения
+                StartConnectionStatusCheck();
+
+                async void WriteExample()
+                {
+                    const int maxRetries = 3;
+                    int attempt = 0;
+                    int result = -1;
+
+                    while (attempt < maxRetries)
+                    {
+                        attempt++;
+                        try
+                        {
+                            if (!s7Client.Connected)
+                            {
+                                System.Diagnostics.Debug.WriteLine($"MainWindow: Попытка {attempt}/{maxRetries}: Соединение потеряно, пытаемся переподключиться...");
+                                if (!TryConnectToPLC())
+                                {
+                                    if (attempt == maxRetries)
+                                    {
+                                        Dispatcher.Invoke(() =>
+                                        {
+                                            MessageBox.Show("Ошибка подключения к PLC после нескольких попыток.", "Ошибка", MessageBoxButton.OK, MessageBoxImage.Error);
+                                            System.Diagnostics.Debug.WriteLine("MainWindow: Не удалось подключиться к PLC после всех попыток.");
+                                        });
+                                    }
+                                    continue;
+                                }
+                            }
+
+                            System.Diagnostics.Debug.WriteLine($"MainWindow: Попытка {attempt}/{maxRetries}: Запись TorqueSetpoint = 500.0");
+                            result = await writer.WriteAsync("TorqueSetpoint", 500.0f).TimeoutAfter(5000);
+                            if (result == 1)
+                            {
+                                Dispatcher.Invoke(() =>
+                                {
+                                    MessageBox.Show("Значение успешно записано.", "Успех", MessageBoxButton.OK, MessageBoxImage.Information);
+                                    System.Diagnostics.Debug.WriteLine($"MainWindow: Успешная запись TorqueSetpoint = 500.0");
+                                });
+                                return;
+                            }
+                            else
+                            {
+                                string errorText = s7Client.ErrorText(result);
+                                System.Diagnostics.Debug.WriteLine($"MainWindow: Попытка {attempt}/{maxRetries}: Ошибка записи TorqueSetpoint, код: {result}, текст: {errorText}");
+                                if (attempt == maxRetries)
+                                {
+                                    Dispatcher.Invoke(() =>
+                                    {
+                                        MessageBox.Show($"Ошибка записи: Код {result} ({errorText})", "Ошибка", MessageBoxButton.OK, MessageBoxImage.Error);
+                                    });
+                                }
+                            }
+                        }
+                        catch (TimeoutException)
+                        {
+                            System.Diagnostics.Debug.WriteLine($"MainWindow: Попытка {attempt}/{maxRetries}: Таймаут при записи в PLC.");
+                            if (attempt == maxRetries)
+                            {
+                                Dispatcher.Invoke(() =>
+                                {
+                                    MessageBox.Show("Ошибка: Операция записи в PLC превысила время ожидания.", "Ошибка", MessageBoxButton.OK, MessageBoxImage.Error);
+                                    System.Diagnostics.Debug.WriteLine("MainWindow: Не удалось записать после всех попыток из-за таймаута.");
+                                });
+                            }
+                            if (s7Client.Connected)
+                            {
+                                s7Client.Disconnect();
+                                System.Diagnostics.Debug.WriteLine("MainWindow: Соединение закрыто перед повторной попыткой.");
+                            }
+                        }
+                        catch (Exception ex)
+                        {
+                            System.Diagnostics.Debug.WriteLine($"MainWindow: Попытка {attempt}/{maxRetries}: Исключение при записи: {ex.Message}");
+                            if (attempt == maxRetries)
+                            {
+                                Dispatcher.Invoke(() =>
+                                {
+                                    MessageBox.Show($"Ошибка при записи в PLC: {ex.Message}", "Ошибка", MessageBoxButton.OK, MessageBoxImage.Error);
+                                });
+                            }
+                        }
+
+                        if (attempt < maxRetries)
+                        {
+                            await Task.Delay(1000);
+                        }
+                    }
+                }
+
+                WriteExample();
+                await _plcUpdateTask;
+            }
+            catch (TaskCanceledException)
+            {
+                Dispatcher.Invoke(() =>
+                {
+                    MessageBox.Show("Чтение остановлено.");
+                    System.Diagnostics.Debug.WriteLine("MainWindow: Чтение PLC остановлено.");
+                });
+            }
+            catch (Exception ex)
+            {
+                Dispatcher.Invoke(() =>
+                {
+                    MessageBox.Show($"Ошибка в цикле чтения PLC: {ex.Message}", "Ошибка", MessageBoxButton.OK, MessageBoxImage.Error);
+                    System.Diagnostics.Debug.WriteLine($"MainWindow: Ошибка в цикле чтения PLC: {ex.Message}");
+                });
+            }
+            finally
+            {
+                _plcReader.Disconnect();
+                writer.Disconnect();
+                System.Diagnostics.Debug.WriteLine("MainWindow: PLCReader и PLCWriter отключены.");
+            }
+        }
+
+        private void btnShowPLCData_Click(object sender, RoutedEventArgs e)
+        {
+            if (_plcDataWindow == null || !_plcDataWindow.IsLoaded)
+            {
+                _plcDataWindow = new PLCDataWindow(_plcReader, s7Client);
+                _plcDataWindow.Closed += (s, args) => _plcDataWindow = null;
+                _plcDataWindow.Show();
+                System.Diagnostics.Debug.WriteLine("MainWindow: PLCDataWindow создан и открыт.");
+            }
+            else
+            {
+                _plcDataWindow.Activate();
+                System.Diagnostics.Debug.WriteLine("MainWindow: PLCDataWindow активирован.");
+            }
         }
 
         private void Window_Loaded(object sender, RoutedEventArgs e)
@@ -83,7 +313,7 @@ namespace Bucking_Unit_App.Views
                 using (var conn = new SqlConnection(_connectionString))
                 {
                     await conn.OpenAsync();
-                    string query = "SELECT DISTINCT Year FROM MuftN3_REP WHERE Year IS NOT NULL ORDER BY Year"; // Измените название колонки, если отличается
+                    string query = "SELECT DISTINCT Year FROM MuftN3_REP WHERE Year IS NOT NULL ORDER BY Year";
                     SqlDataAdapter adapter = new SqlDataAdapter(query, conn);
                     System.Data.DataTable dt = new System.Data.DataTable();
                     adapter.Fill(dt);
@@ -92,8 +322,8 @@ namespace Bucking_Unit_App.Views
                         cbYear.ItemsSource = dt.DefaultView;
                         if (dt.Rows.Count > 0)
                         {
-                            cbYear.SelectedIndex = 0; // Выбираем первый год по умолчанию
-                            _selectedYear = Convert.ToInt32(dt.Rows[0]["Year"]); // Устанавливаем выбранный год
+                            cbYear.SelectedIndex = 0;
+                            _selectedYear = Convert.ToInt32(dt.Rows[0]["Year"]);
                         }
                     });
                 }
@@ -101,12 +331,12 @@ namespace Bucking_Unit_App.Views
             catch (Exception ex)
             {
                 Dispatcher.Invoke(() => MessageBox.Show($"Ошибка загрузки годов из базы данных: {ex.Message}"));
+                System.Diagnostics.Debug.WriteLine($"MainWindow: Ошибка загрузки годов: {ex.Message}");
             }
         }
 
         private void txtPipeCounter_PreviewMouseDown(object sender, System.Windows.Input.MouseButtonEventArgs e)
         {
-            // Запускаем экранную клавиатуру с запросом повышения привилегий
             try
             {
                 ProcessStartInfo processInfo = new ProcessStartInfo
@@ -120,6 +350,7 @@ namespace Bucking_Unit_App.Views
             catch (Exception ex)
             {
                 MessageBox.Show($"Не удалось открыть экранную клавиатуру: {ex.Message}");
+                System.Diagnostics.Debug.WriteLine($"MainWindow: Ошибка открытия клавиатуры: {ex.Message}");
             }
         }
 
@@ -127,17 +358,15 @@ namespace Bucking_Unit_App.Views
         {
             try
             {
-                // Ищем все процессы с именем "osk"
                 foreach (var process in Process.GetProcessesByName("osk"))
                 {
                     try
                     {
-                        process.Kill(); // Завершаем процесс
-                        process.WaitForExit(1000); // Ждем завершения (до 1 секунды)
+                        process.Kill();
+                        process.WaitForExit(1000);
                     }
                     catch (Exception ex)
                     {
-                        // Игнорируем ошибки, если процесс уже закрыт или недоступен
                         System.Diagnostics.Debug.WriteLine($"Ошибка при закрытии osk.exe: {ex.Message}");
                     }
                 }
@@ -145,52 +374,15 @@ namespace Bucking_Unit_App.Views
             catch (Exception ex)
             {
                 MessageBox.Show($"Не удалось закрыть экранную клавиатуру: {ex.Message}");
+                System.Diagnostics.Debug.WriteLine($"MainWindow: Ошибка закрытия клавиатуры: {ex.Message}");
             }
         }
-
 
         private bool _isTextChangeProgrammatic = false;
 
         private async void txtPipeCounter_TextChanged(object sender, TextChangedEventArgs e)
         {
-            //System.Diagnostics.Debug.WriteLine($"TextChanged triggered. Text: {((TextBox)sender).Text}, Programmatic: {_isTextChangeProgrammatic}, IsKeyboardFocusWithin: {((TextBox)sender).IsKeyboardFocusWithin}");
-            //if (_isTextChangeProgrammatic || !((TextBox)sender).IsKeyboardFocusWithin) return; // Игнорируем программные изменения и изменения без фокуса клавиатуры
-
-            //var textBox = (TextBox)sender;
-            //string filter = textBox.Text.Trim();
-            //if (string.IsNullOrEmpty(filter) || !int.TryParse(new string(filter.Where(char.IsDigit).ToArray()), out _))
-            //{
-            //    Dispatcher.Invoke(() => lbPipeCounterSuggestions.ItemsSource = null);
-            //    Dispatcher.Invoke(() => lbPipeCounterSuggestions.Visibility = Visibility.Collapsed);
-            //    return;
-            //}
-
-            //Dispatcher.Invoke(() => progressBar.Visibility = Visibility.Visible);
-            //Dispatcher.Invoke(() => lbPipeCounterSuggestions.ItemsSource = null);
-
-            //await Task.Run(async () =>
-            //{
-            //    var filtered = new Dictionary<int, string>();
-            //    using (var conn = new SqlConnection(_connectionString))
-            //    {
-            //        await conn.OpenAsync();
-            //        var cmd = new SqlCommand(
-            //            $"SELECT TOP 1000 PipeCounter FROM Pilot.dbo.MuftN3_REP WHERE PipeCounter LIKE '%{filter}%' AND PipeCounter IS NOT NULL ORDER BY PipeCounter", conn);
-            //        using var reader = await cmd.ExecuteReaderAsync();
-            //        while (await reader.ReadAsync())
-            //        {
-            //            int pipeCounter = reader.GetInt32(0);
-            //            filtered[pipeCounter] = pipeCounter.ToString(); // Только число, без "Pipe"
-            //        }
-            //    }
-
-            //    Dispatcher.Invoke(() =>
-            //    {
-            //        lbPipeCounterSuggestions.ItemsSource = filtered.Select(kvp => new KeyValuePair<int, string>(kvp.Key, kvp.Value));
-            //        lbPipeCounterSuggestions.Visibility = filtered.Any() ? Visibility.Visible : Visibility.Collapsed;
-            //        progressBar.Visibility = Visibility.Collapsed;
-            //    });
-            //});
+            // Реализация закомментирована в предоставленном коде, оставляем как есть
         }
 
         private void lbPipeCounterSuggestions_SelectionChanged(object sender, SelectionChangedEventArgs e)
@@ -239,7 +431,6 @@ namespace Bucking_Unit_App.Views
                 {
                     lblStatus.Visibility = Visibility.Collapsed;
                     _currentPipeCounter = null;
-                    //_selectedPipeCounter = null;
                     operatorDataPanel.Visibility = Visibility.Collapsed;
                     statsDataPanel.Visibility = Visibility.Collapsed;
                     txtInsertCardPrompt.Visibility = Visibility.Visible;
@@ -253,6 +444,7 @@ namespace Bucking_Unit_App.Views
                     lblShiftDowntime.Content = string.Empty;
                     lblMonthItems.Content = string.Empty;
                     lblMonthDowntime.Content = string.Empty;
+                    txtCurrentPipe.Content = string.Empty;
                 });
             }
         }
@@ -277,6 +469,7 @@ namespace Bucking_Unit_App.Views
                     statsDataPanel.Visibility = Visibility.Collapsed;
                     txtInsertCardPrompt.Visibility = Visibility.Visible;
                     txtNoStatsPrompt.Visibility = Visibility.Visible;
+                    txtCurrentPipe.Content = string.Empty;
                 }
                 else
                 {
@@ -297,7 +490,7 @@ namespace Bucking_Unit_App.Views
             _operatorUpdateCts = new CancellationTokenSource();
             var token = _operatorUpdateCts.Token;
 
-            Task.Run(async () =>
+            _operatorUpdateTask = Task.Run(async () =>
             {
                 while (!token.IsCancellationRequested)
                 {
@@ -345,7 +538,7 @@ namespace Bucking_Unit_App.Views
             _currentPipeUpdateCts = new CancellationTokenSource();
             var token = _currentPipeUpdateCts.Token;
 
-            Task.Run(async () =>
+            _currentPipeUpdateTask = Task.Run(async () =>
             {
                 while (!token.IsCancellationRequested)
                 {
@@ -361,7 +554,7 @@ namespace Bucking_Unit_App.Views
             _allStatsUpdateCts = new CancellationTokenSource();
             var token = _allStatsUpdateCts.Token;
 
-            Task.Run(async () =>
+            _allStatsUpdateTask = Task.Run(async () =>
             {
                 while (!token.IsCancellationRequested)
                 {
@@ -416,7 +609,7 @@ namespace Bucking_Unit_App.Views
                         Dispatcher.Invoke(() =>
                         {
                             _currentPipeCounter = pipeCounter;
-                            txtCurrentPipe.Content = $"{_currentPipeCounter}"; // Только число
+                            txtCurrentPipe.Content = pipeCounter.ToString();
                         });
 
                         using (var pilotConn = new SqlConnection(_connectionString))
@@ -436,10 +629,10 @@ namespace Bucking_Unit_App.Views
                                     if (_selectedPipeCounter != _currentPipeCounter)
                                     {
                                         _selectedPipeCounter = _currentPipeCounter;
-                                        _isTextChangeProgrammatic = true; // Устанавливаем флаг перед изменением
-                                        txtPipeCounter.Text = _currentPipeCounter.HasValue ? _currentPipeCounter.Value.ToString() : string.Empty; // Синхронизируем с текущей трубой
-                                        _isTextChangeProgrammatic = false; // Сбрасываем флаг после изменения
-                                        btnShowGraph_Click(null, null); // Автоматически отображаем график
+                                        _isTextChangeProgrammatic = true;
+                                        txtPipeCounter.Text = _currentPipeCounter.HasValue ? _currentPipeCounter.Value.ToString() : string.Empty;
+                                        _isTextChangeProgrammatic = false;
+                                        btnShowGraph_Click(null, null);
                                     }
                                 }
                                 else
@@ -448,20 +641,33 @@ namespace Bucking_Unit_App.Views
                                     if (_selectedPipeCounter != null && _selectedPipeCounter != pipeCounter)
                                     {
                                         _selectedPipeCounter = null;
-                                        _isTextChangeProgrammatic = true; // Устанавливаем флаг перед изменением
+                                        _isTextChangeProgrammatic = true;
                                         txtPipeCounter.Text = string.Empty;
+                                        txtCurrentPipe.Content = string.Empty;
                                         canvasGraph.Children.Clear();
-                                        _isTextChangeProgrammatic = false; // Сбрасываем флаг после изменения
+                                        _isTextChangeProgrammatic = false;
                                     }
                                 }
                             });
                         }
                     }
+                    else
+                    {
+                        Dispatcher.Invoke(() =>
+                        {
+                            txtCurrentPipe.Content = string.Empty;
+                        });
+                    }
                 }
             }
             catch (Exception ex)
             {
-                Dispatcher.Invoke(() => MessageBox.Show($"Ошибка при обновлении текущей трубы: {ex.Message}"));
+                Dispatcher.Invoke(() =>
+                {
+                    MessageBox.Show($"Ошибка при обновлении текущей трубы: {ex.Message}");
+                    txtCurrentPipe.Content = "Ошибка";
+                    System.Diagnostics.Debug.WriteLine($"MainWindow: Ошибка обновления PipeCounter: {ex.Message}");
+                });
             }
         }
 
@@ -469,7 +675,6 @@ namespace Bucking_Unit_App.Views
         {
             try
             {
-                // Если sender не null, считаем, что это ручной клик (пользователь ввел значение)
                 if (sender != null)
                 {
                     string inputText = txtPipeCounter.Text.Trim();
@@ -479,7 +684,6 @@ namespace Bucking_Unit_App.Views
                         return;
                     }
 
-                    // Проверка существования трубы в базе данных
                     using (var conn = new SqlConnection(_connectionString))
                     {
                         await conn.OpenAsync();
@@ -495,13 +699,9 @@ namespace Bucking_Unit_App.Views
                             return;
                         }
 
-                        // Устанавливаем выбранную трубу
                         _selectedPipeCounter = pipeCounter;
                     }
                 }
-                // Если sender == null, это автоматический вызов из UpdateCurrentPipeCounter, используем _selectedPipeCounter
-
-                string runtimeConnectionString = "Data Source=192.168.11.222,1433;Initial Catalog=Runtime;User ID=UserNotTrend;Password=NotTrend";
 
                 if (!_selectedPipeCounter.HasValue)
                 {
@@ -509,7 +709,7 @@ namespace Bucking_Unit_App.Views
                     return;
                 }
 
-                var graphService = new GraphService(runtimeConnectionString, _selectedPipeCounter);
+                var graphService = new GraphService(_runtimeConnectionString, _selectedPipeCounter);
 
                 var (startTime, endTime) = graphService.GetTimeRange();
                 if (startTime.Year > _selectedYear || endTime.Year < _selectedYear)
@@ -528,22 +728,22 @@ namespace Bucking_Unit_App.Views
                         {
                             Series = new ISeries[]
                             {
-                        new StepLineSeries<ObservablePoint, CircleGeometry>
-                        {
-                            Values = torquePoints,
-                            Name = "Крутящий момент",
-                            XToolTipLabelFormatter = (chartPoint) =>
-                            {
-                                double? torqueValueNullable = chartPoint.Model.Y;
-                                double torqueValue = torqueValueNullable ?? 0.0;
-                                return torqueValue.ToString("F2");
-                            },
-                            Stroke = new SolidColorPaint(SKColors.Red),
-                            Fill = new SolidColorPaint(SKColors.White),
-                            GeometrySize = 0.5f,
-                            GeometryFill = new SolidColorPaint(SKColors.Black),
-                            GeometryStroke = new SolidColorPaint(SKColors.Black)
-                        }
+                                new StepLineSeries<ObservablePoint, CircleGeometry>
+                                {
+                                    Values = torquePoints,
+                                    Name = "Крутящий момент",
+                                    XToolTipLabelFormatter = (chartPoint) =>
+                                    {
+                                        double? torqueValueNullable = chartPoint.Model.Y;
+                                        double torqueValue = torqueValueNullable ?? 0.0;
+                                        return torqueValue.ToString("F2");
+                                    },
+                                    Stroke = new SolidColorPaint(SKColors.Red),
+                                    Fill = new SolidColorPaint(SKColors.White),
+                                    GeometrySize = 0.5f,
+                                    GeometryFill = new SolidColorPaint(SKColors.Black),
+                                    GeometryStroke = new SolidColorPaint(SKColors.Black)
+                                }
                             },
                             XAxes = xAxes,
                             YAxes = yAxes,
@@ -559,6 +759,7 @@ namespace Bucking_Unit_App.Views
             catch (Exception ex)
             {
                 MessageBox.Show($"Ошибка при отображении графика: {ex.Message}");
+                System.Diagnostics.Debug.WriteLine($"MainWindow: Ошибка отображения графика: {ex.Message}");
             }
         }
 
@@ -631,6 +832,7 @@ namespace Bucking_Unit_App.Views
             catch (Exception ex)
             {
                 MessageBox.Show($"Ошибка при сохранении графика: {ex.Message}", "Ошибка", MessageBoxButton.OK, MessageBoxImage.Error);
+                System.Diagnostics.Debug.WriteLine($"MainWindow: Ошибка сохранения графика: {ex.Message}");
             }
         }
 
@@ -641,9 +843,9 @@ namespace Bucking_Unit_App.Views
                 canvasGraph.Children.Clear();
                 _selectedPipeCounter = null;
                 txtPipeCounter.Text = string.Empty;
-                txtCurrentPipe.Content = "Не указано";
                 lblStatus.Visibility = Visibility.Collapsed;
                 _currentPipeCounter = null;
+                txtCurrentPipe.Content = string.Empty;
                 _currentPipeUpdateCts?.Cancel();
                 _currentPipeUpdateCts?.Dispose();
                 _currentPipeUpdateCts = null;
@@ -667,21 +869,83 @@ namespace Bucking_Unit_App.Views
         {
             try
             {
-                string lastFolder = null;
-                if (!string.IsNullOrEmpty(lastFolder))
-                {
-                    lastFolder = Path.GetDirectoryName(lastFolder);
-                }
-                else
-                {
-                    lastFolder = Environment.GetFolderPath(Environment.SpecialFolder.MyDocuments);
-                }
-
+                string lastFolder = Environment.GetFolderPath(Environment.SpecialFolder.MyDocuments);
                 Process.Start("explorer.exe", lastFolder);
             }
             catch (Exception ex)
             {
-                MessageBox.Show($"Ошибка при открытии папки: {ex.Message}", "Ошибка", MessageBoxButton.OK, MessageBoxImage.Error);
+                MessageBox.Show($"Ошибка при открытия папки: {ex.Message}", "Ошибка", MessageBoxButton.OK, MessageBoxImage.Error);
+                System.Diagnostics.Debug.WriteLine($"MainWindow: Ошибка открытия папки: {ex.Message}");
+            }
+        }
+
+        private async void Window_Closing(object sender, System.ComponentModel.CancelEventArgs e)
+        {
+            _comController.StateChanged -= ComController_StateChanged;
+            _operatorService.OnOperatorChanged -= OperatorService_OnOperatorChanged;
+
+            _cts?.Cancel();
+            _operatorUpdateCts?.Cancel();
+            _allStatsUpdateCts?.Cancel();
+            _currentPipeUpdateCts?.Cancel();
+            _connectionCheckCts?.Cancel();
+
+            try
+            {
+                _comController.IsReading = false;
+                _comController.Dispose();
+                System.Diagnostics.Debug.WriteLine("MainWindow: COMController завершён.");
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"MainWindow: Ошибка при закрытии COM-порта: {ex.Message}");
+            }
+
+            try
+            {
+                if (_plcUpdateTask != null)
+                    await Task.WhenAny(_plcUpdateTask, Task.Delay(2000));
+                if (_operatorUpdateTask != null)
+                    await Task.WhenAny(_operatorUpdateTask, Task.Delay(2000));
+                if (_allStatsUpdateTask != null)
+                    await Task.WhenAny(_allStatsUpdateTask, Task.Delay(2000));
+                if (_currentPipeUpdateTask != null)
+                    await Task.WhenAny(_currentPipeUpdateTask, Task.Delay(2000));
+                System.Diagnostics.Debug.WriteLine($"MainWindow: Статус задач - PLC: {_plcUpdateTask?.Status}, Operator: {_operatorUpdateTask?.Status}, Stats: {_allStatsUpdateTask?.Status}, Pipe: {_currentPipeUpdateTask?.Status}");
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"MainWindow: Ошибка при завершении задач: {ex.Message}");
+            }
+
+            if (s7Client != null && s7Client.Connected)
+            {
+                s7Client.Disconnect();
+                System.Diagnostics.Debug.WriteLine("MainWindow: S7Client отключён.");
+            }
+
+            if (_plcDataWindow != null)
+            {
+                _plcDataWindow.Close();
+                System.Diagnostics.Debug.WriteLine("MainWindow: PLCDataWindow закрыт.");
+            }
+
+            _cts?.Dispose();
+            _operatorUpdateCts?.Dispose();
+            _allStatsUpdateCts?.Dispose();
+            _currentPipeUpdateCts?.Dispose();
+            _connectionCheckCts?.Dispose();
+
+            try
+            {
+                if (_conn != null && _conn.State != ConnectionState.Closed)
+                    _conn.Close();
+                _conn?.Dispose();
+                System.Diagnostics.Debug.WriteLine("MainWindow: SQL-соединение закрыто.");
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"MainWindow: Ошибка при закрытии SQL-соединения: {ex.Message}");
             }
         }
     }

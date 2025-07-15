@@ -1,15 +1,16 @@
-﻿// Подключаемые пространства имён
-using System.Collections.Concurrent; // Для потокобезопасной очереди сообщений
+﻿using System.Collections.Concurrent; // Для потокобезопасной очереди сообщений
 using System.Diagnostics; // Для записи в журнал событий Windows
 using System.IO.Ports; // Для работы с COM-портами
 using System.Text; // Для работы с буфером строк
 using System.Text.RegularExpressions;
 using Bucking_Unit_App.Models; // Для поиска шаблонов в строках
+using System.Threading;
+using System.Threading.Tasks;
 
 namespace Bucking_Unit_App.COM_Controller
 {
     // Класс для управления COM-считывателем
-    public class COMController
+    public class COMController : IDisposable
     {
         // Событие, которое вызывается при изменении состояния считывателя
         public event EventHandler<COMEventArgs.ReadingDataEventArgs>? StateChanged;
@@ -23,7 +24,7 @@ namespace Bucking_Unit_App.COM_Controller
         // Свойство, активна ли сейчас операция чтения
         public bool IsReading
         {
-            get { return isReading; }
+            get => isReading;
             set
             {
                 if (isReading == value)
@@ -50,14 +51,15 @@ namespace Bucking_Unit_App.COM_Controller
                     else
                     {
                         isReading = value;
-
+                        cts = new CancellationTokenSource();
                         // Запускаем фоновую задачу для чтения данных
-                        Task.Run(() => ProcessQueue());
+                        processQueueTask = Task.Run(() => ProcessQueue(cts.Token), cts.Token);
                     }
                 }
                 else
                 {
                     isReading = value;
+                    cts?.Cancel();
                     CleanupSerialPort();
                     messageQueue.Clear();
                     currentBuffer.Clear();
@@ -69,6 +71,8 @@ namespace Bucking_Unit_App.COM_Controller
         private SerialPort? serialPort;
         private ConcurrentQueue<string> messageQueue;
         private StringBuilder currentBuffer;
+        private CancellationTokenSource? cts;
+        private Task? processQueueTask;
 
         // Конструктор: принимает модель параметров порта
         public COMController(COMControllerParamsModel comControllerParamsModel)
@@ -117,7 +121,7 @@ namespace Bucking_Unit_App.COM_Controller
         }
 
         // Фоновая обработка данных из очереди
-        private void ProcessQueue()
+        private async Task ProcessQueue(CancellationToken token)
         {
             Regex regex = new Regex(@"\d{1,},\d+"); // шаблон: числа с запятой
 
@@ -126,11 +130,12 @@ namespace Bucking_Unit_App.COM_Controller
 
             try
             {
-                while (isReading)
+                while (isReading && !token.IsCancellationRequested)
                 {
                     // Переподключение, если порт отвалился
                     while (isReading && (serialPort == null || !serialPort.IsOpen))
                     {
+                        token.ThrowIfCancellationRequested();
                         try
                         {
                             thereWasAConnectionError = true;
@@ -143,11 +148,15 @@ namespace Bucking_Unit_App.COM_Controller
                             CleanupSerialPort();
 
                             if (!InitializeSerialPort())
-                                Thread.Sleep(TimeToReconnect);
+                                await Task.Delay(TimeToReconnect, token);
+                        }
+                        catch (OperationCanceledException)
+                        {
+                            throw;
                         }
                         catch
                         {
-                            Thread.Sleep(TimeToReconnect);
+                            await Task.Delay(TimeToReconnect, token);
                         }
                     }
 
@@ -189,10 +198,14 @@ namespace Bucking_Unit_App.COM_Controller
                         }
                     }
 
-                    Thread.Sleep(50); // Предотвращаем перегрузку CPU
+                    await Task.Delay(50, token); // Предотвращаем перегрузку CPU
                 }
             }
-            catch
+            catch (OperationCanceledException)
+            {
+                // Нормальное завершение при отмене
+            }
+            catch (Exception ex)
             {
                 isReading = false;
                 CleanupSerialPort();
@@ -202,7 +215,7 @@ namespace Bucking_Unit_App.COM_Controller
                 StateChanged?.Invoke(this, new COMEventArgs.ReadingDataEventArgs(null, COMControllerParamsModel.COMStates.None)
                 {
                     ErrorCode = (int)COMControllerParamsModel.ErrorCodes.UnknownError,
-                    ErrorText = "Неизвестная ошибка считывания данных."
+                    ErrorText = $"Неизвестная ошибка считывания данных: {ex.Message}"
                 });
             }
         }
@@ -216,27 +229,54 @@ namespace Bucking_Unit_App.COM_Controller
                 serialPort.DataReceived += SerialPort_DataReceived;
                 serialPort.Open();
             }
-            catch
+            catch (Exception ex)
             {
-                EventLog.WriteEntry(".NET Runtime", "Ошибка поключения к считывателю. Error InitializeSerialPort.", EventLogEntryType.Error);
+                EventLog.WriteEntry(".NET Runtime", $"Ошибка подключения к считывателю: {ex.Message}", EventLogEntryType.Error);
                 return false;
             }
 
-            return serialPort != null ? serialPort.IsOpen : false;
+            return serialPort != null && serialPort.IsOpen;
         }
 
         // Очистка и отключение COM-порта
-        private void CleanupSerialPort()
+        public void CleanupSerialPort()
         {
-            if (serialPort != null)
+            try
             {
-                serialPort.DataReceived -= SerialPort_DataReceived;
+                if (serialPort != null)
+                {
+                    serialPort.DataReceived -= SerialPort_DataReceived;
 
-                if (serialPort.IsOpen)
-                    serialPort.Close();
+                    if (serialPort.IsOpen)
+                        serialPort.Close();
 
-                serialPort.Dispose();
-                serialPort = null;
+                    serialPort.Dispose();
+                    serialPort = null;
+                }
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"Ошибка при очистке COM-порта: {ex.Message}");
+            }
+        }
+
+        // Реализация IDisposable
+        public void Dispose()
+        {
+            try
+            {
+                IsReading = false; // Останавливаем чтение
+                cts?.Cancel();
+                if (processQueueTask != null)
+                {
+                    processQueueTask.Wait(1000); // Ожидаем завершения задачи до 1 секунды
+                }
+                CleanupSerialPort();
+                cts?.Dispose();
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"Ошибка при освобождении COMController: {ex.Message}");
             }
         }
     }
