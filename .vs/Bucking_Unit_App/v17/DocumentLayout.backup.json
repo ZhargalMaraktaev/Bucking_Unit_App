@@ -3,12 +3,52 @@
   "WorkspaceRootPath": "C:\\Users\\z.maraktaev\\source\\repos\\Bucking_Unit_App\\",
   "Documents": [
     {
-      "AbsoluteMoniker": "D:0:0:{08C6461E-F5D0-410F-9E8E-BC3E1A7EDBE3}|Bucking_Unit_App\\Bucking_Unit_App.csproj|c:\\users\\z.maraktaev\\source\\repos\\bucking_unit_app\\bucking_unit_app\\views\\plcdatawindow.xaml.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
-      "RelativeMoniker": "D:0:0:{08C6461E-F5D0-410F-9E8E-BC3E1A7EDBE3}|Bucking_Unit_App\\Bucking_Unit_App.csproj|solutionrelative:bucking_unit_app\\views\\plcdatawindow.xaml.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
+      "AbsoluteMoniker": "D:0:0:{08C6461E-F5D0-410F-9E8E-BC3E1A7EDBE3}|Bucking_Unit_App\\Bucking_Unit_App.csproj|c:\\users\\z.maraktaev\\source\\repos\\bucking_unit_app\\bucking_unit_app\\views\\mainwindow.xaml||{F11ACC28-31D1-4C80-A34B-F4E09D3D753C}",
+      "RelativeMoniker": "D:0:0:{08C6461E-F5D0-410F-9E8E-BC3E1A7EDBE3}|Bucking_Unit_App\\Bucking_Unit_App.csproj|solutionrelative:bucking_unit_app\\views\\mainwindow.xaml||{F11ACC28-31D1-4C80-A34B-F4E09D3D753C}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{08C6461E-F5D0-410F-9E8E-BC3E1A7EDBE3}|Bucking_Unit_App\\Bucking_Unit_App.csproj|c:\\users\\z.maraktaev\\source\\repos\\bucking_unit_app\\bucking_unit_app\\controllers\\com controller\\comcontroller.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
+      "RelativeMoniker": "D:0:0:{08C6461E-F5D0-410F-9E8E-BC3E1A7EDBE3}|Bucking_Unit_App\\Bucking_Unit_App.csproj|solutionrelative:bucking_unit_app\\controllers\\com controller\\comcontroller.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
     },
     {
       "AbsoluteMoniker": "D:0:0:{08C6461E-F5D0-410F-9E8E-BC3E1A7EDBE3}|Bucking_Unit_App\\Bucking_Unit_App.csproj|c:\\users\\z.maraktaev\\source\\repos\\bucking_unit_app\\bucking_unit_app\\views\\mainwindow.xaml.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
       "RelativeMoniker": "D:0:0:{08C6461E-F5D0-410F-9E8E-BC3E1A7EDBE3}|Bucking_Unit_App\\Bucking_Unit_App.csproj|solutionrelative:bucking_unit_app\\views\\mainwindow.xaml.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{08C6461E-F5D0-410F-9E8E-BC3E1A7EDBE3}|Bucking_Unit_App\\Bucking_Unit_App.csproj|c:\\users\\z.maraktaev\\source\\repos\\bucking_unit_app\\bucking_unit_app\\views\\plcdatawindow.xaml.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
+      "RelativeMoniker": "D:0:0:{08C6461E-F5D0-410F-9E8E-BC3E1A7EDBE3}|Bucking_Unit_App\\Bucking_Unit_App.csproj|solutionrelative:bucking_unit_app\\views\\plcdatawindow.xaml.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{08C6461E-F5D0-410F-9E8E-BC3E1A7EDBE3}|Bucking_Unit_App\\Bucking_Unit_App.csproj|c:\\users\\z.maraktaev\\source\\repos\\bucking_unit_app\\bucking_unit_app\\views\\plcdatawindow.xaml||{F11ACC28-31D1-4C80-A34B-F4E09D3D753C}",
+      "RelativeMoniker": "D:0:0:{08C6461E-F5D0-410F-9E8E-BC3E1A7EDBE3}|Bucking_Unit_App\\Bucking_Unit_App.csproj|solutionrelative:bucking_unit_app\\views\\plcdatawindow.xaml||{F11ACC28-31D1-4C80-A34B-F4E09D3D753C}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{08C6461E-F5D0-410F-9E8E-BC3E1A7EDBE3}|Bucking_Unit_App\\Bucking_Unit_App.csproj|c:\\users\\z.maraktaev\\source\\repos\\bucking_unit_app\\bucking_unit_app\\siemensplc\\models\\siemensplcmodels.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
+      "RelativeMoniker": "D:0:0:{08C6461E-F5D0-410F-9E8E-BC3E1A7EDBE3}|Bucking_Unit_App\\Bucking_Unit_App.csproj|solutionrelative:bucking_unit_app\\siemensplc\\models\\siemensplcmodels.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{08C6461E-F5D0-410F-9E8E-BC3E1A7EDBE3}|Bucking_Unit_App\\Bucking_Unit_App.csproj|c:\\users\\z.maraktaev\\source\\repos\\bucking_unit_app\\bucking_unit_app\\models\\comcontrollerparamsmodel.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
+      "RelativeMoniker": "D:0:0:{08C6461E-F5D0-410F-9E8E-BC3E1A7EDBE3}|Bucking_Unit_App\\Bucking_Unit_App.csproj|solutionrelative:bucking_unit_app\\models\\comcontrollerparamsmodel.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{08C6461E-F5D0-410F-9E8E-BC3E1A7EDBE3}|Bucking_Unit_App\\Bucking_Unit_App.csproj|c:\\users\\z.maraktaev\\source\\repos\\bucking_unit_app\\bucking_unit_app\\services\\statsservice.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
+      "RelativeMoniker": "D:0:0:{08C6461E-F5D0-410F-9E8E-BC3E1A7EDBE3}|Bucking_Unit_App\\Bucking_Unit_App.csproj|solutionrelative:bucking_unit_app\\services\\statsservice.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{08C6461E-F5D0-410F-9E8E-BC3E1A7EDBE3}|Bucking_Unit_App\\Bucking_Unit_App.csproj|c:\\users\\z.maraktaev\\source\\repos\\bucking_unit_app\\bucking_unit_app\\services\\operatorservice.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
+      "RelativeMoniker": "D:0:0:{08C6461E-F5D0-410F-9E8E-BC3E1A7EDBE3}|Bucking_Unit_App\\Bucking_Unit_App.csproj|solutionrelative:bucking_unit_app\\services\\operatorservice.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{08C6461E-F5D0-410F-9E8E-BC3E1A7EDBE3}|Bucking_Unit_App\\Bucking_Unit_App.csproj|c:\\users\\z.maraktaev\\source\\repos\\bucking_unit_app\\bucking_unit_app\\interfaces\\dataaccesslayer.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
+      "RelativeMoniker": "D:0:0:{08C6461E-F5D0-410F-9E8E-BC3E1A7EDBE3}|Bucking_Unit_App\\Bucking_Unit_App.csproj|solutionrelative:bucking_unit_app\\interfaces\\dataaccesslayer.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{08C6461E-F5D0-410F-9E8E-BC3E1A7EDBE3}|Bucking_Unit_App\\Bucking_Unit_App.csproj|c:\\users\\z.maraktaev\\source\\repos\\bucking_unit_app\\bucking_unit_app\\services\\graphservice.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
+      "RelativeMoniker": "D:0:0:{08C6461E-F5D0-410F-9E8E-BC3E1A7EDBE3}|Bucking_Unit_App\\Bucking_Unit_App.csproj|solutionrelative:bucking_unit_app\\services\\graphservice.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{08C6461E-F5D0-410F-9E8E-BC3E1A7EDBE3}|Bucking_Unit_App\\Bucking_Unit_App.csproj|c:\\users\\z.maraktaev\\source\\repos\\bucking_unit_app\\bucking_unit_app\\siemensplc\\models\\dbaddressmodel.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
+      "RelativeMoniker": "D:0:0:{08C6461E-F5D0-410F-9E8E-BC3E1A7EDBE3}|Bucking_Unit_App\\Bucking_Unit_App.csproj|solutionrelative:bucking_unit_app\\siemensplc\\models\\dbaddressmodel.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
     },
     {
       "AbsoluteMoniker": "D:0:0:{08C6461E-F5D0-410F-9E8E-BC3E1A7EDBE3}|Bucking_Unit_App\\Bucking_Unit_App.csproj|c:\\users\\z.maraktaev\\source\\repos\\bucking_unit_app\\bucking_unit_app\\services\\readfromplc.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
@@ -19,44 +59,24 @@
       "RelativeMoniker": "D:0:0:{08C6461E-F5D0-410F-9E8E-BC3E1A7EDBE3}|Bucking_Unit_App\\Bucking_Unit_App.csproj|solutionrelative:bucking_unit_app\\services\\writetoplc.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
     },
     {
-      "AbsoluteMoniker": "D:0:0:{08C6461E-F5D0-410F-9E8E-BC3E1A7EDBE3}|Bucking_Unit_App\\Bucking_Unit_App.csproj|c:\\users\\z.maraktaev\\source\\repos\\bucking_unit_app\\bucking_unit_app\\siemensplc\\models\\plcreadwritemodel.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
-      "RelativeMoniker": "D:0:0:{08C6461E-F5D0-410F-9E8E-BC3E1A7EDBE3}|Bucking_Unit_App\\Bucking_Unit_App.csproj|solutionrelative:bucking_unit_app\\siemensplc\\models\\plcreadwritemodel.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
-    },
-    {
       "AbsoluteMoniker": "D:0:0:{08C6461E-F5D0-410F-9E8E-BC3E1A7EDBE3}|Bucking_Unit_App\\Bucking_Unit_App.csproj|c:\\users\\z.maraktaev\\source\\repos\\bucking_unit_app\\bucking_unit_app\\utilities\\taskextensions.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
       "RelativeMoniker": "D:0:0:{08C6461E-F5D0-410F-9E8E-BC3E1A7EDBE3}|Bucking_Unit_App\\Bucking_Unit_App.csproj|solutionrelative:bucking_unit_app\\utilities\\taskextensions.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
     },
     {
-      "AbsoluteMoniker": "D:0:0:{08C6461E-F5D0-410F-9E8E-BC3E1A7EDBE3}|Bucking_Unit_App\\Bucking_Unit_App.csproj|c:\\users\\z.maraktaev\\source\\repos\\bucking_unit_app\\bucking_unit_app\\views\\plcdatawindow.xaml||{F11ACC28-31D1-4C80-A34B-F4E09D3D753C}",
-      "RelativeMoniker": "D:0:0:{08C6461E-F5D0-410F-9E8E-BC3E1A7EDBE3}|Bucking_Unit_App\\Bucking_Unit_App.csproj|solutionrelative:bucking_unit_app\\views\\plcdatawindow.xaml||{F11ACC28-31D1-4C80-A34B-F4E09D3D753C}"
+      "AbsoluteMoniker": "D:0:0:{08C6461E-F5D0-410F-9E8E-BC3E1A7EDBE3}|Bucking_Unit_App\\Bucking_Unit_App.csproj|c:\\users\\z.maraktaev\\source\\repos\\bucking_unit_app\\bucking_unit_app\\app.xaml.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
+      "RelativeMoniker": "D:0:0:{08C6461E-F5D0-410F-9E8E-BC3E1A7EDBE3}|Bucking_Unit_App\\Bucking_Unit_App.csproj|solutionrelative:bucking_unit_app\\app.xaml.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
     },
     {
-      "AbsoluteMoniker": "D:0:0:{08C6461E-F5D0-410F-9E8E-BC3E1A7EDBE3}|Bucking_Unit_App\\Bucking_Unit_App.csproj|c:\\users\\z.maraktaev\\source\\repos\\bucking_unit_app\\bucking_unit_app\\siemensplc\\models\\dbaddressmodel.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
-      "RelativeMoniker": "D:0:0:{08C6461E-F5D0-410F-9E8E-BC3E1A7EDBE3}|Bucking_Unit_App\\Bucking_Unit_App.csproj|solutionrelative:bucking_unit_app\\siemensplc\\models\\dbaddressmodel.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
-    },
-    {
-      "AbsoluteMoniker": "D:0:0:{08C6461E-F5D0-410F-9E8E-BC3E1A7EDBE3}|Bucking_Unit_App\\Bucking_Unit_App.csproj|c:\\users\\z.maraktaev\\source\\repos\\bucking_unit_app\\bucking_unit_app\\siemensplc\\models\\siemensplcmodels.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
-      "RelativeMoniker": "D:0:0:{08C6461E-F5D0-410F-9E8E-BC3E1A7EDBE3}|Bucking_Unit_App\\Bucking_Unit_App.csproj|solutionrelative:bucking_unit_app\\siemensplc\\models\\siemensplcmodels.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
-    },
-    {
-      "AbsoluteMoniker": "D:0:0:{08C6461E-F5D0-410F-9E8E-BC3E1A7EDBE3}|Bucking_Unit_App\\Bucking_Unit_App.csproj|c:\\users\\z.maraktaev\\source\\repos\\bucking_unit_app\\bucking_unit_app\\controllers\\com controller\\comcontroller.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
-      "RelativeMoniker": "D:0:0:{08C6461E-F5D0-410F-9E8E-BC3E1A7EDBE3}|Bucking_Unit_App\\Bucking_Unit_App.csproj|solutionrelative:bucking_unit_app\\controllers\\com controller\\comcontroller.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
+      "AbsoluteMoniker": "D:0:0:{08C6461E-F5D0-410F-9E8E-BC3E1A7EDBE3}|Bucking_Unit_App\\Bucking_Unit_App.csproj|c:\\users\\z.maraktaev\\source\\repos\\bucking_unit_app\\bucking_unit_app\\views\\plcdatawindow.xaml||{8B382828-6202-11D1-8870-0000F87579D2}",
+      "RelativeMoniker": "D:0:0:{08C6461E-F5D0-410F-9E8E-BC3E1A7EDBE3}|Bucking_Unit_App\\Bucking_Unit_App.csproj|solutionrelative:bucking_unit_app\\views\\plcdatawindow.xaml||{8B382828-6202-11D1-8870-0000F87579D2}"
     },
     {
       "AbsoluteMoniker": "D:0:0:{08C6461E-F5D0-410F-9E8E-BC3E1A7EDBE3}|Bucking_Unit_App\\Bucking_Unit_App.csproj|c:\\users\\z.maraktaev\\source\\repos\\bucking_unit_app\\bucking_unit_app\\controllers\\1c controller\\controller1c.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
       "RelativeMoniker": "D:0:0:{08C6461E-F5D0-410F-9E8E-BC3E1A7EDBE3}|Bucking_Unit_App\\Bucking_Unit_App.csproj|solutionrelative:bucking_unit_app\\controllers\\1c controller\\controller1c.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
     },
     {
-      "AbsoluteMoniker": "D:0:0:{08C6461E-F5D0-410F-9E8E-BC3E1A7EDBE3}|Bucking_Unit_App\\Bucking_Unit_App.csproj|c:\\users\\z.maraktaev\\source\\repos\\bucking_unit_app\\bucking_unit_app\\views\\mainwindow.xaml||{F11ACC28-31D1-4C80-A34B-F4E09D3D753C}",
-      "RelativeMoniker": "D:0:0:{08C6461E-F5D0-410F-9E8E-BC3E1A7EDBE3}|Bucking_Unit_App\\Bucking_Unit_App.csproj|solutionrelative:bucking_unit_app\\views\\mainwindow.xaml||{F11ACC28-31D1-4C80-A34B-F4E09D3D753C}"
-    },
-    {
       "AbsoluteMoniker": "D:0:0:{08C6461E-F5D0-410F-9E8E-BC3E1A7EDBE3}|Bucking_Unit_App\\Bucking_Unit_App.csproj|c:\\users\\z.maraktaev\\source\\repos\\bucking_unit_app\\bucking_unit_app\\siemensplc\\models\\siemensplctypes.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
       "RelativeMoniker": "D:0:0:{08C6461E-F5D0-410F-9E8E-BC3E1A7EDBE3}|Bucking_Unit_App\\Bucking_Unit_App.csproj|solutionrelative:bucking_unit_app\\siemensplc\\models\\siemensplctypes.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
-    },
-    {
-      "AbsoluteMoniker": "D:0:0:{08C6461E-F5D0-410F-9E8E-BC3E1A7EDBE3}|Bucking_Unit_App\\Bucking_Unit_App.csproj|c:\\users\\z.maraktaev\\source\\repos\\bucking_unit_app\\bucking_unit_app\\services\\statsservice.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
-      "RelativeMoniker": "D:0:0:{08C6461E-F5D0-410F-9E8E-BC3E1A7EDBE3}|Bucking_Unit_App\\Bucking_Unit_App.csproj|solutionrelative:bucking_unit_app\\services\\statsservice.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
     },
     {
       "AbsoluteMoniker": "D:0:0:{08C6461E-F5D0-410F-9E8E-BC3E1A7EDBE3}|Bucking_Unit_App\\Bucking_Unit_App.csproj|c:\\users\\z.maraktaev\\source\\repos\\bucking_unit_app\\bucking_unit_app\\app.xaml||{F11ACC28-31D1-4C80-A34B-F4E09D3D753C}",
@@ -65,26 +85,6 @@
     {
       "AbsoluteMoniker": "D:0:0:{08C6461E-F5D0-410F-9E8E-BC3E1A7EDBE3}|Bucking_Unit_App\\Bucking_Unit_App.csproj|c:\\users\\z.maraktaev\\source\\repos\\bucking_unit_app\\bucking_unit_app\\bucking_unit_app.csproj||{FA3CD31E-987B-443A-9B81-186104E8DAC1}|",
       "RelativeMoniker": "D:0:0:{08C6461E-F5D0-410F-9E8E-BC3E1A7EDBE3}|Bucking_Unit_App\\Bucking_Unit_App.csproj|solutionrelative:bucking_unit_app\\bucking_unit_app.csproj||{FA3CD31E-987B-443A-9B81-186104E8DAC1}|"
-    },
-    {
-      "AbsoluteMoniker": "D:0:0:{08C6461E-F5D0-410F-9E8E-BC3E1A7EDBE3}|Bucking_Unit_App\\Bucking_Unit_App.csproj|c:\\users\\z.maraktaev\\source\\repos\\bucking_unit_app\\bucking_unit_app\\interfaces\\dataaccesslayer.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
-      "RelativeMoniker": "D:0:0:{08C6461E-F5D0-410F-9E8E-BC3E1A7EDBE3}|Bucking_Unit_App\\Bucking_Unit_App.csproj|solutionrelative:bucking_unit_app\\interfaces\\dataaccesslayer.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
-    },
-    {
-      "AbsoluteMoniker": "D:0:0:{08C6461E-F5D0-410F-9E8E-BC3E1A7EDBE3}|Bucking_Unit_App\\Bucking_Unit_App.csproj|c:\\users\\z.maraktaev\\source\\repos\\bucking_unit_app\\bucking_unit_app\\app.xaml.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
-      "RelativeMoniker": "D:0:0:{08C6461E-F5D0-410F-9E8E-BC3E1A7EDBE3}|Bucking_Unit_App\\Bucking_Unit_App.csproj|solutionrelative:bucking_unit_app\\app.xaml.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
-    },
-    {
-      "AbsoluteMoniker": "D:0:0:{08C6461E-F5D0-410F-9E8E-BC3E1A7EDBE3}|Bucking_Unit_App\\Bucking_Unit_App.csproj|c:\\users\\z.maraktaev\\source\\repos\\bucking_unit_app\\bucking_unit_app\\services\\graphservice.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
-      "RelativeMoniker": "D:0:0:{08C6461E-F5D0-410F-9E8E-BC3E1A7EDBE3}|Bucking_Unit_App\\Bucking_Unit_App.csproj|solutionrelative:bucking_unit_app\\services\\graphservice.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
-    },
-    {
-      "AbsoluteMoniker": "D:0:0:{08C6461E-F5D0-410F-9E8E-BC3E1A7EDBE3}|Bucking_Unit_App\\Bucking_Unit_App.csproj|c:\\users\\z.maraktaev\\source\\repos\\bucking_unit_app\\bucking_unit_app\\models\\comcontrollerparamsmodel.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
-      "RelativeMoniker": "D:0:0:{08C6461E-F5D0-410F-9E8E-BC3E1A7EDBE3}|Bucking_Unit_App\\Bucking_Unit_App.csproj|solutionrelative:bucking_unit_app\\models\\comcontrollerparamsmodel.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
-    },
-    {
-      "AbsoluteMoniker": "D:0:0:{08C6461E-F5D0-410F-9E8E-BC3E1A7EDBE3}|Bucking_Unit_App\\Bucking_Unit_App.csproj|c:\\users\\z.maraktaev\\source\\repos\\bucking_unit_app\\bucking_unit_app\\services\\operatorservice.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
-      "RelativeMoniker": "D:0:0:{08C6461E-F5D0-410F-9E8E-BC3E1A7EDBE3}|Bucking_Unit_App\\Bucking_Unit_App.csproj|solutionrelative:bucking_unit_app\\services\\operatorservice.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
     },
     {
       "AbsoluteMoniker": "D:0:0:{08C6461E-F5D0-410F-9E8E-BC3E1A7EDBE3}|Bucking_Unit_App\\Bucking_Unit_App.csproj|c:\\users\\z.maraktaev\\source\\repos\\bucking_unit_app\\bucking_unit_app\\interfaces\\istatsrepository.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
@@ -108,25 +108,26 @@
   ],
   "DocumentGroupContainers": [
     {
-      "Orientation": 0,
+      "Orientation": 1,
       "VerticalTabListWidth": 256,
       "DocumentGroups": [
         {
-          "DockedWidth": 200,
-          "SelectedChildIndex": 4,
+          "DockedHeight": 383,
+          "SelectedChildIndex": 10,
           "Children": [
             {
               "$type": "Document",
-              "DocumentIndex": 8,
+              "DocumentIndex": 5,
               "Title": "SiemensPLCModels.cs",
               "DocumentMoniker": "C:\\Users\\z.maraktaev\\source\\repos\\Bucking_Unit_App\\Bucking_Unit_App\\SiemensPLC\\Models\\SiemensPLCModels.cs",
               "RelativeDocumentMoniker": "Bucking_Unit_App\\SiemensPLC\\Models\\SiemensPLCModels.cs",
               "ToolTip": "C:\\Users\\z.maraktaev\\source\\repos\\Bucking_Unit_App\\Bucking_Unit_App\\SiemensPLC\\Models\\SiemensPLCModels.cs",
               "RelativeToolTip": "Bucking_Unit_App\\SiemensPLC\\Models\\SiemensPLCModels.cs",
-              "ViewState": "AgIAAGUBAAAAAAAAAIA1wHUBAAAQAAAAAAAAAA==",
+              "ViewState": "AgIAACMBAAAAAAAAAAAMwHMBAAA+AAAAAAAAAA==",
               "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
               "WhenOpened": "2025-07-11T08:43:24.014Z",
-              "IsPinned": true
+              "IsPinned": true,
+              "EditorCaption": ""
             },
             {
               "$type": "Bookmark",
@@ -134,108 +135,148 @@
             },
             {
               "$type": "Document",
-              "DocumentIndex": 4,
-              "Title": "PLCReadWriteModel.cs",
-              "DocumentMoniker": "C:\\Users\\z.maraktaev\\source\\repos\\Bucking_Unit_App\\Bucking_Unit_App\\SiemensPLC\\Models\\PLCReadWriteModel.cs",
-              "RelativeDocumentMoniker": "Bucking_Unit_App\\SiemensPLC\\Models\\PLCReadWriteModel.cs",
-              "ToolTip": "C:\\Users\\z.maraktaev\\source\\repos\\Bucking_Unit_App\\Bucking_Unit_App\\SiemensPLC\\Models\\PLCReadWriteModel.cs",
-              "RelativeToolTip": "Bucking_Unit_App\\SiemensPLC\\Models\\PLCReadWriteModel.cs",
-              "ViewState": "AgIAAAAAAAAAAAAAAAAAAKUAAAAMAAAAAAAAAA==",
+              "DocumentIndex": 6,
+              "Title": "COMControllerParamsModel.cs",
+              "DocumentMoniker": "C:\\Users\\z.maraktaev\\source\\repos\\Bucking_Unit_App\\Bucking_Unit_App\\Models\\COMControllerParamsModel.cs",
+              "RelativeDocumentMoniker": "Bucking_Unit_App\\Models\\COMControllerParamsModel.cs",
+              "ToolTip": "C:\\Users\\z.maraktaev\\source\\repos\\Bucking_Unit_App\\Bucking_Unit_App\\Models\\COMControllerParamsModel.cs",
+              "RelativeToolTip": "Bucking_Unit_App\\Models\\COMControllerParamsModel.cs",
+              "ViewState": "AgIAADkAAAAAAAAAAIA1wFMAAAAIAAAAAAAAAA==",
               "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
-              "WhenOpened": "2025-07-14T05:54:01.036Z",
+              "WhenOpened": "2025-06-18T11:41:41.225Z",
               "EditorCaption": ""
             },
             {
               "$type": "Document",
-              "DocumentIndex": 1,
+              "DocumentIndex": 4,
+              "Title": "PLCDataWindow.xaml",
+              "DocumentMoniker": "C:\\Users\\z.maraktaev\\source\\repos\\Bucking_Unit_App\\Bucking_Unit_App\\Views\\PLCDataWindow.xaml",
+              "RelativeDocumentMoniker": "Bucking_Unit_App\\Views\\PLCDataWindow.xaml",
+              "ToolTip": "C:\\Users\\z.maraktaev\\source\\repos\\Bucking_Unit_App\\Bucking_Unit_App\\Views\\PLCDataWindow.xaml",
+              "RelativeToolTip": "Bucking_Unit_App\\Views\\PLCDataWindow.xaml",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.003549|",
+              "WhenOpened": "2025-07-14T12:11:27.141Z",
+              "EditorCaption": ""
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 7,
+              "Title": "StatsService.cs",
+              "DocumentMoniker": "C:\\Users\\z.maraktaev\\source\\repos\\Bucking_Unit_App\\Bucking_Unit_App\\Services\\StatsService.cs",
+              "RelativeDocumentMoniker": "Bucking_Unit_App\\Services\\StatsService.cs",
+              "ToolTip": "C:\\Users\\z.maraktaev\\source\\repos\\Bucking_Unit_App\\Bucking_Unit_App\\Services\\StatsService.cs",
+              "RelativeToolTip": "Bucking_Unit_App\\Services\\StatsService.cs",
+              "ViewState": "AgIAAAAAAAAAAAAAAAAAABUAAAAIAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
+              "WhenOpened": "2025-06-25T12:06:22.286Z",
+              "EditorCaption": ""
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 8,
+              "Title": "OperatorService.cs",
+              "DocumentMoniker": "C:\\Users\\z.maraktaev\\source\\repos\\Bucking_Unit_App\\Bucking_Unit_App\\Services\\OperatorService.cs",
+              "RelativeDocumentMoniker": "Bucking_Unit_App\\Services\\OperatorService.cs",
+              "ToolTip": "C:\\Users\\z.maraktaev\\source\\repos\\Bucking_Unit_App\\Bucking_Unit_App\\Services\\OperatorService.cs",
+              "RelativeToolTip": "Bucking_Unit_App\\Services\\OperatorService.cs",
+              "ViewState": "AgIAAAAAAAAAAAAAAAAAABYAAAAIAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
+              "WhenOpened": "2025-06-25T12:05:35.155Z",
+              "EditorCaption": ""
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 9,
+              "Title": "DataAccessLayer.cs",
+              "DocumentMoniker": "C:\\Users\\z.maraktaev\\source\\repos\\Bucking_Unit_App\\Bucking_Unit_App\\Interfaces\\DataAccessLayer.cs",
+              "RelativeDocumentMoniker": "Bucking_Unit_App\\Interfaces\\DataAccessLayer.cs",
+              "ToolTip": "C:\\Users\\z.maraktaev\\source\\repos\\Bucking_Unit_App\\Bucking_Unit_App\\Interfaces\\DataAccessLayer.cs",
+              "RelativeToolTip": "Bucking_Unit_App\\Interfaces\\DataAccessLayer.cs",
+              "ViewState": "AgIAAAAAAAAAAAAAAAAAABMAAAAIAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
+              "WhenOpened": "2025-06-25T12:04:47.064Z",
+              "EditorCaption": ""
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 2,
               "Title": "MainWindow.xaml.cs",
               "DocumentMoniker": "C:\\Users\\z.maraktaev\\source\\repos\\Bucking_Unit_App\\Bucking_Unit_App\\Views\\MainWindow.xaml.cs",
               "RelativeDocumentMoniker": "Bucking_Unit_App\\Views\\MainWindow.xaml.cs",
               "ToolTip": "C:\\Users\\z.maraktaev\\source\\repos\\Bucking_Unit_App\\Bucking_Unit_App\\Views\\MainWindow.xaml.cs",
               "RelativeToolTip": "Bucking_Unit_App\\Views\\MainWindow.xaml.cs",
-              "ViewState": "AgIAAAcBAAAAAAAAAAASwBwBAAAzAAAAAAAAAA==",
+              "ViewState": "AgIAAOQBAAAAAAAAAAAQwPoBAAALAAAAAAAAAA==",
               "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
               "WhenOpened": "2025-06-18T11:33:54.312Z",
               "EditorCaption": ""
             },
             {
               "$type": "Document",
-              "DocumentIndex": 0,
+              "DocumentIndex": 3,
               "Title": "PLCDataWindow.xaml.cs",
               "DocumentMoniker": "C:\\Users\\z.maraktaev\\source\\repos\\Bucking_Unit_App\\Bucking_Unit_App\\Views\\PLCDataWindow.xaml.cs",
               "RelativeDocumentMoniker": "Bucking_Unit_App\\Views\\PLCDataWindow.xaml.cs",
               "ToolTip": "C:\\Users\\z.maraktaev\\source\\repos\\Bucking_Unit_App\\Bucking_Unit_App\\Views\\PLCDataWindow.xaml.cs",
               "RelativeToolTip": "Bucking_Unit_App\\Views\\PLCDataWindow.xaml.cs",
-              "ViewState": "AgIAAAAAAAAAAAAAAAAAAA4AAAAwAAAAAAAAAA==",
+              "ViewState": "AgIAAIMAAAAAAAAAAAApwGsAAAAzAAAAAAAAAA==",
               "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
               "WhenOpened": "2025-07-14T12:12:03.62Z",
               "EditorCaption": ""
             },
             {
               "$type": "Document",
+              "DocumentIndex": 1,
+              "Title": "COMController.cs",
+              "DocumentMoniker": "C:\\Users\\z.maraktaev\\source\\repos\\Bucking_Unit_App\\Bucking_Unit_App\\Controllers\\COM Controller\\COMController.cs",
+              "RelativeDocumentMoniker": "Bucking_Unit_App\\Controllers\\COM Controller\\COMController.cs",
+              "ToolTip": "C:\\Users\\z.maraktaev\\source\\repos\\Bucking_Unit_App\\Bucking_Unit_App\\Controllers\\COM Controller\\COMController.cs",
+              "RelativeToolTip": "Bucking_Unit_App\\Controllers\\COM Controller\\COMController.cs",
+              "ViewState": "AgIAADIAAAAAAAAAAAAhwFIAAAAIAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
+              "WhenOpened": "2025-06-18T11:41:05.935Z",
+              "EditorCaption": ""
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 0,
+              "Title": "MainWindow.xaml",
+              "DocumentMoniker": "C:\\Users\\z.maraktaev\\source\\repos\\Bucking_Unit_App\\Bucking_Unit_App\\Views\\MainWindow.xaml",
+              "RelativeDocumentMoniker": "Bucking_Unit_App\\Views\\MainWindow.xaml",
+              "ToolTip": "C:\\Users\\z.maraktaev\\source\\repos\\Bucking_Unit_App\\Bucking_Unit_App\\Views\\MainWindow.xaml*",
+              "RelativeToolTip": "Bucking_Unit_App\\Views\\MainWindow.xaml*",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.003549|",
+              "WhenOpened": "2025-07-02T10:14:15.846Z",
+              "EditorCaption": ""
+            },
+            {
+              "$type": "Document",
               "DocumentIndex": 12,
-              "Title": "SiemensPLCTypes.cs",
-              "DocumentMoniker": "C:\\Users\\z.maraktaev\\source\\repos\\Bucking_Unit_App\\Bucking_Unit_App\\SiemensPLC\\Models\\SiemensPLCTypes.cs",
-              "RelativeDocumentMoniker": "Bucking_Unit_App\\SiemensPLC\\Models\\SiemensPLCTypes.cs",
-              "ToolTip": "C:\\Users\\z.maraktaev\\source\\repos\\Bucking_Unit_App\\Bucking_Unit_App\\SiemensPLC\\Models\\SiemensPLCTypes.cs",
-              "RelativeToolTip": "Bucking_Unit_App\\SiemensPLC\\Models\\SiemensPLCTypes.cs",
-              "ViewState": "AgIAAAAAAAAAAAAAAAAAAAQAAAAUAAAAAAAAAA==",
-              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
-              "WhenOpened": "2025-07-14T05:54:26.721Z"
-            },
-            {
-              "$type": "Document",
-              "DocumentIndex": 7,
-              "Title": "DBAddressModel.cs",
-              "DocumentMoniker": "C:\\Users\\z.maraktaev\\source\\repos\\Bucking_Unit_App\\Bucking_Unit_App\\SiemensPLC\\Models\\DBAddressModel.cs",
-              "RelativeDocumentMoniker": "Bucking_Unit_App\\SiemensPLC\\Models\\DBAddressModel.cs",
-              "ToolTip": "C:\\Users\\z.maraktaev\\source\\repos\\Bucking_Unit_App\\Bucking_Unit_App\\SiemensPLC\\Models\\DBAddressModel.cs",
-              "RelativeToolTip": "Bucking_Unit_App\\SiemensPLC\\Models\\DBAddressModel.cs",
-              "ViewState": "AgIAAOAAAAAAAAAAAIAxwPEAAAAQAAAAAAAAAA==",
-              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
-              "WhenOpened": "2025-07-14T06:00:00.403Z"
-            },
-            {
-              "$type": "Document",
-              "DocumentIndex": 17,
-              "Title": "App.xaml.cs",
-              "DocumentMoniker": "C:\\Users\\z.maraktaev\\source\\repos\\Bucking_Unit_App\\Bucking_Unit_App\\App.xaml.cs",
-              "RelativeDocumentMoniker": "Bucking_Unit_App\\App.xaml.cs",
-              "ToolTip": "C:\\Users\\z.maraktaev\\source\\repos\\Bucking_Unit_App\\Bucking_Unit_App\\App.xaml.cs",
-              "RelativeToolTip": "Bucking_Unit_App\\App.xaml.cs",
-              "ViewState": "AgIAAAAAAAAAAAAAAAAAAA4AAAAAAAAAAAAAAA==",
-              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
-              "WhenOpened": "2025-06-27T10:09:08.012Z"
-            },
-            {
-              "$type": "Document",
-              "DocumentIndex": 2,
               "Title": "ReadFromPLC.cs",
               "DocumentMoniker": "C:\\Users\\z.maraktaev\\source\\repos\\Bucking_Unit_App\\Bucking_Unit_App\\Services\\ReadFromPLC.cs",
               "RelativeDocumentMoniker": "Bucking_Unit_App\\Services\\ReadFromPLC.cs",
               "ToolTip": "C:\\Users\\z.maraktaev\\source\\repos\\Bucking_Unit_App\\Bucking_Unit_App\\Services\\ReadFromPLC.cs",
               "RelativeToolTip": "Bucking_Unit_App\\Services\\ReadFromPLC.cs",
-              "ViewState": "AgIAAAAAAAAAAAAAAAAAABsAAAArAAAAAAAAAA==",
+              "ViewState": "AgIAAFwAAAAAAAAAAAAhwHEAAAAtAAAAAAAAAA==",
               "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
               "WhenOpened": "2025-07-11T12:38:13.163Z",
               "EditorCaption": ""
             },
             {
               "$type": "Document",
-              "DocumentIndex": 5,
-              "Title": "TaskExtensions.cs",
-              "DocumentMoniker": "C:\\Users\\z.maraktaev\\source\\repos\\Bucking_Unit_App\\Bucking_Unit_App\\Utilities\\TaskExtensions.cs",
-              "RelativeDocumentMoniker": "Bucking_Unit_App\\Utilities\\TaskExtensions.cs",
-              "ToolTip": "C:\\Users\\z.maraktaev\\source\\repos\\Bucking_Unit_App\\Bucking_Unit_App\\Utilities\\TaskExtensions.cs",
-              "RelativeToolTip": "Bucking_Unit_App\\Utilities\\TaskExtensions.cs",
-              "ViewState": "AgIAAAAAAAAAAAAAAAAAAAsAAAAMAAAAAAAAAA==",
+              "DocumentIndex": 13,
+              "Title": "WriteToPLC.cs",
+              "DocumentMoniker": "C:\\Users\\z.maraktaev\\source\\repos\\Bucking_Unit_App\\Bucking_Unit_App\\Services\\WriteToPLC.cs",
+              "RelativeDocumentMoniker": "Bucking_Unit_App\\Services\\WriteToPLC.cs",
+              "ToolTip": "C:\\Users\\z.maraktaev\\source\\repos\\Bucking_Unit_App\\Bucking_Unit_App\\Services\\WriteToPLC.cs",
+              "RelativeToolTip": "Bucking_Unit_App\\Services\\WriteToPLC.cs",
+              "ViewState": "AgIAACcAAAAAAAAAAAAWwF0AAAAIAAAAAAAAAA==",
               "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
-              "WhenOpened": "2025-07-15T10:25:14.079Z",
+              "WhenOpened": "2025-07-11T12:37:25.667Z",
               "EditorCaption": ""
             },
             {
               "$type": "Document",
-              "DocumentIndex": 15,
+              "DocumentIndex": 20,
               "Title": "Bucking_Unit_App.csproj",
               "DocumentMoniker": "C:\\Users\\z.maraktaev\\source\\repos\\Bucking_Unit_App\\Bucking_Unit_App\\Bucking_Unit_App.csproj",
               "RelativeDocumentMoniker": "Bucking_Unit_App\\Bucking_Unit_App.csproj",
@@ -247,39 +288,65 @@
             },
             {
               "$type": "Document",
-              "DocumentIndex": 3,
-              "Title": "WriteToPLC.cs",
-              "DocumentMoniker": "C:\\Users\\z.maraktaev\\source\\repos\\Bucking_Unit_App\\Bucking_Unit_App\\Services\\WriteToPLC.cs",
-              "RelativeDocumentMoniker": "Bucking_Unit_App\\Services\\WriteToPLC.cs",
-              "ToolTip": "C:\\Users\\z.maraktaev\\source\\repos\\Bucking_Unit_App\\Bucking_Unit_App\\Services\\WriteToPLC.cs",
-              "RelativeToolTip": "Bucking_Unit_App\\Services\\WriteToPLC.cs",
-              "ViewState": "AgIAAAAAAAAAAAAAAAAAAHIAAAAcAAAAAAAAAA==",
-              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
-              "WhenOpened": "2025-07-11T12:37:25.667Z",
-              "EditorCaption": ""
-            },
-            {
-              "$type": "Document",
-              "DocumentIndex": 6,
-              "Title": "PLCDataWindow.xaml",
-              "DocumentMoniker": "C:\\Users\\z.maraktaev\\source\\repos\\Bucking_Unit_App\\Bucking_Unit_App\\Views\\PLCDataWindow.xaml",
-              "RelativeDocumentMoniker": "Bucking_Unit_App\\Views\\PLCDataWindow.xaml",
-              "ToolTip": "C:\\Users\\z.maraktaev\\source\\repos\\Bucking_Unit_App\\Bucking_Unit_App\\Views\\PLCDataWindow.xaml",
-              "RelativeToolTip": "Bucking_Unit_App\\Views\\PLCDataWindow.xaml",
-              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.003549|",
-              "WhenOpened": "2025-07-14T12:11:27.141Z"
-            },
-            {
-              "$type": "Document",
-              "DocumentIndex": 18,
+              "DocumentIndex": 10,
               "Title": "GraphService.cs",
               "DocumentMoniker": "C:\\Users\\z.maraktaev\\source\\repos\\Bucking_Unit_App\\Bucking_Unit_App\\Services\\GraphService.cs",
               "RelativeDocumentMoniker": "Bucking_Unit_App\\Services\\GraphService.cs",
               "ToolTip": "C:\\Users\\z.maraktaev\\source\\repos\\Bucking_Unit_App\\Bucking_Unit_App\\Services\\GraphService.cs",
               "RelativeToolTip": "Bucking_Unit_App\\Services\\GraphService.cs",
-              "ViewState": "AgIAADoAAAAAAAAAAAAqwGgAAADFAAAAAAAAAA==",
+              "ViewState": "AgIAAHQAAAAAAAAAAAAIwHUAAAArAAAAAAAAAA==",
               "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
-              "WhenOpened": "2025-06-26T10:16:41.663Z"
+              "WhenOpened": "2025-06-26T10:16:41.663Z",
+              "EditorCaption": ""
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 15,
+              "Title": "App.xaml.cs",
+              "DocumentMoniker": "C:\\Users\\z.maraktaev\\source\\repos\\Bucking_Unit_App\\Bucking_Unit_App\\App.xaml.cs",
+              "RelativeDocumentMoniker": "Bucking_Unit_App\\App.xaml.cs",
+              "ToolTip": "C:\\Users\\z.maraktaev\\source\\repos\\Bucking_Unit_App\\Bucking_Unit_App\\App.xaml.cs",
+              "RelativeToolTip": "Bucking_Unit_App\\App.xaml.cs",
+              "ViewState": "AgIAAAAAAAAAAAAAAAAAAA4AAAAAAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
+              "WhenOpened": "2025-06-27T10:09:08.012Z"
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 11,
+              "Title": "DBAddressModel.cs",
+              "DocumentMoniker": "C:\\Users\\z.maraktaev\\source\\repos\\Bucking_Unit_App\\Bucking_Unit_App\\SiemensPLC\\Models\\DBAddressModel.cs",
+              "RelativeDocumentMoniker": "Bucking_Unit_App\\SiemensPLC\\Models\\DBAddressModel.cs",
+              "ToolTip": "C:\\Users\\z.maraktaev\\source\\repos\\Bucking_Unit_App\\Bucking_Unit_App\\SiemensPLC\\Models\\DBAddressModel.cs",
+              "RelativeToolTip": "Bucking_Unit_App\\SiemensPLC\\Models\\DBAddressModel.cs",
+              "ViewState": "AgIAANgAAAAAAAAAAIAwwO4AAAAeAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
+              "WhenOpened": "2025-07-14T06:00:00.403Z",
+              "EditorCaption": ""
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 14,
+              "Title": "TaskExtensions.cs",
+              "DocumentMoniker": "C:\\Users\\z.maraktaev\\source\\repos\\Bucking_Unit_App\\Bucking_Unit_App\\Utilities\\TaskExtensions.cs",
+              "RelativeDocumentMoniker": "Bucking_Unit_App\\Utilities\\TaskExtensions.cs",
+              "ToolTip": "C:\\Users\\z.maraktaev\\source\\repos\\Bucking_Unit_App\\Bucking_Unit_App\\Utilities\\TaskExtensions.cs",
+              "RelativeToolTip": "Bucking_Unit_App\\Utilities\\TaskExtensions.cs",
+              "ViewState": "AgIAAAAAAAAAAAAAAAAAAAwAAAAIAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
+              "WhenOpened": "2025-07-15T10:25:14.079Z"
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 18,
+              "Title": "SiemensPLCTypes.cs",
+              "DocumentMoniker": "C:\\Users\\z.maraktaev\\source\\repos\\Bucking_Unit_App\\Bucking_Unit_App\\SiemensPLC\\Models\\SiemensPLCTypes.cs",
+              "RelativeDocumentMoniker": "Bucking_Unit_App\\SiemensPLC\\Models\\SiemensPLCTypes.cs",
+              "ToolTip": "C:\\Users\\z.maraktaev\\source\\repos\\Bucking_Unit_App\\Bucking_Unit_App\\SiemensPLC\\Models\\SiemensPLCTypes.cs",
+              "RelativeToolTip": "Bucking_Unit_App\\SiemensPLC\\Models\\SiemensPLCTypes.cs",
+              "ViewState": "AgIAAAAAAAAAAAAAAAAAAAQAAAAUAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
+              "WhenOpened": "2025-07-14T05:54:26.721Z"
             },
             {
               "$type": "Document",
@@ -295,61 +362,15 @@
             },
             {
               "$type": "Document",
-              "DocumentIndex": 14,
+              "DocumentIndex": 19,
               "Title": "App.xaml",
               "DocumentMoniker": "C:\\Users\\z.maraktaev\\source\\repos\\Bucking_Unit_App\\Bucking_Unit_App\\App.xaml",
               "RelativeDocumentMoniker": "Bucking_Unit_App\\App.xaml",
               "ToolTip": "C:\\Users\\z.maraktaev\\source\\repos\\Bucking_Unit_App\\Bucking_Unit_App\\App.xaml",
               "RelativeToolTip": "Bucking_Unit_App\\App.xaml",
               "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.003549|",
-              "WhenOpened": "2025-06-26T05:47:57.139Z"
-            },
-            {
-              "$type": "Document",
-              "DocumentIndex": 13,
-              "Title": "StatsService.cs",
-              "DocumentMoniker": "C:\\Users\\z.maraktaev\\source\\repos\\Bucking_Unit_App\\Bucking_Unit_App\\Services\\StatsService.cs",
-              "RelativeDocumentMoniker": "Bucking_Unit_App\\Services\\StatsService.cs",
-              "ToolTip": "C:\\Users\\z.maraktaev\\source\\repos\\Bucking_Unit_App\\Bucking_Unit_App\\Services\\StatsService.cs",
-              "RelativeToolTip": "Bucking_Unit_App\\Services\\StatsService.cs",
-              "ViewState": "AgIAACwAAAAAAAAAAAAAAD4AAAAMAAAAAAAAAA==",
-              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
-              "WhenOpened": "2025-06-25T12:06:22.286Z"
-            },
-            {
-              "$type": "Document",
-              "DocumentIndex": 20,
-              "Title": "OperatorService.cs",
-              "DocumentMoniker": "C:\\Users\\z.maraktaev\\source\\repos\\Bucking_Unit_App\\Bucking_Unit_App\\Services\\OperatorService.cs",
-              "RelativeDocumentMoniker": "Bucking_Unit_App\\Services\\OperatorService.cs",
-              "ToolTip": "C:\\Users\\z.maraktaev\\source\\repos\\Bucking_Unit_App\\Bucking_Unit_App\\Services\\OperatorService.cs",
-              "RelativeToolTip": "Bucking_Unit_App\\Services\\OperatorService.cs",
-              "ViewState": "AgIAAAAAAAAAAAAAAAAAABYAAAAIAAAAAAAAAA==",
-              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
-              "WhenOpened": "2025-06-25T12:05:35.155Z"
-            },
-            {
-              "$type": "Document",
-              "DocumentIndex": 11,
-              "Title": "MainWindow.xaml",
-              "DocumentMoniker": "C:\\Users\\z.maraktaev\\source\\repos\\Bucking_Unit_App\\Bucking_Unit_App\\Views\\MainWindow.xaml",
-              "RelativeDocumentMoniker": "Bucking_Unit_App\\Views\\MainWindow.xaml",
-              "ToolTip": "C:\\Users\\z.maraktaev\\source\\repos\\Bucking_Unit_App\\Bucking_Unit_App\\Views\\MainWindow.xaml",
-              "RelativeToolTip": "Bucking_Unit_App\\Views\\MainWindow.xaml",
-              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.003549|",
-              "WhenOpened": "2025-07-02T10:14:15.846Z"
-            },
-            {
-              "$type": "Document",
-              "DocumentIndex": 16,
-              "Title": "DataAccessLayer.cs",
-              "DocumentMoniker": "C:\\Users\\z.maraktaev\\source\\repos\\Bucking_Unit_App\\Bucking_Unit_App\\Interfaces\\DataAccessLayer.cs",
-              "RelativeDocumentMoniker": "Bucking_Unit_App\\Interfaces\\DataAccessLayer.cs",
-              "ToolTip": "C:\\Users\\z.maraktaev\\source\\repos\\Bucking_Unit_App\\Bucking_Unit_App\\Interfaces\\DataAccessLayer.cs",
-              "RelativeToolTip": "Bucking_Unit_App\\Interfaces\\DataAccessLayer.cs",
-              "ViewState": "AgIAANIAAAAAAAAAAIBJwO0AAAAMAAAAAAAAAA==",
-              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
-              "WhenOpened": "2025-06-25T12:04:47.064Z"
+              "WhenOpened": "2025-06-26T05:47:57.139Z",
+              "EditorCaption": ""
             },
             {
               "$type": "Document",
@@ -389,7 +410,7 @@
             },
             {
               "$type": "Document",
-              "DocumentIndex": 10,
+              "DocumentIndex": 17,
               "Title": "Controller1C.cs",
               "DocumentMoniker": "C:\\Users\\z.maraktaev\\source\\repos\\Bucking_Unit_App\\Bucking_Unit_App\\Controllers\\1C Controller\\Controller1C.cs",
               "RelativeDocumentMoniker": "Bucking_Unit_App\\Controllers\\1C Controller\\Controller1C.cs",
@@ -398,18 +419,6 @@
               "ViewState": "AgIAAFoAAAAAAAAAAAAowBoAAAAXAAAAAAAAAA==",
               "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
               "WhenOpened": "2025-06-18T11:48:46.468Z"
-            },
-            {
-              "$type": "Document",
-              "DocumentIndex": 19,
-              "Title": "COMControllerParamsModel.cs",
-              "DocumentMoniker": "C:\\Users\\z.maraktaev\\source\\repos\\Bucking_Unit_App\\Bucking_Unit_App\\Models\\COMControllerParamsModel.cs",
-              "RelativeDocumentMoniker": "Bucking_Unit_App\\Models\\COMControllerParamsModel.cs",
-              "ToolTip": "C:\\Users\\z.maraktaev\\source\\repos\\Bucking_Unit_App\\Bucking_Unit_App\\Models\\COMControllerParamsModel.cs",
-              "RelativeToolTip": "Bucking_Unit_App\\Models\\COMControllerParamsModel.cs",
-              "ViewState": "AgIAADsAAAAAAAAAAAAUwFMAAAAIAAAAAAAAAA==",
-              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
-              "WhenOpened": "2025-06-18T11:41:41.225Z"
             },
             {
               "$type": "Document",
@@ -422,18 +431,26 @@
               "ViewState": "AgIAAAAAAAAAAAAAAAAAAAIAAAAKAAAAAAAAAA==",
               "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
               "WhenOpened": "2025-06-18T11:41:22.731Z"
-            },
+            }
+          ]
+        },
+        {
+          "DockedHeight": 17,
+          "SelectedChildIndex": 0,
+          "Children": [
             {
               "$type": "Document",
-              "DocumentIndex": 9,
-              "Title": "COMController.cs",
-              "DocumentMoniker": "C:\\Users\\z.maraktaev\\source\\repos\\Bucking_Unit_App\\Bucking_Unit_App\\Controllers\\COM Controller\\COMController.cs",
-              "RelativeDocumentMoniker": "Bucking_Unit_App\\Controllers\\COM Controller\\COMController.cs",
-              "ToolTip": "C:\\Users\\z.maraktaev\\source\\repos\\Bucking_Unit_App\\Bucking_Unit_App\\Controllers\\COM Controller\\COMController.cs",
-              "RelativeToolTip": "Bucking_Unit_App\\Controllers\\COM Controller\\COMController.cs",
-              "ViewState": "AgIAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA==",
-              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
-              "WhenOpened": "2025-06-18T11:41:05.935Z"
+              "DocumentIndex": 16,
+              "Title": "PLCDataWindow.xaml",
+              "DocumentMoniker": "C:\\Users\\z.maraktaev\\source\\repos\\Bucking_Unit_App\\Bucking_Unit_App\\Views\\PLCDataWindow.xaml",
+              "RelativeDocumentMoniker": "Bucking_Unit_App\\Views\\PLCDataWindow.xaml",
+              "ToolTip": "C:\\Users\\z.maraktaev\\source\\repos\\Bucking_Unit_App\\Bucking_Unit_App\\Views\\PLCDataWindow.xaml",
+              "RelativeToolTip": "Bucking_Unit_App\\Views\\PLCDataWindow.xaml",
+              "ViewState": "AgIAAAAAAAAAAAAAAAAiwFwAAAAJAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.003549|",
+              "WhenOpened": "2025-07-15T12:58:31.748Z",
+              "IsPinned": true,
+              "EditorCaption": ""
             }
           ]
         }

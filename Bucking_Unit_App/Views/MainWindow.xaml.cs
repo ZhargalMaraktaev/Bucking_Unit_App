@@ -31,6 +31,7 @@ using Sharp7;
 using Bucking_Unit_App.SiemensPLC.Models;
 using static Bucking_Unit_App.SiemensPLC.Models.SiemensPLCModels.PLCReadWriteModel;
 using Bucking_Unit_App.Utilities;
+using System.Globalization;
 
 namespace Bucking_Unit_App.Views
 {
@@ -57,6 +58,7 @@ namespace Bucking_Unit_App.Views
         private Task _allStatsUpdateTask;
         private Task _currentPipeUpdateTask;
         private CancellationTokenSource _connectionCheckCts;
+        private CancellationTokenSource _torqueUpdateCts;
 
         public MainWindow()
         {
@@ -75,6 +77,7 @@ namespace Bucking_Unit_App.Views
             StartCurrentPipeUpdateLoop();
             StartAllStatsUpdateLoop();
             StartPLCUpdateLoop();
+            StartTorqueDataUpdateLoop();
             txtPipeCounter.LostFocus += txtPipeCounter_LostFocus;
         }
 
@@ -103,12 +106,11 @@ namespace Bucking_Unit_App.Views
                     {
                         TryConnectToPLC();
                     }
-                    // Уведомляем PLCDataWindow об изменении статуса
                     if (_plcDataWindow != null && _plcDataWindow.IsLoaded)
                     {
                         _plcDataWindow.Dispatcher.Invoke(() =>
                         {
-                            if (_plcDataWindow != null) // Проверяем, что окно не закрыто
+                            if (_plcDataWindow != null)
                             {
                                 var lblConnectionStatus = _plcDataWindow.FindName("lblConnectionStatus") as System.Windows.Controls.Label;
                                 if (lblConnectionStatus != null)
@@ -132,6 +134,7 @@ namespace Bucking_Unit_App.Views
             }
         }
 
+        
         private async void StartPLCUpdateLoop()
         {
             s7Client = new S7Client();
@@ -148,110 +151,135 @@ namespace Bucking_Unit_App.Views
                 return;
             }
 
-            _plcReader.AddAddress("TorqueUpperLimitHMI", new SiemensPLCModels.DBAddressModel.TorqueUpperLimitHMI(s7Client));
-            _plcReader.AddAddress("Torque", new SiemensPLCModels.DBAddressModel.ActualTorqueHMI(s7Client));
-            writer.AddAddress("TorqueSetpoint", new SiemensPLCModels.DBAddressModel.TorqueUpperLimitHMI(s7Client));
+            // Добавление всех параметров для чтения и записи
+            var parameters = new[]
+            {
+                "TorqueUpperLimitHMI", "IdleTorqueHMI","StopTorqueHMI",
+                "TorqueLowerLimitHMI", "QuantityHMI", "StartingTorqueHMI",
+                "CuringRotationCount", "StatusValue", "StatusTime",
+                "FeedDelayTimeHMI", "ReturnDelayTimeHMI"
+            };
+
+            foreach (var param in parameters)
+            {
+                _plcReader.AddAddress(param, CreateAddressModel(param, s7Client));
+                writer.AddAddress(param, CreateAddressModel(param, s7Client));
+            }
 
             _cts = new CancellationTokenSource();
             try
             {
                 _plcUpdateTask = _plcReader.StartPeriodicReadAsync(TimeSpan.FromSeconds(1), (key, result) =>
                 {
-                    // Обработка для PLCDataWindow выполняется в самом окне
+                    // Обработка выполняется в PLCDataWindow
                 }, _cts.Token);
 
-                // Запускаем проверку состояния подключения
                 StartConnectionStatusCheck();
 
-                async void WriteExample()
-                {
-                    const int maxRetries = 3;
-                    int attempt = 0;
-                    int result = -1;
+                //async void WriteExample()
+                //{
+                //    const int maxRetries = 3;
+                //    int attempt = 0;
+                //    int result = -1;
 
-                    while (attempt < maxRetries)
-                    {
-                        attempt++;
-                        try
-                        {
-                            if (!s7Client.Connected)
-                            {
-                                System.Diagnostics.Debug.WriteLine($"MainWindow: Попытка {attempt}/{maxRetries}: Соединение потеряно, пытаемся переподключиться...");
-                                if (!TryConnectToPLC())
-                                {
-                                    if (attempt == maxRetries)
-                                    {
-                                        Dispatcher.Invoke(() =>
-                                        {
-                                            MessageBox.Show("Ошибка подключения к PLC после нескольких попыток.", "Ошибка", MessageBoxButton.OK, MessageBoxImage.Error);
-                                            System.Diagnostics.Debug.WriteLine("MainWindow: Не удалось подключиться к PLC после всех попыток.");
-                                        });
-                                    }
-                                    continue;
-                                }
-                            }
+                //    while (attempt < maxRetries)
+                //    {
+                //        attempt++;
+                //        try
+                //        {
+                //            if (!s7Client.Connected)
+                //            {
+                //                System.Diagnostics.Debug.WriteLine($"MainWindow: Попытка {attempt}/{maxRetries}: Соединение потеряно, пытаемся переподключиться...");
+                //                if (!TryConnectToPLC())
+                //                {
+                //                    if (attempt == maxRetries)
+                //                    {
+                //                        Dispatcher.Invoke(() =>
+                //                        {
+                //                            MessageBox.Show("Ошибка подключения к PLC после нескольких попыток.", "Ошибка", MessageBoxButton.OK, MessageBoxImage.Error);
+                //                            System.Diagnostics.Debug.WriteLine("MainWindow: Не удалось подключиться к PLC после всех попыток.");
+                //                        });
+                //                    }
+                //                    continue;
+                //                }
+                //            }
 
-                            System.Diagnostics.Debug.WriteLine($"MainWindow: Попытка {attempt}/{maxRetries}: Запись TorqueSetpoint = 500.0");
-                            result = await writer.WriteAsync("TorqueSetpoint", 500.0f).TimeoutAfter(5000);
-                            if (result == 1)
-                            {
-                                Dispatcher.Invoke(() =>
-                                {
-                                    MessageBox.Show("Значение успешно записано.", "Успех", MessageBoxButton.OK, MessageBoxImage.Information);
-                                    System.Diagnostics.Debug.WriteLine($"MainWindow: Успешная запись TorqueSetpoint = 500.0");
-                                });
-                                return;
-                            }
-                            else
-                            {
-                                string errorText = s7Client.ErrorText(result);
-                                System.Diagnostics.Debug.WriteLine($"MainWindow: Попытка {attempt}/{maxRetries}: Ошибка записи TorqueSetpoint, код: {result}, текст: {errorText}");
-                                if (attempt == maxRetries)
-                                {
-                                    Dispatcher.Invoke(() =>
-                                    {
-                                        MessageBox.Show($"Ошибка записи: Код {result} ({errorText})", "Ошибка", MessageBoxButton.OK, MessageBoxImage.Error);
-                                    });
-                                }
-                            }
-                        }
-                        catch (TimeoutException)
-                        {
-                            System.Diagnostics.Debug.WriteLine($"MainWindow: Попытка {attempt}/{maxRetries}: Таймаут при записи в PLC.");
-                            if (attempt == maxRetries)
-                            {
-                                Dispatcher.Invoke(() =>
-                                {
-                                    MessageBox.Show("Ошибка: Операция записи в PLC превысила время ожидания.", "Ошибка", MessageBoxButton.OK, MessageBoxImage.Error);
-                                    System.Diagnostics.Debug.WriteLine("MainWindow: Не удалось записать после всех попыток из-за таймаута.");
-                                });
-                            }
-                            if (s7Client.Connected)
-                            {
-                                s7Client.Disconnect();
-                                System.Diagnostics.Debug.WriteLine("MainWindow: Соединение закрыто перед повторной попыткой.");
-                            }
-                        }
-                        catch (Exception ex)
-                        {
-                            System.Diagnostics.Debug.WriteLine($"MainWindow: Попытка {attempt}/{maxRetries}: Исключение при записи: {ex.Message}");
-                            if (attempt == maxRetries)
-                            {
-                                Dispatcher.Invoke(() =>
-                                {
-                                    MessageBox.Show($"Ошибка при записи в PLC: {ex.Message}", "Ошибка", MessageBoxButton.OK, MessageBoxImage.Error);
-                                });
-                            }
-                        }
+                //            System.Diagnostics.Debug.WriteLine($"MainWindow: Попытка {attempt}/{maxRetries}: Запись TorqueSetpoint = 500.0");
+                //            result = await writer.WriteAsync("TorqueSetpoint", 500.0f).TimeoutAfter(5000);
+                //            if (result == 1)
+                //            {
+                //                Dispatcher.Invoke(() =>
+                //                {
+                //                    MessageBox.Show("Значение успешно записано.", "Успех", MessageBoxButton.OK, MessageBoxImage.Information);
+                //                    System.Diagnostics.Debug.WriteLine($"MainWindow: Успешная запись TorqueSetpoint = 500.0");
+                //                });
+                //                return;
+                //            }
+                //            else
+                //            {
+                //                string errorText;
+                //                switch (result)
+                //                {
+                //                    case -1:
+                //                        errorText = "Нет соединения с PLC";
+                //                        break;
+                //                    case -2:
+                //                        errorText = "Адрес не найден";
+                //                        break;
+                //                    case -3:
+                //                        errorText = "Исключение при записи";
+                //                        break;
+                //                    default:
+                //                        errorText = s7Client.ErrorText(result);
+                //                        break;
+                //                }
+                //                System.Diagnostics.Debug.WriteLine($"MainWindow: Попытка {attempt}/{maxRetries}: Ошибка записи TorqueSetpoint, код: {result}, текст: {errorText}");
+                //                if (attempt == maxRetries)
+                //                {
+                //                    Dispatcher.Invoke(() =>
+                //                    {
+                //                        MessageBox.Show($"Ошибка записи: Код {result} ({errorText})", "Ошибка", MessageBoxButton.OK, MessageBoxImage.Error);
+                //                    });
+                //                }
+                //            }
+                //        }
+                //        catch (TimeoutException)
+                //        {
+                //            System.Diagnostics.Debug.WriteLine($"MainWindow: Попытка {attempt}/{maxRetries}: Таймаут при записи в PLC.");
+                //            if (attempt == maxRetries)
+                //            {
+                //                Dispatcher.Invoke(() =>
+                //                {
+                //                    MessageBox.Show("Ошибка: Операция записи в PLC превысила время ожидания.", "Ошибка", MessageBoxButton.OK, MessageBoxImage.Error);
+                //                    System.Diagnostics.Debug.WriteLine("MainWindow: Не удалось записать после всех попыток из-за таймаута.");
+                //                });
+                //            }
+                //            if (s7Client.Connected)
+                //            {
+                //                s7Client.Disconnect();
+                //                System.Diagnostics.Debug.WriteLine("MainWindow: Соединение закрыто перед повторной попыткой.");
+                //            }
+                //        }
+                //        catch (Exception ex)
+                //        {
+                //            System.Diagnostics.Debug.WriteLine($"MainWindow: Попытка {attempt}/{maxRetries}: Исключение при записи: {ex.Message}");
+                //            if (attempt == maxRetries)
+                //            {
+                //                Dispatcher.Invoke(() =>
+                //                {
+                //                    MessageBox.Show($"Ошибка при записи в PLC: {ex.Message}", "Ошибка", MessageBoxButton.OK, MessageBoxImage.Error);
+                //                });
+                //            }
+                //        }
 
-                        if (attempt < maxRetries)
-                        {
-                            await Task.Delay(1000);
-                        }
-                    }
-                }
+                //        if (attempt < maxRetries)
+                //        {
+                //            await Task.Delay(1000);
+                //        }
+                //    }
+                //}
 
-                WriteExample();
+                //WriteExample();
                 await _plcUpdateTask;
             }
             catch (TaskCanceledException)
@@ -275,6 +303,87 @@ namespace Bucking_Unit_App.Views
                 _plcReader.Disconnect();
                 writer.Disconnect();
                 System.Diagnostics.Debug.WriteLine("MainWindow: PLCReader и PLCWriter отключены.");
+            }
+        }
+
+        private async void StartTorqueDataUpdateLoop()
+        {
+            _torqueUpdateCts = new CancellationTokenSource();
+            var tagNames = new Dictionary<string, string>
+            {
+                { "lblMaxTorque", "NOT_MN3_TorqueUpperLimitHMI" },
+                { "lblOptimalTorque", "NOT_MN3_IdleTorqueHMI" },
+                { "lblStopTorque", "NOT_MN3_StopTorqueHMI" },
+                { "lblMinTorque", "NOT_MN3_TorqueLowerLimitHMI" }
+            };
+
+            while (!_torqueUpdateCts.Token.IsCancellationRequested)
+            {
+                try
+                {
+                    using (var connection = new SqlConnection(_runtimeConnectionString))
+                    {
+                        await connection.OpenAsync();
+                        foreach (var tag in tagNames)
+                        {
+                            string query = "SELECT TOP 1 Value FROM Runtime.dbo.v_Live WHERE TagName = @TagName ORDER BY DateTime DESC";
+                            using (var command = new SqlCommand(query, connection))
+                            {
+                                command.Parameters.AddWithValue("@TagName", tag.Value);
+                                var result = await command.ExecuteScalarAsync();
+                                Dispatcher.Invoke(() =>
+                                {
+                                    var label = FindName(tag.Key) as Label;
+                                    if (label != null)
+                                    {
+                                        label.Content = result != null ? Convert.ToSingle(result).ToString(CultureInfo.InvariantCulture) : "N/A";
+                                    }
+                                    Debug.WriteLine($"MainWindow: Обновлено {tag.Key} ({tag.Value}) = {label?.Content}");
+                                });
+                            }
+                        }
+                    }
+                }
+                catch (SqlException ex)
+                {
+                    Debug.WriteLine($"MainWindow: Ошибка подключения к БД: {ex.Message}");
+                    Dispatcher.Invoke(() =>
+                    {
+                        foreach (var tag in tagNames)
+                        {
+                            var label = FindName(tag.Key) as Label;
+                            if (label != null)
+                            {
+                                label.Content = "N/A";
+                            }
+                        }
+                    });
+                }
+                catch (Exception ex)
+                {
+                    Debug.WriteLine($"MainWindow: Ошибка при чтении из БД: {ex.Message}");
+                }
+                await Task.Delay(1000); // Обновление каждую секунду
+            }
+            Debug.WriteLine("MainWindow: Цикл обновления данных крутящего момента остановлен.");
+        }
+
+        private object CreateAddressModel(string param, S7Client s7Client)
+        {
+            switch (param)
+            {
+                case "TorqueUpperLimitHMI": return new SiemensPLCModels.DBAddressModel.TorqueUpperLimitHMI(s7Client);
+                case "IdleTorqueHMI": return new SiemensPLCModels.DBAddressModel.IdleTorqueHMI(s7Client);
+                case "StopTorqueHMI": return new SiemensPLCModels.DBAddressModel.StopTorqueHMI(s7Client);
+                case "TorqueLowerLimitHMI": return new SiemensPLCModels.DBAddressModel.TorqueLowerLimitHMI(s7Client);
+                case "QuantityHMI": return new SiemensPLCModels.DBAddressModel.QuantityHMI(s7Client);
+                case "StartingTorqueHMI": return new SiemensPLCModels.DBAddressModel.StartingTorqueHMI(s7Client);
+                case "CuringRotationCount": return new SiemensPLCModels.DBAddressModel.CuringRotationCount(s7Client);
+                case "StatusValue": return new SiemensPLCModels.DBAddressModel.StatusValue(s7Client);
+                case "StatusTime": return new SiemensPLCModels.DBAddressModel.StatusTime(s7Client);
+                case "FeedDelayTimeHMI": return new SiemensPLCModels.DBAddressModel.FeedDelayTimeHMI(s7Client);
+                case "ReturnDelayTimeHMI": return new SiemensPLCModels.DBAddressModel.ReturnDelayTimeHMI(s7Client);
+                default: throw new ArgumentException($"Неизвестный параметр: {param}");
             }
         }
 
@@ -385,17 +494,17 @@ namespace Bucking_Unit_App.Views
             // Реализация закомментирована в предоставленном коде, оставляем как есть
         }
 
-        private void lbPipeCounterSuggestions_SelectionChanged(object sender, SelectionChangedEventArgs e)
-        {
-            if (lbPipeCounterSuggestions.SelectedItem is KeyValuePair<int, string> selected)
-            {
-                _selectedPipeCounter = selected.Key;
-                txtPipeCounter.Text = selected.Value;
-                lbPipeCounterSuggestions.ItemsSource = null;
-                lbPipeCounterSuggestions.Visibility = Visibility.Collapsed;
-                btnShowGraph_Click(null, null);
-            }
-        }
+        //private void lbPipeCounterSuggestions_SelectionChanged(object sender, SelectionChangedEventArgs e)
+        //{
+        //    if (lbPipeCounterSuggestions.SelectedItem is KeyValuePair<int, string> selected)
+        //    {
+        //        _selectedPipeCounter = selected.Key;
+        //        txtPipeCounter.Text = selected.Value;
+        //        lbPipeCounterSuggestions.ItemsSource = null;
+        //        lbPipeCounterSuggestions.Visibility = Visibility.Collapsed;
+        //        btnShowGraph_Click(null, null);
+        //    }
+        //}
 
         private void cbYear_SelectionChanged(object sender, System.Windows.Controls.SelectionChangedEventArgs e)
         {
@@ -935,6 +1044,8 @@ namespace Bucking_Unit_App.Views
             _allStatsUpdateCts?.Dispose();
             _currentPipeUpdateCts?.Dispose();
             _connectionCheckCts?.Dispose();
+            _torqueUpdateCts?.Cancel();
+            _torqueUpdateCts?.Dispose();
 
             try
             {

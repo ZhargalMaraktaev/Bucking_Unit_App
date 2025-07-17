@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Collections.Generic;
 using System.Windows;
 using System.Windows.Media;
 using Bucking_Unit_App.Services;
@@ -6,7 +7,12 @@ using Bucking_Unit_App.SiemensPLC.Models;
 using Sharp7;
 using System.Globalization;
 using System.Threading.Tasks;
-using Bucking_Unit_App.Utilities; // Добавлено для TaskExtensions
+using Bucking_Unit_App.Utilities;
+using System.Windows.Controls;
+using System.Xml.Serialization;
+using System.IO;
+using Microsoft.Win32;
+using static Bucking_Unit_App.SiemensPLC.Models.SiemensPLCModels.DBAddressModel;
 
 namespace Bucking_Unit_App.Views
 {
@@ -14,77 +20,329 @@ namespace Bucking_Unit_App.Views
     {
         private readonly ReadFromPLC _plcReader;
         private readonly WriteToPLC _plcWriter;
-        private readonly S7Client _s7Client; // Используем переданный S7Client
+        private readonly S7Client _s7Client;
+        private readonly string _xmlFilePath = "logs/plc_parameters.xml";
+        private string _currentXmlFilePath; // Поле для хранения текущего пути к XML-файлу
 
         public PLCDataWindow(ReadFromPLC plcReader, S7Client s7Client)
         {
             InitializeComponent();
             _plcReader = plcReader;
-            _s7Client = s7Client; // Используем переданный S7Client
-            _plcWriter = new WriteToPLC(_s7Client); // Передаём S7Client в WriteToPLC
+            _s7Client = s7Client;
+            _plcWriter = new WriteToPLC(_s7Client);
             _plcReader.ValueRead += PlcReader_ValueRead;
+            _currentXmlFilePath = _xmlFilePath; // Инициализация по умолчанию
+            UpdateCurrentXmlFileLabel(); // Установить начальное значение Label
 
-            // Подключение к PLC (если ещё не подключено)
-            TryConnectToPLC();
-            UpdateConnectionStatus();
+            // Добавление адресов для чтения и записи
+            var parameters = new[]
+            {
+                "TorqueUpperLimitHMI", "IdleTorqueHMI","StopTorqueHMI",
+                "TorqueLowerLimitHMI", "QuantityHMI", "StartingTorqueHMI",
+                "CuringRotationCount", "StatusValue", "StatusTime",
+                "FeedDelayTimeHMI", "ReturnDelayTimeHMI"
+            };
 
-            // Добавление адреса для записи
-            _plcWriter.AddAddress("TorqueSetpoint", new SiemensPLCModels.DBAddressModel.TorqueUpperLimitHMI(_s7Client));
-
-            // Запуск периодической проверки состояния подключения
-            StartConnectionStatusCheck();
+            foreach (var param in parameters)
+            {
+                _plcReader.AddAddress(param, CreateAddressModel(param, _s7Client));
+                _plcWriter.AddAddress(param, CreateAddressModel(param, _s7Client));
+            }
 
             this.Closing += PLCDataWindow_Closing;
+            Directory.CreateDirectory("logs"); // Убедимся, что папка logs существует
         }
 
-        private void TryConnectToPLC()
+        private object CreateAddressModel(string param, S7Client s7Client)
         {
-            if (!_s7Client.Connected)
+            switch (param)
             {
-                System.Diagnostics.Debug.WriteLine("PLCDataWindow: Попытка подключения к PLC...");
-                int result = _s7Client.ConnectTo("192.168.11.241", 0, 1);
-                if (result != 0)
-                {
-                    string errorText = _s7Client.ErrorText(result);
-                    MessageBox.Show($"Ошибка подключения к PLC: {errorText}", "Ошибка", MessageBoxButton.OK, MessageBoxImage.Error);
-                    System.Diagnostics.Debug.WriteLine($"PLCDataWindow: Ошибка подключения к PLC, код: {result}, текст: {errorText}");
-                }
-                else
-                {
-                    System.Diagnostics.Debug.WriteLine("PLCDataWindow: Успешное подключение к PLC.");
-                }
-            }
-            UpdateConnectionStatus();
-        }
-
-        private async void StartConnectionStatusCheck()
-        {
-            while (!IsClosed)
-            {
-                if (!_s7Client.Connected)
-                {
-                    TryConnectToPLC();
-                }
-                UpdateConnectionStatus();
-                await Task.Delay(1000); // Проверяем каждую секунду
+                case "TorqueUpperLimitHMI": return new SiemensPLCModels.DBAddressModel.TorqueUpperLimitHMI(s7Client);
+                case "IdleTorqueHMI": return new SiemensPLCModels.DBAddressModel.IdleTorqueHMI(s7Client);
+                case "StopTorqueHMI": return new SiemensPLCModels.DBAddressModel.StopTorqueHMI(s7Client);
+                case "TorqueLowerLimitHMI": return new SiemensPLCModels.DBAddressModel.TorqueLowerLimitHMI(s7Client);
+                case "QuantityHMI": return new SiemensPLCModels.DBAddressModel.QuantityHMI(s7Client);
+                case "StartingTorqueHMI": return new SiemensPLCModels.DBAddressModel.StartingTorqueHMI(s7Client);
+                case "CuringRotationCount": return new SiemensPLCModels.DBAddressModel.CuringRotationCount(s7Client);
+                case "StatusValue": return new SiemensPLCModels.DBAddressModel.StatusValue(s7Client);
+                case "StatusTime": return new SiemensPLCModels.DBAddressModel.StatusTime(s7Client);
+                case "FeedDelayTimeHMI": return new SiemensPLCModels.DBAddressModel.FeedDelayTimeHMI(s7Client);
+                case "ReturnDelayTimeHMI": return new SiemensPLCModels.DBAddressModel.ReturnDelayTimeHMI(s7Client);
+                default: throw new ArgumentException($"Неизвестный параметр: {param}");
             }
         }
-
-        private bool IsClosed { get; set; }
 
         private void PlcReader_ValueRead(object sender, (string AddressKey, SiemensPLCModels.PLCReadWriteModel.PLCModifiedType Result) e)
         {
             Dispatcher.Invoke(() =>
             {
-                if (e.AddressKey == "TorqueUpperLimitHMI")
+                try
                 {
-                    lblFrontClamp.Content = e.Result?.ToString() ?? "N/A";
+                    var label = FindName($"lbl{e.AddressKey}") as System.Windows.Controls.Label;
+                    if (label != null)
+                    {
+                        if (e.Result is SiemensPLCModels.PLCReadWriteModel.PLCFloatResult floatResult)
+                        {
+                            label.Content = floatResult.value.ToString(CultureInfo.InvariantCulture);
+                        }
+                        else
+                        {
+                            label.Content = e.Result?.ToString() ?? "N/A";
+                        }
+                    }
                 }
-                else if (e.AddressKey == "Torque")
+                catch (Exception ex)
                 {
-                    lblActualTorque.Content = e.Result?.ToString() ?? "N/A";
+                    System.Diagnostics.Debug.WriteLine($"PLCDataWindow: Ошибка обновления интерфейса для {e.AddressKey}: {ex.Message}");
                 }
             });
+        }
+
+        private async void btnReadParameters_Click(object sender, RoutedEventArgs e)
+        {
+            try
+            {
+                if (!_s7Client.Connected)
+                {
+                    MessageBox.Show("Нет подключения к ПЛК. Пожалуйста, проверьте соединение.", "Ошибка", MessageBoxButton.OK, MessageBoxImage.Error);
+                    System.Diagnostics.Debug.WriteLine("PLCDataWindow: Попытка чтения без подключения к ПЛК.");
+                    return;
+                }
+
+                var parameters = new[]
+                {
+                    "TorqueUpperLimitHMI", "IdleTorqueHMI","StopTorqueHMI",
+                    "TorqueLowerLimitHMI", "QuantityHMI", "StartingTorqueHMI",
+                    "CuringRotationCount", "StatusValue", "StatusTime",
+                    "FeedDelayTimeHMI", "ReturnDelayTimeHMI"
+                };
+
+                // Чтение параметров с ПЛК
+                var results = await _plcReader.ReadMultipleAsync(parameters);
+                var parameterValues = new List<Parameter>();
+
+                // Сохранение в XML
+                foreach (var param in parameters)
+                {
+                    var result = results[param];
+                    if (result is SiemensPLCModels.PLCReadWriteModel.PLCFloatResult floatResult)
+                    {
+                        parameterValues.Add(new Parameter { Name = param, Value = floatResult.value });
+                    }
+                    else
+                    {
+                        parameterValues.Add(new Parameter { Name = param, Value = null });
+                        System.Diagnostics.Debug.WriteLine($"PLCDataWindow: Не удалось прочитать {param}: {result.GetType().Name}");
+                    }
+                }
+
+                SaveParametersToXml(parameterValues, _xmlFilePath);
+                _currentXmlFilePath = _xmlFilePath; // Обновляем текущий путь
+                UpdateCurrentXmlFileLabel(); // Обновляем Label
+                System.Diagnostics.Debug.WriteLine($"PLCDataWindow: Параметры сохранены в {_xmlFilePath}");
+
+                // Обновление интерфейса из XML
+                var loadedParameters = LoadParametersFromXml(_xmlFilePath);
+                Dispatcher.Invoke(() =>
+                {
+                    foreach (var param in loadedParameters)
+                    {
+                        var label = FindName($"lbl{param.Name}") as Label;
+                        var textBox = FindName($"txt{param.Name}") as TextBox;
+                        if (label != null)
+                        {
+                            label.Content = param.Value.HasValue ? param.Value.Value.ToString(CultureInfo.InvariantCulture) : "N/A";
+                        }
+                        if (textBox != null)
+                        {
+                            textBox.Text = param.Value.HasValue ? param.Value.Value.ToString(CultureInfo.InvariantCulture) : "";
+                        }
+                    }
+                });
+
+                MessageBox.Show($"Параметры успешно считаны и сохранены в {_xmlFilePath}.", "Успех", MessageBoxButton.OK, MessageBoxImage.Information);
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show($"Ошибка при чтении параметров: {ex.Message}", "Ошибка", MessageBoxButton.OK, MessageBoxImage.Error);
+                System.Diagnostics.Debug.WriteLine($"PLCDataWindow: Ошибка при чтении параметров: {ex.Message}");
+            }
+        }
+
+        private async void btnWriteParameters_Click(object sender, RoutedEventArgs e)
+        {
+            try
+            {
+                if (!_s7Client.Connected)
+                {
+                    MessageBox.Show("Нет подключения к ПЛК. Пожалуйста, проверьте соединение.", "Ошибка", MessageBoxButton.OK, MessageBoxImage.Error);
+                    System.Diagnostics.Debug.WriteLine("PLCDataWindow: Попытка записи параметров без подключения к ПЛК.");
+                    return;
+                }
+
+                var parameters = new[]
+                {
+                    "TorqueUpperLimitHMI", "IdleTorqueHMI","StopTorqueHMI",
+                    "TorqueLowerLimitHMI", "QuantityHMI", "StartingTorqueHMI",
+                    "CuringRotationCount", "StatusValue", "StatusTime",
+                    "FeedDelayTimeHMI", "ReturnDelayTimeHMI"
+                };
+
+                var parameterValues = new List<Parameter>();
+                bool allValid = true;
+
+                // Сбор значений из текстовых полей и валидация
+                foreach (var param in parameters)
+                {
+                    var textBox = FindName($"txt{param}") as TextBox;
+                    if (textBox == null)
+                    {
+                        MessageBox.Show($"Поле ввода для {param} не найдено.", "Ошибка", MessageBoxButton.OK, MessageBoxImage.Warning);
+                        allValid = false;
+                        break;
+                    }
+
+                    if (float.TryParse(textBox.Text, NumberStyles.Any, CultureInfo.InvariantCulture, out float value))
+                    {
+                        parameterValues.Add(new Parameter { Name = param, Value = value });
+                    }
+                    else
+                    {
+                        MessageBox.Show($"Пожалуйста, введите корректное числовое значение для {param} (используйте точку как разделитель).", "Ошибка", MessageBoxButton.OK, MessageBoxImage.Warning);
+                        System.Diagnostics.Debug.WriteLine($"PLCDataWindow: Некорректное значение {param}: '{textBox.Text}'");
+                        allValid = false;
+                        break;
+                    }
+                }
+
+                if (!allValid)
+                {
+                    return;
+                }
+
+                // Сохранение в XML
+                SaveParametersToXml(parameterValues, _xmlFilePath);
+                _currentXmlFilePath = _xmlFilePath; // Обновляем текущий путь
+                UpdateCurrentXmlFileLabel(); // Обновляем Label
+                System.Diagnostics.Debug.WriteLine($"PLCDataWindow: Параметры сохранены в {_xmlFilePath} перед записью в ПЛК");
+
+                // Запись в ПЛК из XML
+                var loadedParameters = LoadParametersFromXml(_xmlFilePath);
+                bool allWritten = true;
+
+                foreach (var param in loadedParameters)
+                {
+                    if (param.Value.HasValue)
+                    {
+                        int result = await _plcWriter.WriteAsync(param.Name, param.Value.Value).TimeoutAfter(5000);
+                        if (result != 1)
+                        {
+                            string errorText;
+                            switch (result)
+                            {
+                                case -1:
+                                    errorText = "Нет соединения с ПЛК";
+                                    break;
+                                case -2:
+                                    errorText = "Адрес не найден";
+                                    break;
+                                case -3:
+                                    errorText = "Исключение при записи";
+                                    break;
+                                default:
+                                    errorText = _s7Client.ErrorText(result);
+                                    break;
+                            }
+                            MessageBox.Show($"Ошибка записи {param.Name} в ПЛК: Код {result} ({errorText})", "Ошибка", MessageBoxButton.OK, MessageBoxImage.Error);
+                            System.Diagnostics.Debug.WriteLine($"PLCDataWindow: Ошибка записи {param.Name}, код: {result}, текст: {errorText}");
+                            allWritten = false;
+                        }
+                        else
+                        {
+                            System.Diagnostics.Debug.WriteLine($"PLCDataWindow: Успешная запись {param.Name} = {param.Value.Value}");
+                        }
+                    }
+                }
+
+                if (allWritten)
+                {
+                    MessageBox.Show($"Все параметры успешно записаны в ПЛК из {_xmlFilePath}.", "Успех", MessageBoxButton.OK, MessageBoxImage.Information);
+                }
+            }
+            catch (TimeoutException)
+            {
+                MessageBox.Show("Ошибка: Операция записи параметров в ПЛК превысила время ожидания.", "Ошибка", MessageBoxButton.OK, MessageBoxImage.Error);
+                System.Diagnostics.Debug.WriteLine("PLCDataWindow: Таймаут при записи параметров.");
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show($"Ошибка при записи параметров в ПЛК: {ex.Message}", "Ошибка", MessageBoxButton.OK, MessageBoxImage.Error);
+                System.Diagnostics.Debug.WriteLine($"PLCDataWindow: Исключение при записи параметров: {ex.Message}");
+            }
+        }
+
+        private void btnSaveParameters_Click(object sender, RoutedEventArgs e)
+        {
+            try
+            {
+                var parameters = new[]
+                {
+                    "TorqueUpperLimitHMI", "IdleTorqueHMI","StopTorqueHMI",
+                    "TorqueLowerLimitHMI", "QuantityHMI", "StartingTorqueHMI",
+                    "CuringRotationCount", "StatusValue", "StatusTime",
+                    "FeedDelayTimeHMI", "ReturnDelayTimeHMI"
+                };
+
+                var parameterValues = new List<Parameter>();
+                bool allValid = true;
+
+                // Сбор значений из текстовых полей и валидация
+                foreach (var param in parameters)
+                {
+                    var textBox = FindName($"txt{param}") as TextBox;
+                    if (textBox == null)
+                    {
+                        MessageBox.Show($"Поле ввода для {param} не найдено.", "Ошибка", MessageBoxButton.OK, MessageBoxImage.Warning);
+                        allValid = false;
+                        break;
+                    }
+
+                    if (float.TryParse(textBox.Text, NumberStyles.Any, CultureInfo.InvariantCulture, out float value))
+                    {
+                        parameterValues.Add(new Parameter { Name = param, Value = value });
+                    }
+                    else
+                    {
+                        parameterValues.Add(new Parameter { Name = param, Value = null });
+                    }
+                }
+
+                if (!allValid)
+                {
+                    return;
+                }
+
+                SaveFileDialog saveFileDialog = new SaveFileDialog
+                {
+                    Filter = "XML-файлы (*.xml)|*.xml",
+                    Title = "Сохранить параметры",
+                    FileName = $"PLC_Parameters_{DateTime.Now:yyyyMMdd_HHmmss}.xml"
+                };
+
+                if (saveFileDialog.ShowDialog() == true)
+                {
+                    SaveParametersToXml(parameterValues, saveFileDialog.FileName);
+                    _currentXmlFilePath = saveFileDialog.FileName; // Обновляем текущий путь
+                    UpdateCurrentXmlFileLabel(); // Обновляем Label
+                    MessageBox.Show($"Параметры успешно сохранены в {saveFileDialog.FileName}.", "Успех", MessageBoxButton.OK, MessageBoxImage.Information);
+                    System.Diagnostics.Debug.WriteLine($"PLCDataWindow: Параметры сохранены в {saveFileDialog.FileName}");
+                }
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show($"Ошибка при сохранении параметров: {ex.Message}", "Ошибка", MessageBoxButton.OK, MessageBoxImage.Error);
+                System.Diagnostics.Debug.WriteLine($"PLCDataWindow: Ошибка при сохранении параметров: {ex.Message}");
+            }
         }
 
         private void UpdateConnectionStatus()
@@ -104,65 +362,68 @@ namespace Bucking_Unit_App.Views
             });
         }
 
-        private async void btnWriteTorque_Click(object sender, RoutedEventArgs e)
-        {
-            try
-            {
-                // Проверяем и пытаемся восстановить соединение перед записью
-                if (!_s7Client.Connected)
-                {
-                    TryConnectToPLC();
-                    if (!_s7Client.Connected)
-                    {
-                        MessageBox.Show("Нет подключения к PLC. Пожалуйста, проверьте соединение.", "Ошибка", MessageBoxButton.OK, MessageBoxImage.Error);
-                        System.Diagnostics.Debug.WriteLine("PLCDataWindow: Попытка записи без подключения к PLC.");
-                        return;
-                    }
-                }
-
-                // Используем CultureInfo.InvariantCulture для корректного парсинга чисел
-                if (float.TryParse(txtTorqueSetpoint.Text, NumberStyles.Any, CultureInfo.InvariantCulture, out float torqueValue))
-                {
-                    int result = await _plcWriter.WriteAsync("TorqueSetpoint", torqueValue).TimeoutAfter(5000);
-                    if (result == 1) // Код 0 в Sharp7 указывает на успех
-                    {
-                        MessageBox.Show("Значение TorqueSetpoint успешно записано в PLC.", "Успех", MessageBoxButton.OK, MessageBoxImage.Information);
-                        System.Diagnostics.Debug.WriteLine($"PLCDataWindow: Успешная запись TorqueSetpoint = {torqueValue}");
-                    }
-                    else
-                    {
-                        string errorText = _s7Client.ErrorText(result);
-                        MessageBox.Show($"Ошибка записи в PLC: Код {result} ({errorText})", "Ошибка", MessageBoxButton.OK, MessageBoxImage.Error);
-                        System.Diagnostics.Debug.WriteLine($"PLCDataWindow: Ошибка записи TorqueSetpoint, код: {result}, текст: {errorText}");
-                    }
-                }
-                else
-                {
-                    MessageBox.Show("Пожалуйста, введите корректное числовое значение для TorqueSetpoint (используйте точку как разделитель).", "Ошибка", MessageBoxButton.OK, MessageBoxImage.Warning);
-                    System.Diagnostics.Debug.WriteLine($"PLCDataWindow: Некорректное значение TorqueSetpoint: '{txtTorqueSetpoint.Text}'");
-                }
-            }
-            catch (TimeoutException)
-            {
-                MessageBox.Show("Ошибка: Операция записи в PLC превысила время ожидания.", "Ошибка", MessageBoxButton.OK, MessageBoxImage.Error);
-                System.Diagnostics.Debug.WriteLine("PLCDataWindow: Таймаут при записи в PLC.");
-            }
-            catch (Exception ex)
-            {
-                MessageBox.Show($"Ошибка при записи в PLC: {ex.Message}", "Ошибка", MessageBoxButton.OK, MessageBoxImage.Error);
-                System.Diagnostics.Debug.WriteLine($"PLCDataWindow: Исключение при записи в PLC: {ex.Message}");
-            }
-        }
-
         private void PLCDataWindow_Closing(object sender, System.ComponentModel.CancelEventArgs e)
         {
             IsClosed = true;
             _plcReader.ValueRead -= PlcReader_ValueRead;
-            if (_s7Client.Connected)
+            System.Diagnostics.Debug.WriteLine("PLCDataWindow: Закрытие окна.");
+        }
+
+        private bool IsClosed { get; set; }
+
+        [Serializable]
+        public class Parameter
+        {
+            public string Name { get; set; }
+            public float? Value { get; set; }
+        }
+
+        private void SaveParametersToXml(List<Parameter> parameters, string filePath)
+        {
+            try
             {
-                _s7Client.Disconnect();
-                System.Diagnostics.Debug.WriteLine("PLCDataWindow: S7Client отключён.");
+                var serializer = new XmlSerializer(typeof(List<Parameter>));
+                using (var writer = new StreamWriter(filePath))
+                {
+                    serializer.Serialize(writer, parameters);
+                }
             }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"PLCDataWindow: Ошибка сохранения параметров в XML: {ex.Message}");
+                throw;
+            }
+        }
+
+        private List<Parameter> LoadParametersFromXml(string filePath)
+        {
+            try
+            {
+                if (!File.Exists(filePath))
+                {
+                    System.Diagnostics.Debug.WriteLine($"PLCDataWindow: Файл {filePath} не существует.");
+                    return new List<Parameter>();
+                }
+
+                var serializer = new XmlSerializer(typeof(List<Parameter>));
+                using (var reader = new StreamReader(filePath))
+                {
+                    return (List<Parameter>)serializer.Deserialize(reader);
+                }
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"PLCDataWindow: Ошибка загрузки параметров из XML: {ex.Message}");
+                return new List<Parameter>();
+            }
+        }
+
+        private void UpdateCurrentXmlFileLabel()
+        {
+            Dispatcher.Invoke(() =>
+            {
+                lblCurrentXmlFile.Content = $"Текущий XML-файл: {_currentXmlFilePath ?? "Не выбран"}";
+            });
         }
     }
 }
