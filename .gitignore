@@ -1,5 +1,12 @@
 /Bucking_Unit_App/bin/
 /Bucking_Unit_App/obj/
+/Bucking_Unit_App_BACKUP/
+/Bucking_Unit_App_FULL_BACKUP/
 *.exe
 *.dll
+*.pdb
+*.deploy
 *.log
+*.cache
+.vs/
+EOF
