@@ -54,10 +54,11 @@ namespace Bucking_Unit_App.Services
         }
 
         // Новый метод для обновления статистики всех операторов
-        public async Task UpdateStatsForAllOperatorsAsync(Action<Dictionary<int, (bool IsDayShift, decimal DayShiftDowntime, decimal NightShiftDowntime)>,
-            Dictionary<int, (bool IsDayShift, decimal DayShiftDowntime, decimal NightShiftDowntime)>,
-            Dictionary<int, (bool IsDayShift, int ShiftOperationCount)>,
-            Dictionary<int, (bool IsDayShift, int ShiftOperationCount)>> updateAllUI)
+        public async Task UpdateStatsForAllOperatorsAsync(
+    Action<Dictionary<int, (bool IsDayShift, decimal DayShiftDowntime, decimal NightShiftDowntime)>,
+           Dictionary<int, (bool IsDayShift, decimal DayShiftDowntime, decimal NightShiftDowntime)>,
+           Dictionary<int, (bool IsDayShift, int ShiftOperationCount)>,
+           Dictionary<int, (bool IsDayShift, int ShiftOperationCount)>> updateAllUI)
         {
             var dailyDowntime = await _statsRepository.GetDailyDowntimeByAllOperatorsAsync();
             var monthlyDowntime = await _statsRepository.GetMonthlyDowntimeByAllOperatorsAsync();

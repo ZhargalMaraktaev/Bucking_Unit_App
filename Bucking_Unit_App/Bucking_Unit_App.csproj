@@ -9,6 +9,42 @@
   </PropertyGroup>
 
   <ItemGroup>
+    <None Remove="Controllers\1C Controller\employee_data.xml" />
+    <None Remove="Views\Images\folder.png" />
+    <None Remove="Views\Images\graph.png" />
+    <None Remove="Views\Images\refresh.png" />
+    <None Remove="Views\Images\reset.png" />
+    <None Remove="Views\Images\save.png" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <EmbeddedResource Include="Controllers\1C Controller\employee_data.xml">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </EmbeddedResource>
+  </ItemGroup>
+
+  <ItemGroup>
+    <Resource Include="Views\Images\reset.png">
+      <CopyToOutputDirectory>Never</CopyToOutputDirectory>
+    </Resource>
+    <Resource Include="Views\Images\save.png">
+      <CopyToOutputDirectory>Never</CopyToOutputDirectory>
+    </Resource>
+  </ItemGroup>
+
+  <ItemGroup>
+    <Resource Include="Views\Images\folder.png">
+      <CopyToOutputDirectory>Never</CopyToOutputDirectory>
+    </Resource>
+    <Resource Include="Views\Images\graph.png">
+      <CopyToOutputDirectory>Never</CopyToOutputDirectory>
+    </Resource>
+    <Resource Include="Views\Images\refresh.png">
+      <CopyToOutputDirectory>Never</CopyToOutputDirectory>
+    </Resource>
+  </ItemGroup>
+
+  <ItemGroup>
     <PackageReference Include="FontAwesome.WPF" Version="4.7.0.9" />
     <PackageReference Include="LiveCharts.Core" Version="0.9.8" />
     <PackageReference Include="LiveChartsCore.SkiaSharpView.WPF" Version="2.0.0-rc5.4" />

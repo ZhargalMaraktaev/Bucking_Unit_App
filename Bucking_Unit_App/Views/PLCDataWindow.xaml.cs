@@ -31,17 +31,17 @@ namespace Bucking_Unit_App.Views
             _s7Client = s7Client;
             _plcWriter = new WriteToPLC(_s7Client);
             _plcReader.ValueRead += PlcReader_ValueRead;
-            _currentXmlFilePath = _xmlFilePath; // Инициализация по умолчанию
-            UpdateCurrentXmlFileLabel(); // Установить начальное значение Label
+            _plcReader.ConnectionStateChanged += Plc_ConnectionStateChanged;
+            _plcWriter.ConnectionStateChanged += Plc_ConnectionStateChanged;
+            _currentXmlFilePath = _xmlFilePath;
+            UpdateCurrentXmlFileLabel();
 
-            // Добавление адресов для чтения и записи
             var parameters = new[]
             {
-                "TorqueUpperLimitHMI", "IdleTorqueHMI","StopTorqueHMI",
-                "TorqueLowerLimitHMI", "QuantityHMI", "StartingTorqueHMI",
-                "CuringRotationCount", "StatusValue", "StatusTime",
-                "FeedDelayTimeHMI", "ReturnDelayTimeHMI"
-            };
+        "TorqueUpperLimitHMI", "IdleTorqueHMI", "StopTorqueHMI",
+        "TorqueLowerLimitHMI", "QuantityHMI", "StartingTorqueHMI",
+        "FeedDelayTimeHMI", "ReturnDelayTimeHMI", "RPMUpperLimitHMI"
+    };
 
             foreach (var param in parameters)
             {
@@ -49,8 +49,17 @@ namespace Bucking_Unit_App.Views
                 _plcWriter.AddAddress(param, CreateAddressModel(param, _s7Client));
             }
 
+            InitializeTextBoxDefaults(); // Вызов метода
             this.Closing += PLCDataWindow_Closing;
-            Directory.CreateDirectory("logs"); // Убедимся, что папка logs существует
+            Directory.CreateDirectory("logs");
+            UpdateConnectionStatus();
+        }
+
+        // Обработчик события изменения состояния подключения
+        private void Plc_ConnectionStateChanged(object sender, bool isConnected)
+        {
+            System.Diagnostics.Debug.WriteLine($"PLCDataWindow: Событие ConnectionStateChanged, isConnected={isConnected}");
+            UpdateConnectionStatus();
         }
 
         private object CreateAddressModel(string param, S7Client s7Client)
@@ -63,15 +72,21 @@ namespace Bucking_Unit_App.Views
                 case "TorqueLowerLimitHMI": return new SiemensPLCModels.DBAddressModel.TorqueLowerLimitHMI(s7Client);
                 case "QuantityHMI": return new SiemensPLCModels.DBAddressModel.QuantityHMI(s7Client);
                 case "StartingTorqueHMI": return new SiemensPLCModels.DBAddressModel.StartingTorqueHMI(s7Client);
-                case "CuringRotationCount": return new SiemensPLCModels.DBAddressModel.CuringRotationCount(s7Client);
-                case "StatusValue": return new SiemensPLCModels.DBAddressModel.StatusValue(s7Client);
-                case "StatusTime": return new SiemensPLCModels.DBAddressModel.StatusTime(s7Client);
                 case "FeedDelayTimeHMI": return new SiemensPLCModels.DBAddressModel.FeedDelayTimeHMI(s7Client);
                 case "ReturnDelayTimeHMI": return new SiemensPLCModels.DBAddressModel.ReturnDelayTimeHMI(s7Client);
+                case "RPMUpperLimitHMI": return new SiemensPLCModels.DBAddressModel.RPMUpperLimitHMI(s7Client);
                 default: throw new ArgumentException($"Неизвестный параметр: {param}");
             }
         }
 
+        private void InitializeTextBoxDefaults()
+        {
+            var textBox = FindName("txtRPMUpperLimitHMI") as TextBox;
+            if (textBox != null)
+            {
+                textBox.Text = 0.3f.ToString(CultureInfo.InvariantCulture); // Значение по умолчанию
+            }
+        }
         private void PlcReader_ValueRead(object sender, (string AddressKey, SiemensPLCModels.PLCReadWriteModel.PLCModifiedType Result) e)
         {
             Dispatcher.Invoke(() =>
@@ -111,10 +126,9 @@ namespace Bucking_Unit_App.Views
 
                 var parameters = new[]
                 {
-                    "TorqueUpperLimitHMI", "IdleTorqueHMI","StopTorqueHMI",
+                    "TorqueUpperLimitHMI", "IdleTorqueHMI", "StopTorqueHMI",
                     "TorqueLowerLimitHMI", "QuantityHMI", "StartingTorqueHMI",
-                    "CuringRotationCount", "StatusValue", "StatusTime",
-                    "FeedDelayTimeHMI", "ReturnDelayTimeHMI"
+                    "FeedDelayTimeHMI", "ReturnDelayTimeHMI", "RPMUpperLimitHMI"
                 };
 
                 // Чтение параметров с ПЛК
@@ -169,6 +183,37 @@ namespace Bucking_Unit_App.Views
             }
         }
 
+        private void TxtRPMUpperLimitHMI_TextChanged(object sender, TextChangedEventArgs e)
+        {
+            var textBox = sender as TextBox;
+            if (textBox == null) return;
+
+            const float MinValue = 0.1f; // Минимальное значение
+            const float MaxValue = 0.5f; // Максимальное значение
+
+            if (float.TryParse(textBox.Text, NumberStyles.Any, CultureInfo.InvariantCulture, out float value))
+            {
+                if (value < MinValue || value > MaxValue)
+                {
+                    textBox.Background = Brushes.LightPink;
+                    //MessageBox.Show($"Значение должно быть в диапазоне [{MinValue}, {MaxValue}].", "Ошибка ввода", MessageBoxButton.OK, MessageBoxImage.Warning);
+                }
+                else
+                {
+                    textBox.Background = Brushes.White;
+                }
+            }
+            else if (!string.IsNullOrEmpty(textBox.Text))
+            {
+                textBox.Background = Brushes.LightPink;
+                MessageBox.Show("Пожалуйста, введите корректное числовое значение (используйте точку как разделитель).", "Ошибка ввода", MessageBoxButton.OK, MessageBoxImage.Warning);
+            }
+            else
+            {
+                textBox.Background = Brushes.White;
+            }
+        }
+
         private async void btnWriteParameters_Click(object sender, RoutedEventArgs e)
         {
             try
@@ -182,16 +227,17 @@ namespace Bucking_Unit_App.Views
 
                 var parameters = new[]
                 {
-                    "TorqueUpperLimitHMI", "IdleTorqueHMI","StopTorqueHMI",
+                    "TorqueUpperLimitHMI", "IdleTorqueHMI", "StopTorqueHMI",
                     "TorqueLowerLimitHMI", "QuantityHMI", "StartingTorqueHMI",
-                    "CuringRotationCount", "StatusValue", "StatusTime",
-                    "FeedDelayTimeHMI", "ReturnDelayTimeHMI"
+                    "FeedDelayTimeHMI", "ReturnDelayTimeHMI", "RPMUpperLimitHMI"
                 };
 
                 var parameterValues = new List<Parameter>();
                 bool allValid = true;
 
-                // Сбор значений из текстовых полей и валидация
+                const float RPMMinValue = 0.1f; // Минимальное значение для RPMUpperLimitHMI
+                const float RPMMaxValue = 0.5f; // Максимальное значение для RPMUpperLimitHMI
+
                 foreach (var param in parameters)
                 {
                     var textBox = FindName($"txt{param}") as TextBox;
@@ -204,11 +250,22 @@ namespace Bucking_Unit_App.Views
 
                     if (float.TryParse(textBox.Text, NumberStyles.Any, CultureInfo.InvariantCulture, out float value))
                     {
+                        // Валидация только для RPMUpperLimitHMI
+                        if (param == "RPMUpperLimitHMI")
+                        {
+                            if (value < RPMMinValue || value > RPMMaxValue)
+                            {
+                                MessageBox.Show($"Значение для \"Время разжима муфты\" должно быть в диапазоне {RPMMinValue} - {RPMMaxValue}.", "Ошибка", MessageBoxButton.OK, MessageBoxImage.Error);
+                                System.Diagnostics.Debug.WriteLine($"PLCDataWindow: Некорректное значение {param}: {value}");
+                                allValid = false;
+                                break;
+                            }
+                        }
                         parameterValues.Add(new Parameter { Name = param, Value = value });
                     }
                     else
                     {
-                        MessageBox.Show($"Пожалуйста, введите корректное числовое значение для {param} (используйте точку как разделитель).", "Ошибка", MessageBoxButton.OK, MessageBoxImage.Warning);
+                        MessageBox.Show($"Пожалуйста, введите корректное числовое значение для {param} (используйте точку как разделитель).", "Ошибка", MessageBoxButton.OK, MessageBoxImage.Error);
                         System.Diagnostics.Debug.WriteLine($"PLCDataWindow: Некорректное значение {param}: '{textBox.Text}'");
                         allValid = false;
                         break;
@@ -217,16 +274,15 @@ namespace Bucking_Unit_App.Views
 
                 if (!allValid)
                 {
-                    return;
+                    System.Diagnostics.Debug.WriteLine("PLCDataWindow: Запись в ПЛК отменена из-за некорректных значений.");
+                    return; // Прерываем запись, если есть ошибки валидации
                 }
 
-                // Сохранение в XML
                 SaveParametersToXml(parameterValues, _xmlFilePath);
-                _currentXmlFilePath = _xmlFilePath; // Обновляем текущий путь
-                UpdateCurrentXmlFileLabel(); // Обновляем Label
+                _currentXmlFilePath = _xmlFilePath;
+                UpdateCurrentXmlFileLabel();
                 System.Diagnostics.Debug.WriteLine($"PLCDataWindow: Параметры сохранены в {_xmlFilePath} перед записью в ПЛК");
 
-                // Запись в ПЛК из XML
                 var loadedParameters = LoadParametersFromXml(_xmlFilePath);
                 bool allWritten = true;
 
@@ -241,13 +297,13 @@ namespace Bucking_Unit_App.Views
                             switch (result)
                             {
                                 case -1:
-                                    errorText = "Нет соединения с ПЛК";
+                                    errorText = "Ошибка преобразования типа";
                                     break;
                                 case -2:
                                     errorText = "Адрес не найден";
                                     break;
                                 case -3:
-                                    errorText = "Исключение при записи";
+                                    errorText = "Исключение при записи или нет соединения";
                                     break;
                                 default:
                                     errorText = _s7Client.ErrorText(result);
@@ -268,6 +324,10 @@ namespace Bucking_Unit_App.Views
                 {
                     MessageBox.Show($"Все параметры успешно записаны в ПЛК из {_xmlFilePath}.", "Успех", MessageBoxButton.OK, MessageBoxImage.Information);
                 }
+                else
+                {
+                    MessageBox.Show("Некоторые параметры не были записаны в ПЛК из-за ошибок.", "Ошибка", MessageBoxButton.OK, MessageBoxImage.Error);
+                }
             }
             catch (TimeoutException)
             {
@@ -287,10 +347,9 @@ namespace Bucking_Unit_App.Views
             {
                 var parameters = new[]
                 {
-                    "TorqueUpperLimitHMI", "IdleTorqueHMI","StopTorqueHMI",
+                    "TorqueUpperLimitHMI", "IdleTorqueHMI", "StopTorqueHMI",
                     "TorqueLowerLimitHMI", "QuantityHMI", "StartingTorqueHMI",
-                    "CuringRotationCount", "StatusValue", "StatusTime",
-                    "FeedDelayTimeHMI", "ReturnDelayTimeHMI"
+                    "FeedDelayTimeHMI", "ReturnDelayTimeHMI", "RPMUpperLimitHMI"
                 };
 
                 var parameterValues = new List<Parameter>();
@@ -349,15 +408,23 @@ namespace Bucking_Unit_App.Views
         {
             Dispatcher.Invoke(() =>
             {
-                if (_s7Client.Connected)
+                try
                 {
-                    lblConnectionStatus.Content = "Подключено к ПЛК";
-                    lblConnectionStatus.Foreground = Brushes.Green;
+                    var lblConnectionStatus = FindName("lblConnectionStatus") as System.Windows.Controls.Label;
+                    if (lblConnectionStatus != null)
+                    {
+                        lblConnectionStatus.Content = _s7Client.Connected ? "Подключено к ПЛК" : "Ошибка подключения к ПЛК";
+                        lblConnectionStatus.Foreground = _s7Client.Connected ? Brushes.Green : Brushes.Red;
+                        System.Diagnostics.Debug.WriteLine($"PLCDataWindow: Статус подключения обновлен: {_s7Client.Connected}");
+                    }
+                    else
+                    {
+                        System.Diagnostics.Debug.WriteLine("PLCDataWindow: lblConnectionStatus не найден.");
+                    }
                 }
-                else
+                catch (Exception ex)
                 {
-                    lblConnectionStatus.Content = "Ошибка подключения к ПЛК";
-                    lblConnectionStatus.Foreground = Brushes.Red;
+                    System.Diagnostics.Debug.WriteLine($"PLCDataWindow: Ошибка при обновлении статуса подключения: {ex.Message}");
                 }
             });
         }

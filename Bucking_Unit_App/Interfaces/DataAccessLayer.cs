@@ -6,6 +6,7 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 using Bucking_Unit_App.Models;
+using System.Diagnostics;
 
 namespace Bucking_Unit_App.Interfaces
 {
@@ -210,17 +211,48 @@ namespace Bucking_Unit_App.Interfaces
         {
             var result = new Dictionary<int, (bool IsDayShift, decimal DayShiftDowntime, decimal NightShiftDowntime)>();
             using var conn = new SqlConnection(_connectionString);
-            await conn.OpenAsync();
-            using var cmd = new SqlCommand("GetDailyDowntimeByAllOperators", conn);
-            cmd.CommandType = CommandType.StoredProcedure;
-            using var reader = await cmd.ExecuteReaderAsync();
-            while (await reader.ReadAsync())
+            try
             {
-                result[reader.GetInt32(reader.GetOrdinal("OperatorId"))] = (
-                    reader.GetBoolean(reader.GetOrdinal("IsDayShift")),
-                    reader.IsDBNull(reader.GetOrdinal("DayShiftDowntimeMinutes")) ? 0 : reader.GetDecimal(reader.GetOrdinal("DayShiftDowntimeMinutes")),
-                    reader.IsDBNull(reader.GetOrdinal("NightShiftDowntimeMinutes")) ? 0 : reader.GetDecimal(reader.GetOrdinal("NightShiftDowntimeMinutes"))
-                );
+                Debug.WriteLine($"Opening connection at {DateTime.Now}");
+                await conn.OpenAsync();
+                using var cmd = new SqlCommand("GetDailyDowntimeByAllOperators", conn);
+                cmd.CommandType = CommandType.StoredProcedure;
+                cmd.CommandTimeout = 60;
+                Debug.WriteLine($"Executing command at {DateTime.Now}");
+                using var reader = await cmd.ExecuteReaderAsync();
+                Debug.WriteLine($"Starting to read data at {DateTime.Now}");
+                int rowCount = 0;
+                while (await reader.ReadAsync())
+                {
+                    try
+                    {
+                        int operatorId = reader.IsDBNull(reader.GetOrdinal("OperatorId")) ? -1 : reader.GetInt32(reader.GetOrdinal("OperatorId"));
+                        bool isDayShift = reader.GetBoolean(reader.GetOrdinal("IsDayShift"));
+                        decimal dayShiftDowntime = reader.IsDBNull(reader.GetOrdinal("DayShiftDowntimeMinutes")) ? 0 : reader.GetDecimal(reader.GetOrdinal("DayShiftDowntimeMinutes"));
+                        decimal nightShiftDowntime = reader.IsDBNull(reader.GetOrdinal("NightShiftDowntimeMinutes")) ? 0 : reader.GetDecimal(reader.GetOrdinal("NightShiftDowntimeMinutes"));
+                        result[operatorId] = (isDayShift, dayShiftDowntime, nightShiftDowntime);
+                        Debug.WriteLine($"Row {++rowCount}: OperatorId={operatorId}, IsDayShift={isDayShift}, DayShiftDowntime={dayShiftDowntime}, NightShiftDowntime={nightShiftDowntime}");
+                    }
+                    catch (Exception ex)
+                    {
+                        Debug.WriteLine($"Error processing row {rowCount + 1}: {ex.Message}");
+                        throw;
+                    }
+                }
+                Debug.WriteLine($"Finished reading {rowCount} rows at {DateTime.Now}");
+            }
+            catch (Exception ex)
+            {
+                Debug.WriteLine($"Error in GetDailyDowntimeByAllOperatorsAsync: {ex.Message}");
+                throw;
+            }
+            finally
+            {
+                if (conn.State != ConnectionState.Closed)
+                {
+                    conn.Close();
+                    Debug.WriteLine("Connection closed");
+                }
             }
             return result;
         }
@@ -230,17 +262,48 @@ namespace Bucking_Unit_App.Interfaces
         {
             var result = new Dictionary<int, (bool IsDayShift, decimal DayShiftDowntime, decimal NightShiftDowntime)>();
             using var conn = new SqlConnection(_connectionString);
-            await conn.OpenAsync();
-            using var cmd = new SqlCommand("GetMonthlyDowntimeByAllOperators", conn);
-            cmd.CommandType = CommandType.StoredProcedure;
-            using var reader = await cmd.ExecuteReaderAsync();
-            while (await reader.ReadAsync())
+            try
             {
-                result[reader.GetInt32(reader.GetOrdinal("OperatorId"))] = (
-                    reader.GetBoolean(reader.GetOrdinal("IsDayShift")),
-                    reader.IsDBNull(reader.GetOrdinal("DayShiftDowntimeMinutes")) ? 0 : reader.GetDecimal(reader.GetOrdinal("DayShiftDowntimeMinutes")),
-                    reader.IsDBNull(reader.GetOrdinal("NightShiftDowntimeMinutes")) ? 0 : reader.GetDecimal(reader.GetOrdinal("NightShiftDowntimeMinutes"))
-                );
+                Debug.WriteLine($"Opening connection at {DateTime.Now}");
+                await conn.OpenAsync();
+                using var cmd = new SqlCommand("GetMonthlyDowntimeByAllOperators", conn);
+                cmd.CommandType = CommandType.StoredProcedure;
+                cmd.CommandTimeout = 60;
+                Debug.WriteLine($"Executing command at {DateTime.Now}");
+                using var reader = await cmd.ExecuteReaderAsync();
+                Debug.WriteLine($"Starting to read data at {DateTime.Now}");
+                int rowCount = 0;
+                while (await reader.ReadAsync())
+                {
+                    try
+                    {
+                        int operatorId = reader.IsDBNull(reader.GetOrdinal("OperatorId")) ? -1 : reader.GetInt32(reader.GetOrdinal("OperatorId"));
+                        bool isDayShift = reader.GetBoolean(reader.GetOrdinal("IsDayShift"));
+                        decimal dayShiftDowntime = reader.IsDBNull(reader.GetOrdinal("DayShiftDowntimeMinutes")) ? 0 : reader.GetDecimal(reader.GetOrdinal("DayShiftDowntimeMinutes"));
+                        decimal nightShiftDowntime = reader.IsDBNull(reader.GetOrdinal("NightShiftDowntimeMinutes")) ? 0 : reader.GetDecimal(reader.GetOrdinal("NightShiftDowntimeMinutes"));
+                        result[operatorId] = (isDayShift, dayShiftDowntime, nightShiftDowntime);
+                        Debug.WriteLine($"Row {++rowCount}: OperatorId={operatorId}, IsDayShift={isDayShift}, DayShiftDowntime={dayShiftDowntime}, NightShiftDowntime={nightShiftDowntime}");
+                    }
+                    catch (Exception ex)
+                    {
+                        Debug.WriteLine($"Error processing row {rowCount + 1}: {ex.Message}");
+                        throw;
+                    }
+                }
+                Debug.WriteLine($"Finished reading {rowCount} rows at {DateTime.Now}");
+            }
+            catch (Exception ex)
+            {
+                Debug.WriteLine($"Error in GetMonthlyDowntimeByAllOperatorsAsync: {ex.Message}");
+                throw;
+            }
+            finally
+            {
+                if (conn.State != ConnectionState.Closed)
+                {
+                    conn.Close();
+                    Debug.WriteLine("Connection closed");
+                }
             }
             return result;
         }
@@ -250,16 +313,47 @@ namespace Bucking_Unit_App.Interfaces
         {
             var result = new Dictionary<int, (bool IsDayShift, int ShiftOperationCount)>();
             using var conn = new SqlConnection(_connectionString);
-            await conn.OpenAsync();
-            using var cmd = new SqlCommand("GetDailyShiftOperationCountByAllOperators", conn);
-            cmd.CommandType = CommandType.StoredProcedure;
-            using var reader = await cmd.ExecuteReaderAsync();
-            while (await reader.ReadAsync())
+            try
             {
-                result[reader.GetInt32(reader.GetOrdinal("OperatorId"))] = (
-                    reader.GetBoolean(reader.GetOrdinal("IsDayShift")),
-                    reader.IsDBNull(reader.GetOrdinal("ShiftOperationCount")) ? 0 : reader.GetInt32(reader.GetOrdinal("ShiftOperationCount"))
-                );
+                Debug.WriteLine($"Opening connection at {DateTime.Now}");
+                await conn.OpenAsync();
+                using var cmd = new SqlCommand("GetDailyShiftOperationCountByAllOperators", conn);
+                cmd.CommandType = CommandType.StoredProcedure;
+                cmd.CommandTimeout = 60;
+                Debug.WriteLine($"Executing command at {DateTime.Now}");
+                using var reader = await cmd.ExecuteReaderAsync();
+                Debug.WriteLine($"Starting to read data at {DateTime.Now}");
+                int rowCount = 0;
+                while (await reader.ReadAsync())
+                {
+                    try
+                    {
+                        int operatorId = reader.IsDBNull(reader.GetOrdinal("OperatorId")) ? -1 : reader.GetInt32(reader.GetOrdinal("OperatorId"));
+                        bool isDayShift = reader.GetBoolean(reader.GetOrdinal("IsDayShift"));
+                        int shiftOperationCount = reader.IsDBNull(reader.GetOrdinal("ShiftOperationCount")) ? 0 : reader.GetInt32(reader.GetOrdinal("ShiftOperationCount"));
+                        result[operatorId] = (isDayShift, shiftOperationCount);
+                        Debug.WriteLine($"Row {++rowCount}: OperatorId={operatorId}, IsDayShift={isDayShift}, ShiftOperationCount={shiftOperationCount}");
+                    }
+                    catch (Exception ex)
+                    {
+                        Debug.WriteLine($"Error processing row {rowCount + 1}: {ex.Message}");
+                        throw;
+                    }
+                }
+                Debug.WriteLine($"Finished reading {rowCount} rows at {DateTime.Now}");
+            }
+            catch (Exception ex)
+            {
+                Debug.WriteLine($"Error in GetDailyShiftOperationCountByAllOperatorsAsync: {ex.Message}");
+                throw;
+            }
+            finally
+            {
+                if (conn.State != ConnectionState.Closed)
+                {
+                    conn.Close();
+                    Debug.WriteLine("Connection closed");
+                }
             }
             return result;
         }
@@ -269,16 +363,47 @@ namespace Bucking_Unit_App.Interfaces
         {
             var result = new Dictionary<int, (bool IsDayShift, int ShiftOperationCount)>();
             using var conn = new SqlConnection(_connectionString);
-            await conn.OpenAsync();
-            using var cmd = new SqlCommand("GetMonthlyShiftOperationCountByAllOperators", conn);
-            cmd.CommandType = CommandType.StoredProcedure;
-            using var reader = await cmd.ExecuteReaderAsync();
-            while (await reader.ReadAsync())
+            try
             {
-                result[reader.GetInt32(reader.GetOrdinal("OperatorId"))] = (
-                    reader.GetBoolean(reader.GetOrdinal("IsDayShift")),
-                    reader.IsDBNull(reader.GetOrdinal("ShiftOperationCount")) ? 0 : reader.GetInt32(reader.GetOrdinal("ShiftOperationCount"))
-                );
+                Debug.WriteLine($"Opening connection at {DateTime.Now}");
+                await conn.OpenAsync();
+                using var cmd = new SqlCommand("GetMonthlyShiftOperationCountByAllOperators", conn);
+                cmd.CommandType = CommandType.StoredProcedure;
+                cmd.CommandTimeout = 60;
+                Debug.WriteLine($"Executing command at {DateTime.Now}");
+                using var reader = await cmd.ExecuteReaderAsync();
+                Debug.WriteLine($"Starting to read data at {DateTime.Now}");
+                int rowCount = 0;
+                while (await reader.ReadAsync())
+                {
+                    try
+                    {
+                        int operatorId = reader.IsDBNull(reader.GetOrdinal("OperatorId")) ? -1 : reader.GetInt32(reader.GetOrdinal("OperatorId"));
+                        bool isDayShift = reader.GetBoolean(reader.GetOrdinal("IsDayShift"));
+                        int shiftOperationCount = reader.IsDBNull(reader.GetOrdinal("ShiftOperationCount")) ? 0 : reader.GetInt32(reader.GetOrdinal("ShiftOperationCount"));
+                        result[operatorId] = (isDayShift, shiftOperationCount);
+                        Debug.WriteLine($"Row {++rowCount}: OperatorId={operatorId}, IsDayShift={isDayShift}, ShiftOperationCount={shiftOperationCount}");
+                    }
+                    catch (Exception ex)
+                    {
+                        Debug.WriteLine($"Error processing row {rowCount + 1}: {ex.Message}");
+                        throw;
+                    }
+                }
+                Debug.WriteLine($"Finished reading {rowCount} rows at {DateTime.Now}");
+            }
+            catch (Exception ex)
+            {
+                Debug.WriteLine($"Error in GetMonthlyShiftOperationCountByAllOperatorsAsync: {ex.Message}");
+                throw;
+            }
+            finally
+            {
+                if (conn.State != ConnectionState.Closed)
+                {
+                    conn.Close();
+                    Debug.WriteLine("Connection closed");
+                }
             }
             return result;
         }

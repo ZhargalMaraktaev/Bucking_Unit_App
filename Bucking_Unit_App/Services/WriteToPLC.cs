@@ -148,7 +148,18 @@ namespace Bucking_Unit_App.Services
 
         public async Task<int> WriteAsync<T>(string addressKey, T value, CancellationToken cancellationToken = default)
         {
-            return await Task.Run(() => Write(addressKey, value), cancellationToken);
+            int maxRetries = 3;
+            int retryDelayMs = 500;
+            for (int i = 0; i < maxRetries; i++)
+            {
+                int result = await Task.Run(() => Write(addressKey, value), cancellationToken);
+                if (result == 1) // Успешная запись
+                    return result;
+                Log($"Попытка записи {i + 1}/{maxRetries} не удалась для {addressKey}, код: {result}");
+                await Task.Delay(retryDelayMs, cancellationToken);
+            }
+            Log($"Не удалось записать значение в {addressKey} после {maxRetries} попыток.");
+            return -3;
         }
     }
 }

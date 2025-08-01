@@ -6,184 +6,209 @@ using System.Windows;
 using LiveChartsCore;
 using LiveChartsCore.Measure;
 using LiveChartsCore.SkiaSharpView;
-using LiveChartsCore.SkiaSharpView.WPF;
-using SkiaSharp;
 using LiveChartsCore.SkiaSharpView.Painting;
 using LiveChartsCore.Defaults;
 using System.Collections.ObjectModel;
+using System.Diagnostics;
 
 namespace Bucking_Unit_App.Services
 {
     public class GraphService
     {
         private readonly string _connectionString;
-        private readonly int? _pipeCounter; // Для фильтрации по номеру трубы
+        private readonly int? _pipeCounter;
 
         public GraphService(string connectionString, int? pipeCounter = null)
         {
             _connectionString = connectionString ?? throw new ArgumentNullException(nameof(connectionString));
-            _pipeCounter = pipeCounter; // Присваиваем int? напрямую
+            _pipeCounter = pipeCounter;
         }
 
-        public (ObservableCollection<ObservablePoint> TorquePoints, Axis[] XAxes, Axis[] YAxes) GetGraphData(DateTime startTime, DateTime endTime)
+        public (ObservableCollection<ObservablePoint> TorquePoints, Axis[] XAxes, Axis[] YAxes, string ErrorMessage) GetGraphData(DateTime startTime, DateTime endTime, bool isActiveProcess)
         {
             try
             {
-                var synchronizedData = FetchSynchronizedData(startTime, endTime);
+                if (!isActiveProcess && endTime < startTime)
+                {
+                    string errormessage = $"Ошибка: EndDateTime ({endTime:yyyy-MM-ddTHH:mm:ss}) раньше StartDateTime ({startTime:yyyy-MM-ddTHH:mm:ss}) для PipeCounter: {_pipeCounter?.ToString() ?? "All"}";
+                    Debug.WriteLine($"GraphService.GetGraphData: {errormessage}");
+                    return (new ObservableCollection<ObservablePoint>(), new Axis[0], new Axis[0], errormessage);
+                }
+
+                var synchronizedData = FetchSynchronizedData(startTime, endTime, isActiveProcess);
+                string errorMessage = null;
 
                 if (!synchronizedData.Any())
                 {
-                    throw new InvalidOperationException($"Нет данных для построения графика. Период: {startTime} - {endTime}, PipeCounter: {_pipeCounter?.ToString() ?? "All"}");
+                    errorMessage = $"Нет данных для построения графика. Период: {startTime:yyyy-MM-ddTHH:mm:ss} - {(isActiveProcess ? DateTime.Now : endTime):yyyy-MM-ddTHH:mm:ss}, PipeCounter: {_pipeCounter?.ToString() ?? "All"}";
+                    Debug.WriteLine($"GraphService.GetGraphData: {errorMessage}");
+                    return (new ObservableCollection<ObservablePoint>(), new Axis[0], new Axis[0], errorMessage);
                 }
 
-                var torquePoints = new ObservableCollection<ObservablePoint>(synchronizedData.Select(d => new ObservablePoint(d.DateTime.ToOADate(), d.Torque)));
+                var torquePoints = new ObservableCollection<ObservablePoint>(
+                    synchronizedData.Select(d => new ObservablePoint(d.DateTime.ToOADate(), d.Torque)));
 
                 var xAxes = new Axis[]
                 {
-                    new Axis
-                    {
-                        Labeler = value =>
-                        {
-                            var dateTime = new DateTime((long)(value * TimeSpan.TicksPerDay));
-                            var dataPoint = synchronizedData.FirstOrDefault(d => Math.Abs(d.DateTime.ToOADate() - value) < 0.00001); // Примерное соответствие
-                            return dataPoint.Turns.ToString("F2");
-                        },
-                        Name = "Количество оборотов", // Подпись для оси X
-                        LabelsRotation = 45,
-                        MinLimit = synchronizedData.Min(d => d.DateTime.ToOADate()),
-                        MaxLimit = synchronizedData.Max(d => d.DateTime.ToOADate())
-                    }
+            new Axis
+            {
+                Labeler = value =>
+                {
+                    var dateTime = new DateTime((long)(value * TimeSpan.TicksPerDay));
+                    var dataPoint = synchronizedData.FirstOrDefault(d => Math.Abs(d.DateTime.ToOADate() - value) < 0.00001);
+                    return dataPoint.DateTime != default ? dataPoint.Turns.ToString("F2") : "N/A";
+                },
+                Name = "Количество оборотов",
+                LabelsRotation = 45,
+                MinLimit = synchronizedData.Min(d => d.DateTime.ToOADate()),
+                MaxLimit = synchronizedData.Max(d => d.DateTime.ToOADate())
+            }
                 };
 
                 var yAxes = new Axis[]
                 {
-                    new Axis
-                    {
-                        Labeler = value => value.ToString("F2"),
-                        Name = "Крутящий момент", // Подпись для оси Y
-                        MinLimit = 0,
-                        MaxLimit = synchronizedData.Max(d => d.Torque) * 1.1
-                    }
+            new Axis
+            {
+                Labeler = value => value.ToString("F2"),
+                Name = "Крутящий момент",
+                MinLimit = 0,
+                MaxLimit = synchronizedData.Any(d => d.Torque > 0) ? synchronizedData.Max(d => d.Torque) * 1.1 : 1.0
+            }
                 };
 
-                return (torquePoints, xAxes, yAxes);
+                Debug.WriteLine($"GraphService.GetGraphData: Найдено {torquePoints.Count} точек для графика: PipeCounter={_pipeCounter}, StartTime={startTime:yyyy-MM-ddTHH:mm:ss}, EndTime={(isActiveProcess ? DateTime.Now : endTime):yyyy-MM-ddTHH:mm:ss}, IsActive={isActiveProcess}");
+                return (torquePoints, xAxes, yAxes, null);
             }
             catch (Exception ex)
             {
-                MessageBox.Show($"Error generating graph data: {ex.Message}\nStackTrace: {ex.StackTrace}");
-                throw;
+                string errorMessage = $"Ошибка генерации данных графика: {ex.Message}";
+                Debug.WriteLine($"GraphService.GetGraphData: {errorMessage}\nStackTrace: {ex.StackTrace}");
+                return (new ObservableCollection<ObservablePoint>(), new Axis[0], new Axis[0], errorMessage);
             }
         }
 
-        public (DateTime StartTime, DateTime EndTime) GetTimeRange()
+        public (DateTime? StartTime, DateTime? EndTime) GetTimeRange()
         {
-            using var conn = new SqlConnection(_connectionString.Replace("Runtime", "Pilot"));
-            conn.Open();
-            var cmd = new SqlCommand(
-                @"SELECT StartDateTime AS StartTime, EndDateTime AS EndTime FROM Pilot.dbo.MuftN3_REP WHERE PipeCounter = @PipeCounter",
-                conn);
-            cmd.Parameters.AddWithValue("@PipeCounter", _pipeCounter.HasValue ? (object)_pipeCounter.Value : DBNull.Value);
-            using var reader = cmd.ExecuteReader();
-            if (reader.Read())
+            try
             {
-                var startTime = reader.IsDBNull(0) ? DateTime.MinValue : reader.GetDateTime(0);
-                var endTime = reader.IsDBNull(1) ? DateTime.MaxValue : reader.GetDateTime(1);
-                return (startTime, endTime);
+                using var conn = new SqlConnection(_connectionString.Replace("Runtime", "Pilot"));
+                conn.Open();
+                var cmd = new SqlCommand(
+                    @"SELECT StartDateTime AS StartTime, EndDateTime AS EndTime 
+                      FROM Pilot.dbo.MuftN3_REP 
+                      WHERE PipeCounter = @PipeCounter",
+                    conn);
+                cmd.Parameters.AddWithValue("@PipeCounter", _pipeCounter.HasValue ? (object)_pipeCounter.Value : DBNull.Value);
+                using var reader = cmd.ExecuteReader();
+                if (reader.Read())
+                {
+                    DateTime? startTime = reader.IsDBNull(0) ? null : reader.GetDateTime(0);
+                    DateTime? endTime = reader.IsDBNull(1) ? null : reader.GetDateTime(1);
+                    Debug.WriteLine($"GraphService.GetTimeRange: PipeCounter={_pipeCounter}, StartTime={startTime?.ToString("yyyy-MM-ddTHH:mm:ss.fff") ?? "null"}, EndTime={endTime?.ToString("yyyy-MM-ddTHH:mm:ss.fff") ?? "null"}");
+                    return (startTime, endTime);
+                }
+                Debug.WriteLine($"GraphService.GetTimeRange: Данные для PipeCounter={_pipeCounter} не найдены.");
+                return (null, null);
             }
-            return (DateTime.Today, DateTime.Now); // Значение по умолчанию, если данных нет
+            catch (Exception ex)
+            {
+                Debug.WriteLine($"GraphService.GetTimeRange: Ошибка получения временного диапазона: {ex.Message}");
+                return (null, null);
+            }
         }
 
-        public List<(DateTime DateTime, double Turns, double Torque)> FetchSynchronizedData(DateTime startTime, DateTime endTime)
+        public List<(DateTime DateTime, double Turns, double Torque)> FetchSynchronizedData(DateTime startTime, DateTime endTime, bool isActiveProcess)
         {
             var data = new List<(DateTime DateTime, double Turns, double Torque)>();
-            using var conn = new SqlConnection(_connectionString);
-            conn.Open();
-            var adjustedStartTime = startTime;
-            var adjustedEndTime = endTime;
-            // Обрезаем миллисекунды у adjustedStartTime и adjustedEndTime
-            adjustedStartTime = new DateTime(adjustedStartTime.Year, adjustedStartTime.Month, adjustedStartTime.Day, adjustedStartTime.Hour, adjustedStartTime.Minute, adjustedStartTime.Second, DateTimeKind.Utc);
-            adjustedEndTime = new DateTime(adjustedEndTime.Year, adjustedEndTime.Month, adjustedEndTime.Day, adjustedEndTime.Hour, adjustedEndTime.Minute, adjustedEndTime.Second, DateTimeKind.Utc);
-
-            // Получаем все данные за интервал
-            var cmd = new SqlCommand(
-                @"
-        USE Runtime
-
-        DECLARE @StartDate DateTime
-        DECLARE @EndDate DateTime
-        SET @StartDate = @pStartTime
-        SET @EndDate = @pEndTime
-        SELECT DateTime, TagName, Value
-        FROM History
-        WHERE History.TagName IN ('NOT_MN3_ACT_TURNS', 'NOT_MN3_ACT_TORQUE')
-        AND wwRetrievalMode = 'Cyclic'
-        AND wwCycleCount = 100
-        AND wwQualityRule = 'Extended'
-        AND wwVersion = 'Latest'
-        AND DateTime >= @StartDate
-        AND DateTime <= @EndDate
-        ORDER BY DateTime",
-                conn);
-            cmd.Parameters.AddWithValue("@pStartTime", adjustedStartTime.ToString("yyyy-MM-ddTHH:mm:ss")); // Без миллисекунд
-            cmd.Parameters.AddWithValue("@pEndTime", adjustedEndTime.ToString("yyyy-MM-ddTHH:mm:ss"));     // Без миллисекунд
-
-            var tagValues = new Dictionary<DateTime, Dictionary<string, double>>();
-            using var reader = cmd.ExecuteReader();
-            while (reader.Read())
+            try
             {
-                var dt = reader.GetDateTime(0);
-                // Обрезаем миллисекунды, оставляя только целые секунды
-                var roundedDt = new DateTime(dt.Year, dt.Month, dt.Day, dt.Hour, dt.Minute, dt.Second, DateTimeKind.Utc);
-                var tagName = reader.GetString(1);
-                var value = Convert.ToDouble(reader["Value"]);
-                if (!tagValues.ContainsKey(roundedDt))
-                    tagValues[roundedDt] = new Dictionary<string, double>();
-                tagValues[roundedDt][tagName] = value;
-                Console.WriteLine($"Fetched: {roundedDt:yyyy-MM-ddTHH:mm:ss}, Tag: {tagName}, Value: {value}");
-            }
+                using var conn = new SqlConnection(_connectionString);
+                conn.Open();
 
-            // Генерируем временную ось на основе startTime и endTime
-            var currentTime = adjustedStartTime;
-            var timeStep = TimeSpan.FromSeconds(1); // Шаг в 1 секунду
-            while (currentTime <= adjustedEndTime)
-            {
-                Console.WriteLine($"Checking time: {currentTime:yyyy-MM-ddTHH:mm:ss}, HasData: {tagValues.ContainsKey(currentTime)}");
-                if (tagValues.ContainsKey(currentTime))
+                var adjustedEndTime = isActiveProcess ? DateTime.Now : endTime;
+                var adjustedStartTime = startTime;
+
+                if (adjustedEndTime < adjustedStartTime)
                 {
-                    var tags = tagValues[currentTime];
-                    data.Add((
-                        currentTime,
-                        tags.ContainsKey("NOT_MN3_ACT_TURNS") ? tags["NOT_MN3_ACT_TURNS"] : 0.0,
-                        tags.ContainsKey("NOT_MN3_ACT_TORQUE") ? tags["NOT_MN3_ACT_TORQUE"] : 0.0
-                    ));
+                    adjustedEndTime = adjustedStartTime.AddSeconds(2);
+                    Debug.WriteLine($"GraphService.FetchSynchronizedData: adjustedEndTime ({adjustedEndTime:yyyy-MM-ddTHH:mm:ss.fff}) меньше startTime ({adjustedStartTime:yyyy-MM-ddTHH:mm:ss.fff}), скорректировано на {adjustedEndTime:yyyy-MM-ddTHH:mm:ss.fff}");
                 }
-                else
+
+                Debug.WriteLine($"GraphService.FetchSynchronizedData: Запрос данных для PipeCounter={_pipeCounter}, StartTime={adjustedStartTime:yyyy-MM-ddTHH:mm:ss.fff}, EndTime={adjustedEndTime:yyyy-MM-ddTHH:mm:ss.fff}, IsActive={isActiveProcess}");
+
+                var cmd = new SqlCommand(
+                    @"
+            SELECT DateTime, TagName, Value
+            FROM Runtime.dbo.History
+            WHERE TagName IN ('NOT_MN3_ACT_TURNS', 'NOT_MN3_ACT_TORQUE')
+            AND wwRetrievalMode = 'Cyclic'
+            AND wwCycleCount = 100
+            AND wwQualityRule = 'Extended'
+            AND wwVersion = 'Latest'
+            AND DateTime >= @pStartTime
+            AND DateTime <= @pEndTime
+            ORDER BY DateTime",
+                    conn);
+                cmd.Parameters.AddWithValue("@pStartTime", adjustedStartTime);
+                cmd.Parameters.AddWithValue("@pEndTime", adjustedEndTime);
+
+                var tagValues = new Dictionary<DateTime, Dictionary<string, double?>>();
+                using var reader = cmd.ExecuteReader();
+                while (reader.Read())
                 {
-                    data.Add((currentTime, 0.0, 0.0)); // Заполнение нулями, если данных нет
+                    var dt = reader.GetDateTime(0);
+                    var tagName = reader.GetString(1);
+                    double? value = reader.IsDBNull(2) ? null : reader.GetDouble(2);
+                    if (!tagValues.ContainsKey(dt))
+                        tagValues[dt] = new Dictionary<string, double?>();
+                    tagValues[dt][tagName] = value;
+                    Debug.WriteLine($"GraphService.Fetched: {dt:yyyy-MM-ddTHH:mm:ss.fff}, Tag: {tagName}, Value: {(value.HasValue ? value.Value.ToString() : "NULL")}");
                 }
-                // Обрезаем миллисекунды у следующего currentTime
-                currentTime = currentTime.AddSeconds(1);
-                currentTime = new DateTime(currentTime.Year, currentTime.Month, currentTime.Day, currentTime.Hour, currentTime.Minute, currentTime.Second, DateTimeKind.Utc);
+
+                foreach (var dt in tagValues.Keys.OrderBy(k => k))
+                {
+                    var tags = tagValues[dt];
+                    double turns = tags.ContainsKey("NOT_MN3_ACT_TURNS") && tags["NOT_MN3_ACT_TURNS"].HasValue ? tags["NOT_MN3_ACT_TURNS"].Value : 0.0;
+                    double torque = tags.ContainsKey("NOT_MN3_ACT_TORQUE") && tags["NOT_MN3_ACT_TORQUE"].HasValue ? tags["NOT_MN3_ACT_TORQUE"].Value : 0.0;
+                    data.Add((dt, turns, torque));
+                    Debug.WriteLine($"GraphService.Adding point: DateTime={dt:yyyy-MM-ddTHH:mm:ss.fff}, Turns={turns:F2}, Torque={torque:F2}");
+                }
+
+                Debug.WriteLine($"GraphService.FetchSynchronizedData: Сформировано {data.Count} синхронизированных записей для PipeCounter={_pipeCounter}, StartTime={adjustedStartTime:yyyy-MM-ddTHH:mm:ss.fff}, EndTime={adjustedEndTime:yyyy-MM-ddTHH:mm:ss.fff}");
+                if (data.Count == 0)
+                {
+                    Debug.WriteLine($"GraphService.FetchSynchronizedData: Available Tags: {GetAvailableTags()}");
+                }
+
+                return data;
             }
-            if (data.Count == 0)
+            catch (Exception ex)
             {
-                Console.WriteLine($"Available Tags: {GetAvailableTags()}");
+                Debug.WriteLine($"GraphService.FetchSynchronizedData: Ошибка получения данных: {ex.Message}\nStackTrace: {ex.StackTrace}");
+                return data;
             }
-            return data;
         }
 
         private string GetAvailableTags()
         {
-            using var conn = new SqlConnection(_connectionString);
-            conn.Open();
-            var cmd = new SqlCommand("SELECT DISTINCT TagName FROM [Runtime].[dbo].[History]", conn);
-            using var reader = cmd.ExecuteReader();
-            var tags = new List<string>();
-            while (reader.Read())
+            try
             {
-                tags.Add(reader.GetString(0));
+                using var conn = new SqlConnection(_connectionString);
+                conn.Open();
+                var cmd = new SqlCommand("SELECT DISTINCT TagName FROM [Runtime].[dbo].[History]", conn);
+                using var reader = cmd.ExecuteReader();
+                var tags = new List<string>();
+                while (reader.Read())
+                {
+                    tags.Add(reader.GetString(0));
+                }
+                return string.Join(", ", tags);
             }
-            return string.Join(", ", tags);
+            catch (Exception ex)
+            {
+                Debug.WriteLine($"GraphService.GetAvailableTags: Ошибка получения тегов: {ex.Message}");
+                return "Ошибка получения тегов";
+            }
         }
     }
 }

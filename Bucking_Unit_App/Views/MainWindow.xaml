@@ -1,19 +1,17 @@
-﻿ <Window x:Class="Bucking_Unit_App.Views.MainWindow"
+﻿<Window x:Class="Bucking_Unit_App.Views.MainWindow"
         xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         xmlns:lvc="clr-namespace:LiveChartsCore.SkiaSharpView.WPF;assembly=LiveChartsCore.SkiaSharpView.WPF"
-        Title="Операторская статистика" Height="720" Width="1280">
+        Title="Операторская статистика" Height="720" Width="1280" WindowState="Maximized">
     <Grid>
         <Grid.RowDefinitions>
             <RowDefinition Height="*"/>
             <RowDefinition Height="4"/>
-            <!-- Линия-разделитель -->
             <RowDefinition Height="*"/>
         </Grid.RowDefinitions>
         <Grid.ColumnDefinitions>
             <ColumnDefinition Width="2*"/>
             <ColumnDefinition Width="4"/>
-            <!-- Линия-разделитель -->
             <ColumnDefinition Width="3*"/>
         </Grid.ColumnDefinitions>
 
@@ -21,7 +19,7 @@
         <Border Grid.Row="0" Grid.Column="0" BorderBrush="Gray" BorderThickness="1">
             <StackPanel Margin="10">
                 <TextBlock Text="Данные оператора" FontSize="25" FontWeight="Bold" TextAlignment="Center"/>
-                <StackPanel x:Name="operatorDataPanel" Visibility="Collapsed">
+                    <StackPanel x:Name="operatorDataPanel" Visibility="Collapsed">
                     <StackPanel Orientation="Horizontal" Margin="0,0,0,5">
                         <Label Content="Номер карты:" VerticalAlignment="Center" Width="100" FontSize="15" Padding="0,5,0,0"/>
                         <Label x:Name="lblIdCard" Content="" VerticalAlignment="Center" Margin="5,5,0,0" FontSize="15"/>
@@ -43,7 +41,7 @@
                         <Label x:Name="lblEmployName" Content="" VerticalAlignment="Center" Margin="5,0,0,0" FontSize="15"/>
                     </StackPanel>
                 </StackPanel>
-                <!-- TextBox для "ВСТАВЬТЕ ПРОПУСК" -->
+                <Label x:Name="lblCOMConnectionStatus" Content="" Foreground="Red" Visibility="Visible" HorizontalAlignment="Left" VerticalAlignment="Top" Margin="0,10,0,0" FontSize="15"/>
                 <TextBox x:Name="txtInsertCardPrompt" Text="ВСТАВЬТЕ ПРОПУСК" 
                          Foreground="Red" Background="White" 
                          FontSize="24" FontWeight="Bold" 
@@ -94,7 +92,6 @@
                         </StackPanel>
                     </StackPanel>
                 </Grid>
-                <!-- TextBox для "ОТСУТСТВУЮТ ДАННЫЕ СТАТИСТИКИ" -->
                 <TextBox x:Name="txtNoStatsPrompt" Text="ВСТАВЬТЕ ПРОПУСК" 
                          Foreground="Red" Background="White" 
                          FontSize="24" FontWeight="Bold" 
@@ -105,7 +102,6 @@
                         <Thickness Left="0" Top="100" Right="0" Bottom="0"/>
                     </TextBox.Margin>
                 </TextBox>
-                <!-- Секция "Общая статистика" -->
                 <TextBlock Text="Общая статистика" FontSize="25" FontWeight="Bold" Margin="0,10,0,0" TextAlignment="Center"/>
                 <Grid x:Name="allStatsDataPanel" Visibility="Visible">
                     <Grid.ColumnDefinitions>
@@ -152,8 +148,9 @@
                 </Grid.RowDefinitions>
                 <StackPanel Grid.Row="0" Margin="10">
                     <Grid>
-                    <TextBlock Text="График испытаний" FontSize="25" FontWeight="Bold" TextAlignment="Center" Height="51"/>
-                    <Label x:Name="lblStatus" Content="Проводится наворот муфты..." Margin="0,0,0,5" Visibility="Collapsed" FontSize="15" Foreground="Red"/>
+                        <TextBlock Text="График испытаний" FontSize="25" FontWeight="Bold" TextAlignment="Center" Height="51"/>
+                        <Label x:Name="lblStatus" Content="Проводится наворот муфты..." Margin="0,0,0,5" Visibility="Collapsed" FontSize="15" Foreground="Red"/>
+                        <Label x:Name="lblGraphStatus" Content="" Foreground="Red" Visibility="Collapsed" HorizontalAlignment="Right" VerticalAlignment="Top" Margin="0,10,0,15" FontSize="15"/>
                     </Grid>
                     <Grid Margin="0,0,0,5">
                         <Grid.ColumnDefinitions>
@@ -167,30 +164,30 @@
                         </Grid.ColumnDefinitions>
                         <ComboBox x:Name="cbYear" Grid.Column="0" SelectionChanged="cbYear_SelectionChanged" Margin="10,0,5,0" Width="Auto" FontSize="15" 
                                   ItemsSource="{Binding}" DisplayMemberPath="Year" SelectedValuePath="Year"/>
-                        <TextBox x:Name="txtPipeCounter" Grid.Column="1" PreviewMouseDown="txtPipeCounter_PreviewMouseDown" LostFocus="txtPipeCounter_LostFocus" TextChanged="txtPipeCounter_TextChanged" Margin="5,0,5,0" Width="Auto" FontSize="15" Padding="0,5,0,0"/>
+                        <TextBox x:Name="txtPipeCounter" Grid.Column="1"  LostFocus="txtPipeCounter_LostFocus" Margin="5,0,5,0" Width="Auto" FontSize="15" Padding="0,5,0,0"/>
                         <Button x:Name="btnShowGraph" Grid.Column="2" Click="btnShowGraph_Click" Margin="5,0,5,0" FontSize="15" BorderThickness="0" Background="White" HorizontalAlignment="Stretch" HorizontalContentAlignment="Stretch" ToolTip="Показать график">
                             <StackPanel Orientation="Horizontal" HorizontalAlignment="Center">
-                                <Image x:Name="imgShowGraph" Source="C:\Users\z.maraktaev\source\repos\Bucking_Unit_App\Bucking_Unit_App\Images\graph.png" Width="45" Height="45" Margin="0,0,0,0" Stretch="Uniform"/>
+                                <Image x:Name="imgShowGraph" Source="images\graph.png" Width="45" Height="45" Margin="0,0,0,0" Stretch="Uniform"/>
                             </StackPanel>
                         </Button>
                         <Button x:Name="btnResumeUpdate" Grid.Column="3" Click="btnResumeUpdate_Click" Margin="5,0,5,0" FontSize="15" BorderThickness="0" Background="White" HorizontalAlignment="Stretch" HorizontalContentAlignment="Stretch" ToolTip="Восстановить цикл показа графика">
                             <StackPanel Orientation="Horizontal" HorizontalAlignment="Center">
-                                <Image x:Name="imgResumeUpdate" Source="C:\Users\z.maraktaev\source\repos\Bucking_Unit_App\Bucking_Unit_App\Images\refresh.png" Width="45" Height="45" Margin="0,0,0,0" Stretch="Uniform"/>
+                                <Image x:Name="imgResumeUpdate" Source="images\refresh.png" Width="45" Height="45" Margin="0,0,0,0" Stretch="Uniform"/>
                             </StackPanel>
                         </Button>
                         <Button x:Name="btnResetGraph" Grid.Column="4" Click="btnResetGraph_Click" Margin="5,0,5,0" FontSize="15" BorderThickness="0" Background="White" HorizontalAlignment="Stretch" HorizontalContentAlignment="Stretch" ToolTip="Остановить цикл показа графика">
                             <StackPanel Orientation="Horizontal" HorizontalAlignment="Center">
-                                <Image x:Name="imgResetGraph" Source="C:\Users\z.maraktaev\source\repos\Bucking_Unit_App\Bucking_Unit_App\Images\reset.png" Width="45" Height="45" Margin="0,0,0,0" Stretch="Uniform"/>
+                                <Image x:Name="imgResetGraph" Source="images\reset.png" Width="45" Height="45" Margin="0,0,0,0" Stretch="Uniform"/>
                             </StackPanel>
                         </Button>
                         <Button x:Name="btnSaveGraph" Grid.Column="5" Click="btnSaveGraph_Click" Margin="5,0,5,0" FontSize="15" BorderThickness="0" Background="White" HorizontalAlignment="Stretch" HorizontalContentAlignment="Stretch" ToolTip="Сохранить график">
                             <StackPanel Orientation="Horizontal" HorizontalAlignment="Center">
-                                <Image x:Name="imgSaveGraph" Source="C:\Users\z.maraktaev\source\repos\Bucking_Unit_App\Bucking_Unit_App\Images\save.png" Width="45" Height="45" Margin="0,0,0,0" Stretch="Uniform"/>
+                                <Image x:Name="imgSaveGraph" Source="images\save.png" Width="45" Height="45" Margin="0,0,0,0" Stretch="Uniform"/>
                             </StackPanel>
                         </Button>
                         <Button x:Name="btnOpenFolder" Grid.Column="6" Click="btnOpenFolder_Click" Margin="5,0,5,0" FontSize="15" BorderThickness="0" Background="White" HorizontalAlignment="Stretch" HorizontalContentAlignment="Stretch" ToolTip="Показать в папке">
                             <StackPanel Orientation="Horizontal" HorizontalAlignment="Center">
-                                <Image x:Name="imgOpenFolder" Source="C:\Users\z.maraktaev\source\repos\Bucking_Unit_App\Bucking_Unit_App\Images\folder.png" Width="45" Height="45" Margin="0,0,0,0" Stretch="Uniform"/>
+                                <Image x:Name="imgOpenFolder" Source="images\folder.png" Width="45" Height="45" Margin="0,0,0,0" Stretch="Uniform"/>
                             </StackPanel>
                         </Button>
                     </Grid>
@@ -199,7 +196,7 @@
                             <TextBlock Text="Текущая труба:" VerticalAlignment="Center" Width="120" FontSize="15" Padding="0,5,0,0"/>
                             <Label x:Name="txtCurrentPipe" Content="" VerticalAlignment="Center" Margin="5,5,0,0" FontSize="15"/>
                         </StackPanel>
-                        <Button x:Name="btnShowPL2CData" Content="Показать параметры ПЛК" Click="btnShowPLCData_Click" Margin="5,0,5,5" FontSize="15" BorderThickness="4" Background="Green" HorizontalAlignment="Right"/>
+                        <Button x:Name="btnShowPL2CData" Content="Показать параметры ПЛК" Click="btnShowPLCData_Click" Margin="5,0,5,5" FontSize="15" BorderThickness="4" Background="Yellow" HorizontalAlignment="Right"/>
                     </Grid>
                     <StackPanel Margin="5">
                         <Grid>
@@ -216,6 +213,10 @@
                                     <Label Content="Оптимальный крутящий момент:" Width="auto" FontSize="15" VerticalAlignment="Center"/>
                                     <Label x:Name="lblOptimalTorque" Content="N/A" FontSize="15" VerticalAlignment="Center"/>
                                 </StackPanel>
+                                <StackPanel Orientation="Horizontal" Margin="0,0,0,5">
+                                    <Label Content="Актуальный крутящий момент:" Width="auto" FontSize="15" VerticalAlignment="Center"/>
+                                    <Label x:Name="lblActualTorque" Content="N/A" FontSize="15" VerticalAlignment="Center"/>
+                                </StackPanel>
                             </StackPanel>
                             <StackPanel Grid.Column="1" Margin="10,0,0,0">
                                 <StackPanel Orientation="Horizontal" Margin="0,0,0,5">
@@ -226,14 +227,16 @@
                                     <Label Content="Минимальный крутящий момент:" Width="auto" FontSize="15" VerticalAlignment="Center"/>
                                     <Label x:Name="lblMinTorque" Content="N/A" FontSize="15" VerticalAlignment="Center"/>
                                 </StackPanel>
+                                <StackPanel Orientation="Horizontal" Margin="0,0,0,5">
+                                    <Label Content="Конечный крутящий момент:" Width="auto" FontSize="15" VerticalAlignment="Center"/>
+                                    <Label x:Name="lblInternalTorque" Content="N/A" FontSize="15" VerticalAlignment="Center"/>
+                                </StackPanel>
                             </StackPanel>
                         </Grid>
                     </StackPanel>
                     <ProgressBar x:Name="progressBar" Height="20" Visibility="Collapsed"/>
                 </StackPanel>
-                <Canvas x:Name="canvasGraph" Grid.Row="1" Margin="10">
-                    <lvc:CartesianChart x:Name="chartControl" />
-                </Canvas>
+                <Canvas x:Name="canvasGraph" Grid.Row="1" Margin="10"/>
             </Grid>
         </Border>
     </Grid>

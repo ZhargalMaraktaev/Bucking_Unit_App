@@ -20,7 +20,6 @@ namespace Bucking_Unit_App.Interfaces
         Task UpdateUnassignedOperatorIdsAsync(int operatorId, int lastKnownRepId);
         Task UpdateDowntimeOperatorIdAsync(int operatorId, int lastKnownDowntimeId);
 
-        // Новые методы для всех операторов
         Task<Dictionary<int, (bool IsDayShift, decimal DayShiftDowntime, decimal NightShiftDowntime)>> GetDailyDowntimeByAllOperatorsAsync();
         Task<Dictionary<int, (bool IsDayShift, decimal DayShiftDowntime, decimal NightShiftDowntime)>> GetMonthlyDowntimeByAllOperatorsAsync();
         Task<Dictionary<int, (bool IsDayShift, int ShiftOperationCount)>> GetDailyShiftOperationCountByAllOperatorsAsync();

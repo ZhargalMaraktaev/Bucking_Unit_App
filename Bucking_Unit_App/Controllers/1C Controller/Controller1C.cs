@@ -12,7 +12,39 @@ namespace Bucking_Unit_App._1C_Controller
     {
         public async Task<Employee1CModel> GetResp1CSKUD(string cardNumber)
         {
-            string xmlPattern = await File.ReadAllTextAsync("employee_data.xml");
+            string xmlPattern;
+            try
+            {
+                // Use AppDomain to get the base directory and combine with the file path
+                string filePath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "Controllers", "1C Controller", "employee_data.xml");
+                xmlPattern = await File.ReadAllTextAsync(filePath);
+            }
+            catch (FileNotFoundException ex)
+            {
+                return new Employee1CModel
+                {
+                    ErrorCode = (int)Employee1CModel.ErrorCodes.SpecificError,
+                    ErrorText = $"Файл employee_data.xml не найден по пути: {ex.FileName}"
+                };
+            }
+            catch (IOException ex)
+            {
+                return new Employee1CModel
+                {
+                    ErrorCode = (int)Employee1CModel.ErrorCodes.SpecificError,
+                    ErrorText = $"Ошибка чтения файла employee_data.xml: {ex.Message}"
+                };
+            }
+            catch (Exception ex)
+            {
+                return new Employee1CModel
+                {
+                    ErrorCode = (int)Employee1CModel.ErrorCodes.UnknownError,
+                    ErrorText = $"Неизвестная ошибка при чтении файла employee_data.xml: {ex.Message}"
+                };
+            }
+
+            // Replace placeholder with card number
             string soapEnvelope = xmlPattern.Replace("CardNumber", cardNumber);
 
             string url = "http://192.168.12.25/ITPZ_ST/ru_RU/ws/emp_data";
@@ -24,34 +56,54 @@ namespace Bucking_Unit_App._1C_Controller
                     {
                         new Uri(url), "Basic", new NetworkCredential("obmen", "ghbrjk")
                     }
-                    //{
-                    //    new Uri(url), "NTLM", new NetworkCredential("", "") // Не знаю нужно или нет, но оставил на основе старой функции.
-                    //}
                 }
             };
 
             using HttpClient client = new HttpClient(handler);
 
-            var request = new HttpRequestMessage(HttpMethod.Post, url);
-            request.Headers.Add("SOAPAction", "\"emp_data#emp_data:export_data\"");
-            request.Content = new StringContent(soapEnvelope, Encoding.UTF8, "text/xml");
-
-            HttpResponseMessage response = await client.SendAsync(request);
-
-            if (!response.IsSuccessStatusCode)
+            try
             {
-                return new Employee1CModel()
+                var request = new HttpRequestMessage(HttpMethod.Post, url);
+                request.Headers.Add("SOAPAction", "\"emp_data#emp_data:export_data\"");
+                request.Content = new StringContent(soapEnvelope, Encoding.UTF8, "text/xml");
+
+                HttpResponseMessage response = await client.SendAsync(request);
+
+                if (!response.IsSuccessStatusCode)
                 {
-                    ErrorCode = (int)Employee1CModel.ErrorCodes.SpecificError,
-                    ErrorText = $"Ошибка: {response.StatusCode}"
+                    return new Employee1CModel
+                    {
+                        ErrorCode = (int)Employee1CModel.ErrorCodes.SpecificError,
+                        ErrorText = $"Ошибка HTTP-запроса: {response.StatusCode} - {response.ReasonPhrase}"
+                    };
+                }
+
+                string soapXml = await response.Content.ReadAsStringAsync();
+
+                Employee1CModel? employee = ParseSoapResponse(soapXml, cardNumber);
+
+                return employee ?? new Employee1CModel
+                {
+                    ErrorCode = (int)Employee1CModel.ErrorCodes.UnknownError,
+                    ErrorText = "Не удалось обработать ответ от сервера 1С."
                 };
             }
-
-            string soapXml = await response.Content.ReadAsStringAsync();
-
-            Employee1CModel? employee = ParseSoapResponse(soapXml, cardNumber);
-
-            return employee != null ? employee : new Employee1CModel() { ErrorCode = (int)Employee1CModel.ErrorCodes.UnknownError, ErrorText = "Неизвестная ошибка." };
+            catch (HttpRequestException ex)
+            {
+                return new Employee1CModel
+                {
+                    ErrorCode = (int)Employee1CModel.ErrorCodes.SpecificError,
+                    ErrorText = $"Ошибка HTTP-запроса: {ex.Message}"
+                };
+            }
+            catch (Exception ex)
+            {
+                return new Employee1CModel
+                {
+                    ErrorCode = (int)Employee1CModel.ErrorCodes.UnknownError,
+                    ErrorText = $"Неизвестная ошибка при выполнении запроса к 1С: {ex.Message}"
+                };
+            }
         }
 
         private Employee1CModel? ParseSoapResponse(string soapXml, string cardNumber)
