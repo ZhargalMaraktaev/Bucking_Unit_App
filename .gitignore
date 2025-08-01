@@ -1,0 +1,5 @@
+/Bucking_Unit_App/bin/
+/Bucking_Unit_App/obj/
+*.exe
+*.dll
+*.log
