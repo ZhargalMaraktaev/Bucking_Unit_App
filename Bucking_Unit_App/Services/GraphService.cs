@@ -10,6 +10,7 @@ using LiveChartsCore.SkiaSharpView.Painting;
 using LiveChartsCore.Defaults;
 using System.Collections.ObjectModel;
 using System.Diagnostics;
+using SkiaSharp;
 
 namespace Bucking_Unit_App.Services
 {
@@ -42,26 +43,40 @@ namespace Bucking_Unit_App.Services
                 {
                     errorMessage = $"Нет данных для построения графика. Период: {startTime:yyyy-MM-ddTHH:mm:ss} - {(isActiveProcess ? DateTime.Now : endTime):yyyy-MM-ddTHH:mm:ss}, PipeCounter: {_pipeCounter?.ToString() ?? "All"}";
                     Debug.WriteLine($"GraphService.GetGraphData: {errorMessage}");
-                    return (new ObservableCollection<ObservablePoint>(), new Axis[0], new Axis[0], errorMessage);
+                    return (new ObservableCollection<ObservablePoint>(), new Axis[] { new Axis { Name = "Количество оборотов", LabelsRotation = 45, LabelsPaint = new SolidColorPaint(SKColors.Black), TextSize = 12 } }, new Axis[] { new Axis { Name = "Крутящий момент", Labeler = value => value.ToString("F2"), MinLimit = 0, MaxLimit = 25000, LabelsPaint = new SolidColorPaint(SKColors.Black), TextSize = 12, SeparatorsPaint = new SolidColorPaint(SKColors.LightGray) { StrokeThickness = 1 } } }, errorMessage);
+                }
+
+                // Фильтрация по NOT_MN3_SCREW_ON = true только для активного процесса
+                // Фильтрация по NOT_MN3_SCREW_ON = true только для активного процесса
+                var filteredData = isActiveProcess
+                ? synchronizedData.Where(d => d.ScrewOn).ToList()
+                : synchronizedData.ToList(); // Включаем все данные для неактивного процесса в 4-секундном окне
+
+                if (!filteredData.Any())
+                {
+                    errorMessage = $"Нет данных для отображения. Период: {startTime:yyyy-MM-ddTHH:mm:ss} - {(isActiveProcess ? DateTime.Now : endTime):yyyy-MM-ddTHH:mm:ss}, PipeCounter: {_pipeCounter?.ToString() ?? "All"}";
+                    Debug.WriteLine($"GraphService.GetGraphData: {errorMessage}");
+                    return (new ObservableCollection<ObservablePoint>(),
+                            new Axis[] { new Axis { Name = "Количество оборотов", LabelsRotation = 45, LabelsPaint = new SolidColorPaint(SKColors.Black), TextSize = 12 } },
+                            new Axis[] { new Axis { Name = "Крутящий момент", Labeler = value => value.ToString("F2"), MinLimit = 0, MaxLimit = 25000, LabelsPaint = new SolidColorPaint(SKColors.Black), TextSize = 12, SeparatorsPaint = new SolidColorPaint(SKColors.LightGray) { StrokeThickness = 1 } } },
+                            errorMessage);
                 }
 
                 var torquePoints = new ObservableCollection<ObservablePoint>(
-                    synchronizedData.Select(d => new ObservablePoint(d.DateTime.ToOADate(), d.Torque)));
+                    filteredData.Select((d, index) => new ObservablePoint(index, d.Torque)));
+                var xAxisLabels = filteredData.Select(d => d.Turns.ToString("F2")).ToArray();
+
+                Debug.WriteLine($"GraphService.GetGraphData: torquePoints.Count={torquePoints.Count}, xAxisLabels.Count={xAxisLabels.Length}");
 
                 var xAxes = new Axis[]
                 {
             new Axis
             {
-                Labeler = value =>
-                {
-                    var dateTime = new DateTime((long)(value * TimeSpan.TicksPerDay));
-                    var dataPoint = synchronizedData.FirstOrDefault(d => Math.Abs(d.DateTime.ToOADate() - value) < 0.00001);
-                    return dataPoint.DateTime != default ? dataPoint.Turns.ToString("F2") : "N/A";
-                },
                 Name = "Количество оборотов",
+                Labels = xAxisLabels,
                 LabelsRotation = 45,
-                MinLimit = synchronizedData.Min(d => d.DateTime.ToOADate()),
-                MaxLimit = synchronizedData.Max(d => d.DateTime.ToOADate())
+                LabelsPaint = new SolidColorPaint(SKColors.Black),
+                TextSize = 12
             }
                 };
 
@@ -72,7 +87,10 @@ namespace Bucking_Unit_App.Services
                 Labeler = value => value.ToString("F2"),
                 Name = "Крутящий момент",
                 MinLimit = 0,
-                MaxLimit = synchronizedData.Any(d => d.Torque > 0) ? synchronizedData.Max(d => d.Torque) * 1.1 : 1.0
+                MaxLimit = filteredData.Any(d => d.Torque > 0) ? filteredData.Max(d => d.Torque) * 1.1 : 25000,
+                LabelsPaint = new SolidColorPaint(SKColors.Black),
+                TextSize = 12,
+                SeparatorsPaint = new SolidColorPaint(SKColors.LightGray) { StrokeThickness = 1 }
             }
                 };
 
@@ -83,7 +101,7 @@ namespace Bucking_Unit_App.Services
             {
                 string errorMessage = $"Ошибка генерации данных графика: {ex.Message}";
                 Debug.WriteLine($"GraphService.GetGraphData: {errorMessage}\nStackTrace: {ex.StackTrace}");
-                return (new ObservableCollection<ObservablePoint>(), new Axis[0], new Axis[0], errorMessage);
+                return (new ObservableCollection<ObservablePoint>(), new Axis[] { new Axis { Name = "Количество оборотов", LabelsRotation = 45, LabelsPaint = new SolidColorPaint(SKColors.Black), TextSize = 12 } }, new Axis[] { new Axis { Name = "Крутящий момент", Labeler = value => value.ToString("F2"), MinLimit = 0, MaxLimit = 25000, LabelsPaint = new SolidColorPaint(SKColors.Black), TextSize = 12, SeparatorsPaint = new SolidColorPaint(SKColors.LightGray) { StrokeThickness = 1 } } }, errorMessage);
             }
         }
 
@@ -117,16 +135,15 @@ namespace Bucking_Unit_App.Services
             }
         }
 
-        public List<(DateTime DateTime, double Turns, double Torque)> FetchSynchronizedData(DateTime startTime, DateTime endTime, bool isActiveProcess)
+        public List<(DateTime DateTime, double Turns, double Torque, bool ScrewOn)> FetchSynchronizedData(DateTime startTime, DateTime endTime, bool isActiveProcess)
         {
-            var data = new List<(DateTime DateTime, double Turns, double Torque)>();
+            var data = new List<(DateTime DateTime, double Turns, double Torque, bool ScrewOn)>();
             try
             {
                 using var conn = new SqlConnection(_connectionString);
                 conn.Open();
-
-                var adjustedEndTime = isActiveProcess ? DateTime.Now : endTime;
-                var adjustedStartTime = startTime;
+                var adjustedEndTime = isActiveProcess ? DateTime.Now.AddSeconds(5) : endTime; // Буфер для активного процесса
+                var adjustedStartTime = startTime.AddSeconds(-5); // Буфер для учета задержек
 
                 if (adjustedEndTime < adjustedStartTime)
                 {
@@ -138,46 +155,61 @@ namespace Bucking_Unit_App.Services
 
                 var cmd = new SqlCommand(
                     @"
-            SELECT DateTime, TagName, Value
-            FROM Runtime.dbo.History
-            WHERE TagName IN ('NOT_MN3_ACT_TURNS', 'NOT_MN3_ACT_TORQUE')
-            AND wwRetrievalMode = 'Cyclic'
-            AND wwCycleCount = 100
-            AND wwQualityRule = 'Extended'
-            AND wwVersion = 'Latest'
-            AND DateTime >= @pStartTime
-            AND DateTime <= @pEndTime
-            ORDER BY DateTime",
+                SELECT DateTime, TagName, Value
+                FROM Runtime.dbo.History
+                WHERE TagName IN ('NOT_MN3_ACT_TURNS', 'NOT_MN3_ACT_TORQUE', 'NOT_MN3_SCREW_ON')
+                AND wwRetrievalMode = 'Cyclic'
+                AND wwCycleCount = 100
+                AND wwQualityRule = 'Extended'
+                AND wwVersion = 'Latest'
+                AND DateTime >= @pStartTime
+                AND DateTime <= @pEndTime
+                AND Value is not NULL
+                ORDER BY DateTime ASC",
                     conn);
+
                 cmd.Parameters.AddWithValue("@pStartTime", adjustedStartTime);
                 cmd.Parameters.AddWithValue("@pEndTime", adjustedEndTime);
 
                 var tagValues = new Dictionary<DateTime, Dictionary<string, double?>>();
+                var screwOnValues = new Dictionary<DateTime, bool>();
                 using var reader = cmd.ExecuteReader();
                 while (reader.Read())
                 {
                     var dt = reader.GetDateTime(0);
                     var tagName = reader.GetString(1);
                     double? value = reader.IsDBNull(2) ? null : reader.GetDouble(2);
+
                     if (!tagValues.ContainsKey(dt))
                         tagValues[dt] = new Dictionary<string, double?>();
-                    tagValues[dt][tagName] = value;
-                    Debug.WriteLine($"GraphService.Fetched: {dt:yyyy-MM-ddTHH:mm:ss.fff}, Tag: {tagName}, Value: {(value.HasValue ? value.Value.ToString() : "NULL")}");
+
+                    if (tagName == "NOT_MN3_SCREW_ON")
+                    {
+                        screwOnValues[dt] = value.HasValue && value.Value == 1;
+                    }
+                    else
+                    {
+                        tagValues[dt][tagName] = value;
+                    }
+
+                    Debug.WriteLine($"GraphService.Fetched: {dt:yyyy-MM-ddTHH:mm:ss.fff}, Tag: {tagName}, Value: {(value.HasValue ? value.Value.ToString() : "NULL")}, ScrewOn: {(tagName == "NOT_MN3_SCREW_ON" ? screwOnValues[dt].ToString() : "N/A")}");
                 }
 
-                foreach (var dt in tagValues.Keys.OrderBy(k => k))
+                foreach (var dt in tagValues.Keys.OrderBy(dt => dt))
                 {
                     var tags = tagValues[dt];
                     double turns = tags.ContainsKey("NOT_MN3_ACT_TURNS") && tags["NOT_MN3_ACT_TURNS"].HasValue ? tags["NOT_MN3_ACT_TURNS"].Value : 0.0;
                     double torque = tags.ContainsKey("NOT_MN3_ACT_TORQUE") && tags["NOT_MN3_ACT_TORQUE"].HasValue ? tags["NOT_MN3_ACT_TORQUE"].Value : 0.0;
-                    data.Add((dt, turns, torque));
-                    Debug.WriteLine($"GraphService.Adding point: DateTime={dt:yyyy-MM-ddTHH:mm:ss.fff}, Turns={turns:F2}, Torque={torque:F2}");
+                    bool screwOn = screwOnValues.ContainsKey(dt) ? screwOnValues[dt] : false;
+                    data.Add((dt, turns, torque, screwOn));
+                    Debug.WriteLine($"GraphService.Adding point: DateTime={dt:yyyy-MM-ddTHH:mm:ss.fff}, Turns={turns:F2}, Torque={torque:F2}, ScrewOn={screwOn}");
                 }
 
                 Debug.WriteLine($"GraphService.FetchSynchronizedData: Сформировано {data.Count} синхронизированных записей для PipeCounter={_pipeCounter}, StartTime={adjustedStartTime:yyyy-MM-ddTHH:mm:ss.fff}, EndTime={adjustedEndTime:yyyy-MM-ddTHH:mm:ss.fff}");
+
                 if (data.Count == 0)
                 {
-                    Debug.WriteLine($"GraphService.FetchSynchronizedData: Available Tags: {GetAvailableTags()}");
+                    Debug.WriteLine($"GraphService.FetchSynchronizedData: Доступные теги: {GetAvailableTags()}");
                 }
 
                 return data;
@@ -195,19 +227,30 @@ namespace Bucking_Unit_App.Services
             {
                 using var conn = new SqlConnection(_connectionString);
                 conn.Open();
-                var cmd = new SqlCommand("SELECT DISTINCT TagName FROM [Runtime].[dbo].[History]", conn);
-                using var reader = cmd.ExecuteReader();
+                var cmd = new SqlCommand(
+                    @"
+            SELECT DISTINCT TagName 
+            FROM Runtime.dbo.History 
+            WHERE TagName IN ('NOT_MN3_ACT_TURNS', 'NOT_MN3_ACT_TORQUE')
+            AND DateTime >= @StartTime 
+            AND DateTime <= @EndTime",
+                    conn);
+                cmd.Parameters.AddWithValue("@StartTime", DateTime.Now.AddHours(-24));
+                cmd.Parameters.AddWithValue("@EndTime", DateTime.Now);
+
                 var tags = new List<string>();
+                using var reader = cmd.ExecuteReader();
                 while (reader.Read())
                 {
                     tags.Add(reader.GetString(0));
                 }
+                Debug.WriteLine($"GraphService.GetAvailableTags: Найдено тегов: {tags.Count}");
                 return string.Join(", ", tags);
             }
             catch (Exception ex)
             {
                 Debug.WriteLine($"GraphService.GetAvailableTags: Ошибка получения тегов: {ex.Message}");
-                return "Ошибка получения тегов";
+                return $"Ошибка получения тегов: {ex.Message}";
             }
         }
     }

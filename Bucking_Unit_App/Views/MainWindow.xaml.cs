@@ -67,6 +67,10 @@ namespace Bucking_Unit_App.Views
         private int? _currentGraphPipeCounter;
         private bool _isTextChangeProgrammatic;
         private DispatcherTimer _comStatusTimer;
+        private bool? _lastScrewOnStatus;
+        private DateTime? _lastScrewOnTrueTime;
+        private bool _isInScrewOnWindow;
+        private bool _wasCycleStoppedRecently = false;
 
         public MainWindow()
         {
@@ -97,7 +101,7 @@ namespace Bucking_Unit_App.Views
             int retryDelayMs = 1000;
             for (int i = 0; i < maxRetries; i++)
             {
-                int result = s7Client.ConnectTo("192.168.0.200", 0, 1);
+                int result = s7Client.ConnectTo("192.168.11.241", 0, 1);
                 if (result == 0)
                 {
                     System.Diagnostics.Debug.WriteLine("MainWindow: Успешное подключение к PLC.");
@@ -177,18 +181,20 @@ namespace Bucking_Unit_App.Views
 
         private async Task StartGraphUpdateLoop(CancellationToken token)
         {
-            Debug.WriteLine("MainWindow: Цикл обновления графика начат.");
+            Debug.WriteLine($"MainWindow: Цикл обновления графика начат для PipeCounter={_selectedPipeCounter}, вызван из {new StackTrace().GetFrame(1).GetMethod().Name}");
             try
             {
                 while (!token.IsCancellationRequested)
                 {
+                    Debug.WriteLine("MainWindow: Выполняется итерация цикла обновления графика.");
                     await UpdateGraphAsync();
-                    await Task.Delay(200, token);
+                    await Task.Delay(250, token);
                 }
+                Debug.WriteLine("MainWindow: Цикл обновления графика остановлен по токену отмены.");
             }
             catch (TaskCanceledException)
             {
-                Debug.WriteLine("MainWindow: Цикл обновления графика остановлен.");
+                Debug.WriteLine("MainWindow: Цикл обновления графика остановлен (TaskCanceledException).");
             }
             catch (Exception ex)
             {
@@ -198,10 +204,48 @@ namespace Bucking_Unit_App.Views
                     Debug.WriteLine($"MainWindow: Ошибка в цикле обновления графика: {ex.Message}\nStackTrace: {ex.StackTrace}");
                 });
             }
+            finally
+            {
+                Debug.WriteLine($"MainWindow: Цикл обновления графика завершен окончательно для PipeCounter={_selectedPipeCounter}.");
+            }
         }
+        private bool CheckScrewOnStatus()
+        {
+            try
+            {
+                using (var connection = new SqlConnection(_runtimeConnectionString))
+                {
+                    connection.Open();
+                    string query = "SELECT TOP 5 Value FROM Runtime.dbo.History WHERE TagName = 'NOT_MN3_SCREW_ON' AND Value IS NOT NULL ORDER BY DateTime DESC";
+                    using (var command = new SqlCommand(query, connection))
+                    {
+                        var result = command.ExecuteScalar();
+                        bool isScrewOn = result != null && !Convert.IsDBNull(result) && Convert.ToBoolean(result);
+                        Debug.WriteLine($"MainWindow: CheckScrewOnStatus: NOT_MN3_SCREW_ON = {isScrewOn}");
+                        return isScrewOn;
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                Debug.WriteLine($"MainWindow: Ошибка при проверке NOT_MN3_SCREW_ON: {ex.Message}");
+                return false; // Если ошибка, считаем процесс неактивным
+            }
+        }
+
+        private bool _isUpdatingGraph = false;
 
         private async Task UpdateGraphAsync()
         {
+            if (_isUpdatingGraph)
+            {
+                Debug.WriteLine("MainWindow: UpdateGraphAsync уже выполняется, вызов пропущен.");
+                return;
+            }
+
+            _isUpdatingGraph = true;
+            DateTime adjustedStartTime = DateTime.Now.AddSeconds(-5);
+            DateTime adjustedEndTime = DateTime.Now;
             Debug.WriteLine("MainWindow: UpdateGraphAsync начат");
             try
             {
@@ -224,26 +268,106 @@ namespace Bucking_Unit_App.Views
                     return;
                 }
 
-                Debug.WriteLine($"MainWindow: UpdateGraphAsync использует PipeCounter={_selectedPipeCounter.Value}");
+                bool isScrewOn = CheckScrewOnStatus();
+                Debug.WriteLine($"MainWindow: UpdateGraphAsync: NOT_MN3_SCREW_ON = {isScrewOn}, _lastScrewOnStatus={_lastScrewOnStatus}, _isInScrewOnWindow={_isInScrewOnWindow}, _graphUpdateCts={(_graphUpdateCts == null ? "null" : "active")}");
+
+                bool isCurrentPipeActive = _selectedPipeCounter == _currentPipeCounter;
+                Debug.WriteLine($"MainWindow: UpdateGraphAsync: isCurrentPipeActive={isCurrentPipeActive}, _selectedPipeCounter={_selectedPipeCounter}, _currentPipeCounter={_currentPipeCounter}");
+
                 var graphService = new GraphService(_runtimeConnectionString, _selectedPipeCounter);
                 var (startTime, endTime) = graphService.GetTimeRange();
                 Debug.WriteLine($"MainWindow: GetTimeRange вернул StartTime={startTime?.ToString("yyyy-MM-ddTHH:mm:ss.fff") ?? "null"}, EndTime={endTime?.ToString("yyyy-MM-ddTHH:mm:ss.fff") ?? "null"}");
 
-                bool isActiveProcess = !endTime.HasValue;
-                DateTime adjustedStartTime;
-                DateTime adjustedEndTime;
+                bool isActiveProcess = isScrewOn && isCurrentPipeActive;
+
+                if (isScrewOn && isActiveProcess)
+                {
+                    _lastScrewOnTrueTime = DateTime.Now;
+                    _isInScrewOnWindow = false;
+                    _wasCycleStoppedRecently = false; // Сбрасываем флаг, если процесс активен
+                    Debug.WriteLine("MainWindow: NOT_MN3_SCREW_ON = true, окно и флаг остановки сброшены, обновление продолжается.");
+                }
+                else if (_lastScrewOnStatus == true && !_isInScrewOnWindow && !isScrewOn)
+                {
+                    _isInScrewOnWindow = true;
+                    if (!_lastScrewOnTrueTime.HasValue)
+                    {
+                        _lastScrewOnTrueTime = DateTime.Now; // Устанавливаем время, если не было ранее
+                    }
+                    Debug.WriteLine("MainWindow: NOT_MN3_SCREW_ON переключилось на false, начато 8-секундное окно.");
+                }
+
+                if (_isInScrewOnWindow && _lastScrewOnTrueTime.HasValue)
+                {
+                    if (DateTime.Now - _lastScrewOnTrueTime.Value > TimeSpan.FromSeconds(8))
+                    {
+                        _isInScrewOnWindow = false;
+                        Dispatcher.Invoke(() =>
+                        {
+                            lblGraphStatus.Content = "График остановлен (8-секундное окно завершено)";
+                            _torquePoints = null;
+                            _currentChart = null;
+                            _currentGraphPipeCounter = null;
+                        });
+                        if (_graphUpdateCts != null)
+                        {
+                            _graphUpdateCts.Cancel();
+                            _graphUpdateCts.Dispose();
+                            _graphUpdateCts = null;
+                            _wasCycleStoppedRecently = true; // Устанавливаем флаг
+                            Debug.WriteLine("MainWindow: Цикл обновления графика остановлен после завершения 8-секундного окна.");
+                        }
+                        _lastScrewOnStatus = isScrewOn;
+                        return;
+                    }
+                    else
+                    {
+                        adjustedStartTime = _lastScrewOnTrueTime.Value.AddSeconds(-9);
+                        adjustedEndTime = DateTime.Now;
+                        Debug.WriteLine($"MainWindow: В 8-секундном окне: StartTime={adjustedStartTime:yyyy-MM-ddTHH:mm:ss.fff}, EndTime={adjustedEndTime:yyyy-MM-ddTHH:mm:ss.fff}");
+                    }
+                }
+                else
+                {
+                    _lastScrewOnStatus = isScrewOn;
+                }
 
                 if (!startTime.HasValue)
                 {
-                    adjustedStartTime = DateTime.Now.AddMinutes(-5);
+                    try
+                    {
+                        using (var conn = new SqlConnection(_runtimeConnectionString))
+                        {
+                            await conn.OpenAsync();
+                            var cmd = new SqlCommand(
+                                "SELECT DateTime FROM Pilot.dbo.MuftN3_REP WHERE PipeCounter = @PipeCounter",
+                                conn);
+                            cmd.Parameters.AddWithValue("@PipeCounter", _selectedPipeCounter);
+                            var dateTime = await cmd.ExecuteScalarAsync() as DateTime?;
+                            if (dateTime.HasValue)
+                            {
+                                adjustedStartTime = dateTime.Value;
+                                Debug.WriteLine($"MainWindow: StartDateTime отсутствует, использован DateTime из MuftN3_REP: adjustedStartTime={adjustedStartTime.ToString("yyyy-MM-ddTHH:mm:ss.fff")}");
+                            }
+                            else
+                            {
+                                adjustedStartTime = DateTime.Now.AddHours(-2);
+                                Debug.WriteLine($"MainWindow: DateTime отсутствует в MuftN3_REP, использован запасной диапазон: adjustedStartTime={adjustedStartTime.ToString("yyyy-MM-ddTHH:mm:ss.fff")}");
+                            }
+                        }
+                    }
+                    catch (Exception ex)
+                    {
+                        adjustedStartTime = DateTime.Now.AddHours(-2);
+                        Debug.WriteLine($"MainWindow: Ошибка при получении DateTime из MuftN3_REP: {ex.Message}, использован запасной диапазон: adjustedStartTime={adjustedStartTime.ToString("yyyy-MM-ddTHH:mm:ss.fff")}");
+                    }
                     adjustedEndTime = DateTime.Now;
-                    isActiveProcess = true;
                     Debug.WriteLine($"MainWindow: StartDateTime отсутствует, установлены временные значения: adjustedStartTime={adjustedStartTime:yyyy-MM-ddTHH:mm:ss.fff}, adjustedEndTime={adjustedEndTime:yyyy-MM-ddTHH:mm:ss.fff}");
                 }
                 else
                 {
                     adjustedStartTime = startTime.Value;
-                    adjustedEndTime = isActiveProcess ? DateTime.Now : endTime.Value;
+                    adjustedEndTime = isCurrentPipeActive ? DateTime.Now : endTime.Value;
                     Debug.WriteLine($"MainWindow: adjustedStartTime={adjustedStartTime:yyyy-MM-ddTHH:mm:ss.fff}, adjustedEndTime={adjustedEndTime:yyyy-MM-ddTHH:mm:ss.fff}, isActiveProcess={isActiveProcess}");
                 }
 
@@ -254,13 +378,12 @@ namespace Bucking_Unit_App.Views
                     Debug.WriteLine($"MainWindow: Временной диапазон скорректирован: adjustedStartTime={adjustedStartTime:yyyy-MM-ddTHH:mm:ss.fff}, adjustedEndTime={adjustedEndTime:yyyy-MM-ddTHH:mm:ss.fff}");
                 }
 
-                // Получаем значение MaxTorque из lblMaxTorque
-                double maxTorqueLimit = 25000; // Значение по умолчанию
+                double maxTorqueLimit = 25000;
                 Dispatcher.Invoke(() =>
                 {
                     if (lblOptimalTorque.Content != null && lblOptimalTorque.Content.ToString() != "N/A" && double.TryParse(lblOptimalTorque.Content.ToString(), NumberStyles.Any, CultureInfo.InvariantCulture, out double parsedValue))
                     {
-                        maxTorqueLimit = parsedValue * 1.1+5000; // Добавляем 10% запас для оси
+                        maxTorqueLimit = parsedValue * 1.1 + 5000;
                         Debug.WriteLine($"MainWindow: Используется MaxTorque из lblMaxTorque: {maxTorqueLimit}");
                     }
                     else
@@ -271,7 +394,7 @@ namespace Bucking_Unit_App.Views
 
                 var (torquePoints, xAxes, yAxes, errorMessage) = !startTime.HasValue
                     ? (new ObservableCollection<ObservablePoint>(),
-                       new Axis[] { new Axis { Name = "Количество оборотов", Labeler = value => "0.00", MinLimit = adjustedStartTime.ToOADate(), MaxLimit = adjustedEndTime.ToOADate(), LabelsRotation = 45, LabelsPaint = new SolidColorPaint(SKColors.Black), TextSize = 12 } },
+                       new Axis[] { new Axis { Name = "Количество оборотов", LabelsRotation = 45, LabelsPaint = new SolidColorPaint(SKColors.Black), TextSize = 12 } },
                        new Axis[] { new Axis { Name = "Крутящий момент", Labeler = value => value.ToString("F2"), MinLimit = 0, MaxLimit = maxTorqueLimit, LabelsPaint = new SolidColorPaint(SKColors.Black), TextSize = 12, SeparatorsPaint = new SolidColorPaint(SKColors.LightGray) { StrokeThickness = 1 } } },
                        "Ожидание данных: StartDateTime отсутствует")
                     : graphService.GetGraphData(adjustedStartTime, adjustedEndTime, isActiveProcess);
@@ -280,13 +403,13 @@ namespace Bucking_Unit_App.Views
 
                 Dispatcher.Invoke(() =>
                 {
-                    lblGraphStatus.Content = !string.IsNullOrEmpty(errorMessage) ? errorMessage : (isActiveProcess ? "График обновляется в реальном времени" : "График статичен");
+                    lblGraphStatus.Content = !string.IsNullOrEmpty(errorMessage) ? errorMessage : (isActiveProcess ? "График обновляется (барабан крутится)" : "График статичен (барабан остановлен)");
 
                     var fixedYAxis = new Axis
                     {
                         Name = "Крутящий момент",
                         MinLimit = 0,
-                        MaxLimit = maxTorqueLimit, // Используем maxTorqueLimit
+                        MaxLimit = maxTorqueLimit,
                         Labeler = value => value.ToString("F2"),
                         LabelsPaint = new SolidColorPaint(SKColors.Black),
                         TextSize = 12,
@@ -295,16 +418,24 @@ namespace Bucking_Unit_App.Views
 
                     if (_currentGraphPipeCounter != _selectedPipeCounter || _currentChart == null)
                     {
-                        _torquePoints = new ObservableCollection<ObservablePoint>(torquePoints);
+                        _torquePoints = new ObservableCollection<ObservablePoint>();
                         _currentChart = new CartesianChart
                         {
                             Series = new ISeries[]
                             {
-                        new StepLineSeries<ObservablePoint, CircleGeometry>
+                        new StepLineSeries<ObservablePoint>
                         {
                             Values = _torquePoints,
                             Name = "Крутящий момент",
-                            XToolTipLabelFormatter = (chartPoint) => chartPoint.Model.X.HasValue ? DateTime.FromOADate(chartPoint.Model.X.Value).ToString("yyyy-MM-dd HH:mm:ss") : "N/A",
+                            XToolTipLabelFormatter = (chartPoint) =>
+                            {
+                                if (!chartPoint.Model.X.HasValue || xAxes[0].Labels == null || chartPoint.Model.X >= xAxes[0].Labels.Count || chartPoint.Model.X < 0)
+                                {
+                                    Debug.WriteLine($"MainWindow: XToolTipLabelFormatter: Некорректный индекс X={chartPoint.Model.X}, LabelsCount={xAxes[0].Labels?.Count ?? 0}");
+                                    return "N/A";
+                                }
+                                return xAxes[0].Labels[(int)chartPoint.Model.X];
+                            },
                             YToolTipLabelFormatter = (chartPoint) => chartPoint.Model.Y.HasValue ? chartPoint.Model.Y.Value.ToString("F2") : "N/A",
                             Stroke = new SolidColorPaint(SKColors.Red) { StrokeThickness = 2 },
                             Fill = null,
@@ -324,32 +455,25 @@ namespace Bucking_Unit_App.Views
                         canvasGraph.Children.Clear();
                         canvasGraph.Children.Add(_currentChart);
                         _currentGraphPipeCounter = _selectedPipeCounter;
-                        Debug.WriteLine($"MainWindow: Новый график создан для PipeCounter={_selectedPipeCounter}, {torquePoints.Count} точек");
+                        Debug.WriteLine($"MainWindow: Новый график создан для PipeCounter={_selectedPipeCounter}");
                     }
-                    else
+
+                    if (torquePoints.Any() || _currentGraphPipeCounter != _selectedPipeCounter)
                     {
                         _torquePoints.Clear();
                         foreach (var point in torquePoints)
                         {
                             _torquePoints.Add(point);
+                            Debug.WriteLine($"MainWindow: Добавлена точка: X={point.X:F2}, Y={point.Y:F2}");
                         }
-                        if (_currentChart.XAxes != null && xAxes != null && xAxes.Any())
-                        {
-                            _currentChart.XAxes = xAxes;
-                        }
-                        _currentChart.YAxes = new[] { fixedYAxis };
-                        Debug.WriteLine($"MainWindow: Обновлены точки графика для PipeCounter={_selectedPipeCounter}, {torquePoints.Count} точек");
                     }
 
-                    Debug.WriteLine($"MainWindow: График обновлен с {torquePoints.Count} точками, isActiveProcess={isActiveProcess}");
-
-                    if (!isActiveProcess && _graphUpdateCts != null)
+                    if (_currentChart.XAxes != null && xAxes != null && xAxes.Any())
                     {
-                        _graphUpdateCts.Cancel();
-                        _graphUpdateCts.Dispose();
-                        _graphUpdateCts = null;
-                        Debug.WriteLine("MainWindow: Цикл обновления графика остановлен, так как EndDateTime появился.");
+                        _currentChart.XAxes = xAxes;
                     }
+                    _currentChart.YAxes = new[] { fixedYAxis };
+                    Debug.WriteLine($"MainWindow: Обновлены точки графика для PipeCounter={_selectedPipeCounter}, всего точек: {_torquePoints.Count}, xAxes[0].Labels.Count={(xAxes[0].Labels != null ? xAxes[0].Labels.Count : 0)}");
                 });
             }
             catch (Exception ex)
@@ -364,6 +488,10 @@ namespace Bucking_Unit_App.Views
                     _currentChart = null;
                     _currentGraphPipeCounter = null;
                 });
+            }
+            finally
+            {
+                _isUpdatingGraph = false;
             }
         }
 
@@ -463,7 +591,7 @@ namespace Bucking_Unit_App.Views
                         await connection.OpenAsync();
                         foreach (var tag in tagNames)
                         {
-                            string query = "SELECT TOP 1 Value FROM Runtime.dbo.v_Live WHERE TagName = @TagName ORDER BY DateTime DESC";
+                            string query = "SELECT TOP 1 CASE WHEN ABS(Value) < 0.00001 THEN 0 ELSE ROUND(Value, 6) END AS Value FROM Runtime.dbo.History WHERE TagName = @TagName ORDER BY DateTime DESC";
                             using (var command = new SqlCommand(query, connection))
                             {
                                 command.Parameters.AddWithValue("@TagName", tag.Value);
@@ -886,49 +1014,60 @@ namespace Bucking_Unit_App.Views
                             txtCurrentPipe.Content = pipeCounter.ToString();
                         });
 
-                        using (var pilotConn = new SqlConnection(_connectionString))
+                        bool isScrewOn = CheckScrewOnStatus();
+                        if (_selectedPipeCounter != _currentPipeCounter)
                         {
-                            await pilotConn.OpenAsync();
-                            var checkCmd = new SqlCommand(
-                                "SELECT StartDateTime, EndDateTime FROM [Pilot].[dbo].[MuftN3_REP] WHERE PipeCounter = @PipeCounter",
-                                pilotConn);
-                            checkCmd.Parameters.AddWithValue("@PipeCounter", pipeCounter);
-                            using (var reader = await checkCmd.ExecuteReaderAsync())
+                            Dispatcher.Invoke(() =>
                             {
-                                if (reader.Read())
+                                if (_graphUpdateCts != null)
                                 {
-                                    DateTime? startDateTime = reader.IsDBNull(0) ? null : reader.GetDateTime(0);
-                                    DateTime? endDateTime = reader.IsDBNull(1) ? null : reader.GetDateTime(1);
-
-                                    Dispatcher.Invoke(() =>
-                                    {
-                                        if (startDateTime.HasValue && endDateTime.HasValue && endDateTime.Value < startDateTime.Value)
-                                        {
-                                            txtCurrentPipe.Content = "Ошибка: EndDateTime раньше StartDateTime";
-                                            Debug.WriteLine($"MainWindow: UpdateCurrentPipeCounter: EndDateTime ({endDateTime.Value}) раньше StartDateTime ({startDateTime.Value}) для PipeCounter={pipeCounter}");
-                                            return;
-                                        }
-
-                                        if (_selectedPipeCounter != _currentPipeCounter)
-                                        {
-                                            _selectedPipeCounter = _currentPipeCounter;
-                                            _isTextChangeProgrammatic = true;
-                                            txtPipeCounter.Text = _currentPipeCounter.HasValue ? _currentPipeCounter.Value.ToString() : string.Empty;
-                                            _isTextChangeProgrammatic = false;
-                                            btnShowGraph_Click(null, null);
-                                        }
-                                        else if (!endDateTime.HasValue)
-                                        {
-                                            lblStatus.Visibility = Visibility.Visible;
-                                            UpdateGraphAsync();
-                                        }
-                                        else
-                                        {
-                                            lblStatus.Visibility = Visibility.Collapsed;
-                                        }
-                                    });
+                                    _graphUpdateCts.Cancel();
+                                    _graphUpdateCts.Dispose();
+                                    _graphUpdateCts = null;
+                                    Debug.WriteLine("MainWindow: Цикл обновления графика остановлен из-за смены PipeCounter.");
                                 }
-                            }
+                                _torquePoints?.Clear();
+                                _currentGraphPipeCounter = null;
+                                _selectedPipeCounter = _currentPipeCounter;
+                                _wasCycleStoppedRecently = false; // Сбрасываем флаг при смене трубы
+                                _isTextChangeProgrammatic = true;
+                                txtPipeCounter.Text = _currentPipeCounter.HasValue ? _currentPipeCounter.Value.ToString() : string.Empty;
+                                _isTextChangeProgrammatic = false;
+                                btnShowGraph_Click(null, null);
+                            });
+                        }
+                        else
+                        {
+                            Dispatcher.Invoke(() =>
+                            {
+                                lblStatus.Visibility = isScrewOn ? Visibility.Visible : Visibility.Collapsed;
+                                if (isScrewOn || _isInScrewOnWindow)
+                                {
+                                    if (_wasCycleStoppedRecently)
+                                    {
+                                        Debug.WriteLine("MainWindow: Запуск цикла предотвращён, так как он был остановлен для текущего PipeCounter.");
+                                        UpdateGraphAsync(); // Однократное обновление
+                                        return;
+                                    }
+
+                                    UpdateGraphAsync();
+                                    if (_graphUpdateCts == null || _graphUpdateCts.IsCancellationRequested)
+                                    {
+                                        _graphUpdateCts = new CancellationTokenSource();
+                                        StartGraphUpdateLoop(_graphUpdateCts.Token);
+                                        Debug.WriteLine($"MainWindow: Запущен цикл обновления графика для PipeCounter={_selectedPipeCounter}");
+                                    }
+                                }
+                                else if (!isScrewOn && !_isInScrewOnWindow && _graphUpdateCts != null)
+                                {
+                                    _isInScrewOnWindow = true;
+                                    if (!_lastScrewOnTrueTime.HasValue)
+                                    {
+                                        _lastScrewOnTrueTime = DateTime.Now; // Устанавливаем время, если не было ранее
+                                    }
+                                    Debug.WriteLine("MainWindow: NOT_MN3_SCREW_ON переключилось на false, начато 8-секундное окно.");
+                                }
+                            });
                         }
                     }
                     else
@@ -950,7 +1089,25 @@ namespace Bucking_Unit_App.Views
                 });
             }
         }
-
+        private void UpdatePipeCounter(int? newPipeCounter)
+        {
+            if (_selectedPipeCounter != newPipeCounter)
+            {
+                _selectedPipeCounter = newPipeCounter;
+                _lastScrewOnStatus = CheckScrewOnStatus();
+                _isInScrewOnWindow = false;
+                _lastScrewOnTrueTime = null;
+                _wasCycleStoppedRecently = false; // Сбрасываем флаг
+                Debug.WriteLine($"MainWindow: Смена PipeCounter на {newPipeCounter}, _lastScrewOnStatus инициализировано как {_lastScrewOnStatus}");
+                if (_graphUpdateCts != null)
+                {
+                    _graphUpdateCts.Cancel();
+                    _graphUpdateCts.Dispose();
+                    _graphUpdateCts = null;
+                    Debug.WriteLine("MainWindow: Цикл обновления графика остановлен при смене PipeCounter.");
+                }
+            }
+        }
         private async void btnShowGraph_Click(object sender, RoutedEventArgs e)
         {
             if (!int.TryParse(txtPipeCounter.Text, out int pipeCounter))
@@ -976,7 +1133,15 @@ namespace Bucking_Unit_App.Views
                     }
                 }
 
+                if (_selectedPipeCounter != pipeCounter)
+                {
+                    _torquePoints?.Clear();
+                    _currentGraphPipeCounter = null;
+                    _wasCycleStoppedRecently = false; // Сбрасываем флаг при явной смене трубы
+                }
+
                 _selectedPipeCounter = pipeCounter;
+                UpdatePipeCounter(pipeCounter);
                 await UpdateGraphAsync();
 
                 if (_graphUpdateCts != null)
@@ -986,11 +1151,31 @@ namespace Bucking_Unit_App.Views
                     _graphUpdateCts = null;
                 }
 
-                var (startTime, endTime) = new GraphService(_runtimeConnectionString, _selectedPipeCounter).GetTimeRange();
-                if (!endTime.HasValue)
+                if (_selectedPipeCounter == _currentPipeCounter)
                 {
-                    _graphUpdateCts = new CancellationTokenSource();
-                    await StartGraphUpdateLoop(_graphUpdateCts.Token);
+                    bool isScrewOn = CheckScrewOnStatus();
+                    if (isScrewOn || _isInScrewOnWindow)
+                    {
+                        if (_wasCycleStoppedRecently)
+                        {
+                            Debug.WriteLine("MainWindow: Запуск цикла через btnShowGraph_Click предотвращён, так как он был остановлен для текущего PipeCounter.");
+                            await UpdateGraphAsync(); // Однократное обновление
+                            return;
+                        }
+
+                        _graphUpdateCts = new CancellationTokenSource();
+                        await StartGraphUpdateLoop(_graphUpdateCts.Token);
+                        Debug.WriteLine($"MainWindow: Запущен цикл обновления графика для PipeCounter={_selectedPipeCounter}");
+                    }
+                    else
+                    {
+                        await UpdateGraphAsync();
+                        Debug.WriteLine($"MainWindow: Выполнено однократное обновление графика для PipeCounter={_selectedPipeCounter}, цикл не запущен.");
+                    }
+                }
+                else
+                {
+                    await UpdateGraphAsync();
                 }
             }
             catch (Exception ex)
@@ -1077,7 +1262,8 @@ namespace Bucking_Unit_App.Views
         {
             Dispatcher.Invoke(() =>
             {
-                //canvasGraph.Children.Clear();
+                canvasGraph.Children.Clear();
+                _torquePoints = null;
                 _selectedPipeCounter = null;
                 txtPipeCounter.Text = string.Empty;
                 lblStatus.Visibility = Visibility.Collapsed;
@@ -1090,6 +1276,9 @@ namespace Bucking_Unit_App.Views
                 _graphUpdateCts?.Dispose();
                 _graphUpdateCts = null;
                 lblGraphStatus.Content = string.Empty;
+                _currentChart = null;
+                _currentGraphPipeCounter = null;
+                Debug.WriteLine("MainWindow: График сброшен, все точки очищены.");
             });
         }
 

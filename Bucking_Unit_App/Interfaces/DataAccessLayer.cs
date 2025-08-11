@@ -175,7 +175,7 @@ namespace Bucking_Unit_App.Interfaces
             string updateQuery = @"
             UPDATE Pilot.dbo.MuftN3_REP
             SET OperatorId = @OperatorId
-            WHERE OperatorId IS NULL AND Id >= @LastKnownId";
+            WHERE OperatorId IS NULL AND Id >= @LastKnownId and EndDateTime is not NULL";
             using var cmd = new SqlCommand(updateQuery, conn);
             cmd.Parameters.AddWithValue("@OperatorId", operatorId);
             cmd.Parameters.AddWithValue("@LastKnownId", lastKnownRepId);
