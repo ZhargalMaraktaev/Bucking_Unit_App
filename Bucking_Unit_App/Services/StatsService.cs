@@ -27,7 +27,7 @@ namespace Bucking_Unit_App.Services
             if (operatorId == null) return;
 
             var (isDayShift, dayShiftDowntime, nightShiftDowntime) = await _statsRepository.GetDailyDowntimeAsync(operatorId.Value);
-            var (isMonthDayShift, monthDayShiftDowntime, monthNightShiftDowntime) = await _statsRepository.GetMonthlyDowntimeAsync(operatorId.Value);
+            var monthlyDowntime = await _statsRepository.GetMonthlyDowntimeAsync(operatorId.Value);
             var dailyOperationCount = await _statsRepository.GetDailyOperationCountAsync(operatorId.Value);
             var monthlyOperationCount = await _statsRepository.GetMonthlyOperationCountAsync(operatorId.Value);
 
@@ -35,7 +35,7 @@ namespace Bucking_Unit_App.Services
                 dailyOperationCount.ToString(),
                 (isDayShift ? (double)dayShiftDowntime : (double)nightShiftDowntime).ToString("F2"),
                 monthlyOperationCount.ToString(),
-                (isMonthDayShift ? (double)monthDayShiftDowntime : (double)monthNightShiftDowntime).ToString("F2")
+                ((double)monthlyDowntime).ToString("F2")
             );
         }
 
@@ -55,10 +55,11 @@ namespace Bucking_Unit_App.Services
 
         // Новый метод для обновления статистики всех операторов
         public async Task UpdateStatsForAllOperatorsAsync(
-    Action<Dictionary<int, (bool IsDayShift, decimal DayShiftDowntime, decimal NightShiftDowntime)>,
-           Dictionary<int, (bool IsDayShift, decimal DayShiftDowntime, decimal NightShiftDowntime)>,
-           Dictionary<int, (bool IsDayShift, int ShiftOperationCount)>,
-           Dictionary<int, (bool IsDayShift, int ShiftOperationCount)>> updateAllUI)
+    Action<
+        Dictionary<int, (bool IsDayShift, decimal DayShiftDowntime, decimal NightShiftDowntime)>,
+        Dictionary<int, decimal>,
+        Dictionary<int, (bool IsDayShift, int ShiftOperationCount)>,
+        Dictionary<int, int>> updateAllUI)
         {
             var dailyDowntime = await _statsRepository.GetDailyDowntimeByAllOperatorsAsync();
             var monthlyDowntime = await _statsRepository.GetMonthlyDowntimeByAllOperatorsAsync();

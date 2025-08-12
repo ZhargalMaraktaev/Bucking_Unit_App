@@ -6,6 +6,7 @@
     <Nullable>enable</Nullable>
     <ImplicitUsings>enable</ImplicitUsings>
     <UseWPF>true</UseWPF>
+    <ApplicationIcon>Снимок.ico</ApplicationIcon>
   </PropertyGroup>
 
   <ItemGroup>
@@ -15,6 +16,10 @@
     <None Remove="Views\Images\refresh.png" />
     <None Remove="Views\Images\reset.png" />
     <None Remove="Views\Images\save.png" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Content Include="Снимок.ico" />
   </ItemGroup>
 
   <ItemGroup>

@@ -15,13 +15,34 @@ namespace Bucking_Unit_App.Services
         private readonly IEmployeeRepository _employeeRepository;
         private readonly Controller1C _controller1C;
         private Employee1CModel _currentOperator;
+        private readonly IStatsRepository _statsRepository;  // Добавьте зависимость в конструктор
 
-        public OperatorService(IEmployeeRepository employeeRepository, Controller1C controller1C)
+        public OperatorService(IEmployeeRepository employeeRepository, Controller1C controller1C, IStatsRepository statsRepository)
         {
             _employeeRepository = employeeRepository;
             _controller1C = controller1C;
+            _statsRepository = statsRepository;
         }
 
+        public async Task AuthenticateOperatorAsync(string cardNumber, bool isAuth, DateTime? authTime)
+        {
+            await InitializeOperatorAsync(cardNumber);  // Инициализация оператора
+            if (CurrentOperator == null) return;
+
+            int? operatorId = await _employeeRepository.GetOperatorIdAsync(CurrentOperator.PersonnelNumber);
+            if (!operatorId.HasValue) return;
+
+            // Привязка/отвязка
+            await _statsRepository.UpdateOperatorIdExchangeAsync(8, isAuth ? operatorId : null, isAuth);
+
+            // Статистика авторизации
+            DateTime? authFrom = isAuth ? authTime : null;
+            DateTime? authTo = isAuth ? null : authTime;
+            await _statsRepository.UpdateOperatorSysStatAsync(operatorId.Value, isAuth, authFrom, authTo, 8);
+
+            // Вызов события изменения оператора
+            OnOperatorChanged?.Invoke(this, EventArgs.Empty);
+        }
         public Employee1CModel CurrentOperator
         {
             get => _currentOperator;

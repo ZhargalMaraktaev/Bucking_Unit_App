@@ -71,13 +71,17 @@ namespace Bucking_Unit_App.Views
         private DateTime? _lastScrewOnTrueTime;
         private bool _isInScrewOnWindow;
         private bool _wasCycleStoppedRecently = false;
+        private List<string> _xAxisLabels; // Новая коллекция для хранения меток оси X
+        private const int SectorId = 8;  // Ваш SectorId
+        private readonly IStatsRepository _statsRepository;  // Добавьте зависимость в конструктор
 
         public MainWindow()
         {
             InitializeComponent();
             _conn = new SqlConnection(_connectionString);
             var dataAccess = new DataAccessLayer(_connectionString);
-            _operatorService = new OperatorService(dataAccess, new Controller1C());
+            _statsRepository = dataAccess;
+            _operatorService = new OperatorService(dataAccess, new Controller1C(), _statsRepository);
             _statsService = new StatsService(dataAccess, dataAccess);
             _comController = new COMController(new COMControllerParamsModel("COM3", 9600, System.IO.Ports.Parity.None, 8, System.IO.Ports.StopBits.One));
             _comController.StateChanged += ComController_StateChanged;
@@ -216,7 +220,7 @@ namespace Bucking_Unit_App.Views
                 using (var connection = new SqlConnection(_runtimeConnectionString))
                 {
                     connection.Open();
-                    string query = "SELECT TOP 5 Value FROM Runtime.dbo.History WHERE TagName = 'NOT_MN3_SCREW_ON' AND Value IS NOT NULL ORDER BY DateTime DESC";
+                    string query = "SELECT TOP 10 Value FROM Runtime.dbo.History WHERE TagName = 'NOT_MN3_SCREW_ON' AND Value IS NOT NULL ORDER BY DateTime DESC";
                     using (var command = new SqlCommand(query, connection))
                     {
                         var result = command.ExecuteScalar();
@@ -263,6 +267,7 @@ namespace Bucking_Unit_App.Views
                         _torquePoints = null;
                         _currentChart = null;
                         _currentGraphPipeCounter = null;
+                        _xAxisLabels = null; // Сбрасываем метки
                         Debug.WriteLine("MainWindow: UpdateGraphAsync завершен: _selectedPipeCounter не установлен");
                     });
                     return;
@@ -284,7 +289,7 @@ namespace Bucking_Unit_App.Views
                 {
                     _lastScrewOnTrueTime = DateTime.Now;
                     _isInScrewOnWindow = false;
-                    _wasCycleStoppedRecently = false; // Сбрасываем флаг, если процесс активен
+                    _wasCycleStoppedRecently = false;
                     Debug.WriteLine("MainWindow: NOT_MN3_SCREW_ON = true, окно и флаг остановки сброшены, обновление продолжается.");
                 }
                 else if (_lastScrewOnStatus == true && !_isInScrewOnWindow && !isScrewOn)
@@ -292,7 +297,7 @@ namespace Bucking_Unit_App.Views
                     _isInScrewOnWindow = true;
                     if (!_lastScrewOnTrueTime.HasValue)
                     {
-                        _lastScrewOnTrueTime = DateTime.Now; // Устанавливаем время, если не было ранее
+                        _lastScrewOnTrueTime = DateTime.Now;
                     }
                     Debug.WriteLine("MainWindow: NOT_MN3_SCREW_ON переключилось на false, начато 8-секундное окно.");
                 }
@@ -308,13 +313,14 @@ namespace Bucking_Unit_App.Views
                             _torquePoints = null;
                             _currentChart = null;
                             _currentGraphPipeCounter = null;
+                            //_xAxisLabels = null; // Сбрасываем метки
                         });
                         if (_graphUpdateCts != null)
                         {
                             _graphUpdateCts.Cancel();
                             _graphUpdateCts.Dispose();
                             _graphUpdateCts = null;
-                            _wasCycleStoppedRecently = true; // Устанавливаем флаг
+                            _wasCycleStoppedRecently = true;
                             Debug.WriteLine("MainWindow: Цикл обновления графика остановлен после завершения 8-секундного окна.");
                         }
                         _lastScrewOnStatus = isScrewOn;
@@ -401,6 +407,11 @@ namespace Bucking_Unit_App.Views
 
                 Debug.WriteLine($"MainWindow: GetGraphData вернул {torquePoints.Count} точек, errorMessage={(string.IsNullOrEmpty(errorMessage) ? "null" : errorMessage)}");
 
+                // Получаем xAxisLabels из filteredData внутри GetGraphData
+                var filteredData = graphService.FetchSynchronizedData(adjustedStartTime, adjustedEndTime, isActiveProcess);
+                filteredData = isActiveProcess ? filteredData.Where(d => d.ScrewOn).ToList() : filteredData.ToList();
+                var newLabels = filteredData.Select(d => d.Turns.ToString("F2")).ToList();
+
                 Dispatcher.Invoke(() =>
                 {
                     lblGraphStatus.Content = !string.IsNullOrEmpty(errorMessage) ? errorMessage : (isActiveProcess ? "График обновляется (барабан крутится)" : "График статичен (барабан остановлен)");
@@ -419,30 +430,31 @@ namespace Bucking_Unit_App.Views
                     if (_currentGraphPipeCounter != _selectedPipeCounter || _currentChart == null)
                     {
                         _torquePoints = new ObservableCollection<ObservablePoint>();
+                        _xAxisLabels = new List<string>(); // Инициализируем коллекцию меток
                         _currentChart = new CartesianChart
                         {
                             Series = new ISeries[]
                             {
-                        new StepLineSeries<ObservablePoint>
-                        {
-                            Values = _torquePoints,
-                            Name = "Крутящий момент",
-                            XToolTipLabelFormatter = (chartPoint) =>
-                            {
-                                if (!chartPoint.Model.X.HasValue || xAxes[0].Labels == null || chartPoint.Model.X >= xAxes[0].Labels.Count || chartPoint.Model.X < 0)
+                                new StepLineSeries<ObservablePoint>
                                 {
-                                    Debug.WriteLine($"MainWindow: XToolTipLabelFormatter: Некорректный индекс X={chartPoint.Model.X}, LabelsCount={xAxes[0].Labels?.Count ?? 0}");
-                                    return "N/A";
+                                    Values = _torquePoints,
+                                    Name = "Крутящий момент",
+                                    XToolTipLabelFormatter = (chartPoint) =>
+                                    {
+                                        if (!chartPoint.Model.X.HasValue || _xAxisLabels == null || chartPoint.Model.X >= _xAxisLabels.Count || chartPoint.Model.X < 0)
+                                        {
+                                            Debug.WriteLine($"MainWindow: XToolTipLabelFormatter: Некорректный индекс X={chartPoint.Model.X}, LabelsCount={_xAxisLabels?.Count ?? 0}");
+                                            return "N/A";
+                                        }
+                                        return $"Обороты: {_xAxisLabels[(int)chartPoint.Model.X]}";
+                                    },
+                                    YToolTipLabelFormatter = (chartPoint) => chartPoint.Model.Y.HasValue ? chartPoint.Model.Y.Value.ToString("F2") : "N/A",
+                                    Stroke = new SolidColorPaint(SKColors.Red) { StrokeThickness = 2 },
+                                    Fill = null,
+                                    GeometrySize = 0.5,
+                                    GeometryFill = new SolidColorPaint(SKColors.Black),
+                                    GeometryStroke = new SolidColorPaint(SKColors.Black)
                                 }
-                                return xAxes[0].Labels[(int)chartPoint.Model.X];
-                            },
-                            YToolTipLabelFormatter = (chartPoint) => chartPoint.Model.Y.HasValue ? chartPoint.Model.Y.Value.ToString("F2") : "N/A",
-                            Stroke = new SolidColorPaint(SKColors.Red) { StrokeThickness = 2 },
-                            Fill = null,
-                            GeometrySize = 0.5,
-                            GeometryFill = new SolidColorPaint(SKColors.Black),
-                            GeometryStroke = new SolidColorPaint(SKColors.Black)
-                        }
                             },
                             XAxes = xAxes,
                             YAxes = new[] { fixedYAxis },
@@ -461,19 +473,43 @@ namespace Bucking_Unit_App.Views
                     if (torquePoints.Any() || _currentGraphPipeCounter != _selectedPipeCounter)
                     {
                         _torquePoints.Clear();
+                        _xAxisLabels.Clear(); // Очищаем метки перед добавлением новых
+                        int index = 0;
                         foreach (var point in torquePoints)
                         {
                             _torquePoints.Add(point);
-                            Debug.WriteLine($"MainWindow: Добавлена точка: X={point.X:F2}, Y={point.Y:F2}");
+                            if (index < newLabels.Count)
+                            {
+                                _xAxisLabels.Add(newLabels[index]); // Добавляем метку для каждой точки
+                                Debug.WriteLine($"MainWindow: Добавлена точка: X={point.X:F2}, Y={point.Y:F2}, Label={newLabels[index]}");
+                            }
+                            else
+                            {
+                                _xAxisLabels.Add("0.00"); // Запасное значение, если меток меньше
+                                Debug.WriteLine($"MainWindow: Добавлена точка: X={point.X:F2}, Y={point.Y:F2}, Label=0.00 (запасное)");
+                            }
+                            index++;
+                        }
+
+                        // Обновляем xAxes с новыми метками
+                        if (_currentChart.XAxes != null && xAxes != null && xAxes.Any())
+                        {
+                            _currentChart.XAxes = new Axis[]
+                            {
+                                new Axis
+                                {
+                                    Name = "Количество оборотов",
+                                    Labels = _xAxisLabels.ToArray(),
+                                    LabelsRotation = 45,
+                                    LabelsPaint = new SolidColorPaint(SKColors.Black),
+                                    TextSize = 12
+                                }
+                            };
                         }
                     }
 
-                    if (_currentChart.XAxes != null && xAxes != null && xAxes.Any())
-                    {
-                        _currentChart.XAxes = xAxes;
-                    }
                     _currentChart.YAxes = new[] { fixedYAxis };
-                    Debug.WriteLine($"MainWindow: Обновлены точки графика для PipeCounter={_selectedPipeCounter}, всего точек: {_torquePoints.Count}, xAxes[0].Labels.Count={(xAxes[0].Labels != null ? xAxes[0].Labels.Count : 0)}");
+                    Debug.WriteLine($"MainWindow: Обновлены точки графика для PipeCounter={_selectedPipeCounter}, всего точек: {_torquePoints.Count}, xAxes[0].Labels.Count={_xAxisLabels.Count}");
                 });
             }
             catch (Exception ex)
@@ -487,6 +523,7 @@ namespace Bucking_Unit_App.Views
                     _torquePoints = null;
                     _currentChart = null;
                     _currentGraphPipeCounter = null;
+                    _xAxisLabels = null; // Сбрасываем метки при ошибке
                 });
             }
             finally
@@ -770,6 +807,8 @@ namespace Bucking_Unit_App.Views
             if (e.State == COMControllerParamsModel.COMStates.Detected && !string.IsNullOrEmpty(e.CardId))
             {
                 await _operatorService.InitializeOperatorAsync(e.CardId);
+                await _operatorService.AuthenticateOperatorAsync(_operatorService.CurrentOperator.CardNumber, true, DateTime.Now);
+                Debug.WriteLine("MainWindow: Оператор авторизован и привязан к SectorId=8");
                 if (_operatorService.CurrentOperator != null)
                 {
                     await _statsService.UpdateIdsAsync(_operatorService.CurrentOperator.PersonnelNumber);
@@ -778,8 +817,10 @@ namespace Bucking_Unit_App.Views
             }
             else if (e.State == COMControllerParamsModel.COMStates.Removed)
             {
+                await _operatorService.AuthenticateOperatorAsync(_operatorService.CurrentOperator.CardNumber, false, DateTime.Now);
                 _operatorService.CurrentOperator = null;
                 StopOperatorUpdateLoop();
+                Debug.WriteLine("MainWindow: Оператор деавторизован и отвязан от SectorId=8");
                 Dispatcher.Invoke(() =>
                 {
                     lblStatus.Visibility = Visibility.Collapsed;
@@ -947,55 +988,55 @@ namespace Bucking_Unit_App.Views
         }
 
         private void StartAllStatsUpdateLoop()
-        {
-            _allStatsUpdateCts?.Dispose();
-            _allStatsUpdateCts = new CancellationTokenSource();
-            var token = _allStatsUpdateCts.Token;
+   {
+       _allStatsUpdateCts?.Dispose();
+       _allStatsUpdateCts = new CancellationTokenSource();
+       var token = _allStatsUpdateCts.Token;
 
-            _allStatsUpdateTask = Task.Run(async () =>
-            {
-                while (!token.IsCancellationRequested)
-                {
-                    await _statsService.UpdateStatsForAllOperatorsAsync((dailyDowntime, monthlyDowntime, dailyOps, monthlyOps) =>
-                    {
-                        Dispatcher.Invoke(() =>
-                        {
-                            decimal totalShiftDowntime = 0;
-                            decimal totalMonthDowntime = 0;
-                            int totalShiftItems = 0;
-                            int totalMonthItems = 0;
+       _allStatsUpdateTask = Task.Run(async () =>
+       {
+           while (!token.IsCancellationRequested)
+           {
+               await _statsService.UpdateStatsForAllOperatorsAsync((dailyDowntime, monthlyDowntime, dailyOps, monthlyOps) =>
+               {
+                   Dispatcher.Invoke(() =>
+                   {
+                       decimal totalShiftDowntime = 0;
+                       decimal totalMonthDowntime = 0;
+                       int totalShiftItems = 0;
+                       int totalMonthItems = 0;
 
-                            foreach (var kvp in dailyDowntime)
-                            {
-                                totalShiftDowntime += kvp.Value.IsDayShift ? kvp.Value.DayShiftDowntime : kvp.Value.NightShiftDowntime;
-                                Debug.WriteLine($"DailyDowntime: OperatorId={(kvp.Key == -1 ? "NULL" : kvp.Key.ToString())}, Downtime={(kvp.Value.IsDayShift ? kvp.Value.DayShiftDowntime : kvp.Value.NightShiftDowntime)}");
-                            }
-                            foreach (var kvp in monthlyDowntime)
-                            {
-                                totalMonthDowntime += kvp.Value.IsDayShift ? kvp.Value.DayShiftDowntime : kvp.Value.NightShiftDowntime;
-                                Debug.WriteLine($"MonthlyDowntime: OperatorId={(kvp.Key == -1 ? "NULL" : kvp.Key.ToString())}, Downtime={(kvp.Value.IsDayShift ? kvp.Value.DayShiftDowntime : kvp.Value.NightShiftDowntime)}");
-                            }
-                            foreach (var kvp in dailyOps)
-                            {
-                                totalShiftItems += kvp.Value.ShiftOperationCount;
-                                Debug.WriteLine($"DailyOps: OperatorId={(kvp.Key == -1 ? "NULL" : kvp.Key.ToString())}, Count={kvp.Value.ShiftOperationCount}");
-                            }
-                            foreach (var kvp in monthlyOps)
-                            {
-                                totalMonthItems += kvp.Value.ShiftOperationCount;
-                                Debug.WriteLine($"MonthlyOps: OperatorId={(kvp.Key == -1 ? "NULL" : kvp.Key.ToString())}, Count={kvp.Value.ShiftOperationCount}");
-                            }
+                       foreach (var kvp in dailyDowntime)
+                       {
+                           totalShiftDowntime += kvp.Value.IsDayShift ? kvp.Value.DayShiftDowntime : kvp.Value.NightShiftDowntime;
+                           Debug.WriteLine($"DailyDowntime: OperatorId={(kvp.Key == -1 ? "NULL" : kvp.Key.ToString())}, Downtime={(kvp.Value.IsDayShift ? kvp.Value.DayShiftDowntime : kvp.Value.NightShiftDowntime)}");
+                       }
+                       foreach (var kvp in monthlyDowntime)
+                       {
+                           totalMonthDowntime += kvp.Value;
+                           Debug.WriteLine($"MonthlyDowntime: OperatorId={(kvp.Key == -1 ? "NULL" : kvp.Key.ToString())}, TotalDowntimeMinutes={kvp.Value}");
+                       }
+                       foreach (var kvp in dailyOps)
+                       {
+                           totalShiftItems += kvp.Value.ShiftOperationCount;
+                           Debug.WriteLine($"DailyOps: OperatorId={(kvp.Key == -1 ? "NULL" : kvp.Key.ToString())}, Count={kvp.Value.ShiftOperationCount}");
+                       }
+                       foreach (var kvp in monthlyOps)
+                       {
+                           totalMonthItems += kvp.Value;
+                           Debug.WriteLine($"MonthlyOps: OperatorId={(kvp.Key == -1 ? "NULL" : kvp.Key.ToString())}, TotalOperationCount={kvp.Value}");
+                       }
 
-                            lblAllShiftItems.Content = totalShiftItems.ToString();
-                            lblAllShiftDowntime.Content = totalShiftDowntime.ToString("F2");
-                            lblAllMonthItems.Content = totalMonthItems.ToString();
-                            lblAllMonthDowntime.Content = totalMonthDowntime.ToString("F2");
-                        });
-                    });
-                    await Task.Delay(5000, token); // Увеличен интервал до 10 секунд
-                }
-            }, token);
-        }
+                       lblAllShiftItems.Content = totalShiftItems.ToString();
+                       lblAllShiftDowntime.Content = totalShiftDowntime.ToString("F2");
+                       lblAllMonthItems.Content = totalMonthItems.ToString();
+                       lblAllMonthDowntime.Content = totalMonthDowntime.ToString("F2");
+                   });
+               });
+               await Task.Delay(5000, token); // Интервал 5 секунд
+           }
+       }, token);
+   }
 
         private async Task UpdateCurrentPipeCounter()
         {
