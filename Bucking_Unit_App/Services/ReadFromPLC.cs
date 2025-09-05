@@ -6,6 +6,7 @@ using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 using Bucking_Unit_App.SiemensPLC.Models;
+using System.Diagnostics;
 using static Bucking_Unit_App.SiemensPLC.Models.SiemensPLCModels.DBAddressModel;
 
 namespace Bucking_Unit_App.Services
@@ -169,15 +170,9 @@ namespace Bucking_Unit_App.Services
                     { "TorqueLowerLimitHMI", 76 },
                     { "QuantityHMI", 60 },
                     { "StartingTorqueHMI", 68 },
-                    { "RPMUpperLimitHMI", 84 },
-                    { "OptimalRPMHMI", 92 },
-                    { "RPMLowerLimitHMI", 88 },
-                    { "MaxStatusRotation", 334 },
-                    { "MinStatusRotation", 338 },
-                    { "StatusUpperLimit", 218 },
-                    { "StatusLowerLimit", 222 },
                     { "FeedDelayTimeHMI", 80 },
-                    { "ReturnDelayTimeHMI", 226 }
+                    { "ReturnDelayTimeHMI", 226 },
+                    { "RPMUpperLimitHMI", 84 }
                 };
 
                 foreach (var key in addressKeys)
@@ -189,7 +184,8 @@ namespace Bucking_Unit_App.Services
                             byte[] buffer = new byte[4];
                             int dbNumber = 23; // Предполагается, что все параметры в DB23
                             int offset = addressOffsets.ContainsKey(key) ? addressOffsets[key] : 0;
-                            multiVar.Add(S7Consts.S7AreaDB, S7Consts.S7WLByte, dbNumber, offset, 4, ref buffer);
+                            Log($"Добавление: key={key}, dbNumber={dbNumber}, offset={offset}, length=4");
+                        multiVar.Add(S7Consts.S7AreaDB, S7Consts.S7WLByte, dbNumber, offset, 4, ref buffer);
                             validAddresses.Add((key, dbAddress, buffer));
                             results[key] = null;
                         }

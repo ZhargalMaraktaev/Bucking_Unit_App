@@ -192,7 +192,7 @@ namespace Bucking_Unit_App.Services
                         tagValues[dt][tagName] = value;
                     }
 
-                    Debug.WriteLine($"GraphService.Fetched: {dt:yyyy-MM-ddTHH:mm:ss.fff}, Tag: {tagName}, Value: {(value.HasValue ? value.Value.ToString() : "NULL")}, ScrewOn: {(tagName == "NOT_MN3_SCREW_ON" ? screwOnValues[dt].ToString() : "N/A")}");
+                  
                 }
 
                 foreach (var dt in tagValues.Keys.OrderBy(dt => dt))
@@ -202,7 +202,7 @@ namespace Bucking_Unit_App.Services
                     double torque = tags.ContainsKey("NOT_MN3_ACT_TORQUE") && tags["NOT_MN3_ACT_TORQUE"].HasValue ? tags["NOT_MN3_ACT_TORQUE"].Value : 0.0;
                     bool screwOn = screwOnValues.ContainsKey(dt) ? screwOnValues[dt] : false;
                     data.Add((dt, turns, torque, screwOn));
-                    Debug.WriteLine($"GraphService.Adding point: DateTime={dt:yyyy-MM-ddTHH:mm:ss.fff}, Turns={turns:F2}, Torque={torque:F2}, ScrewOn={screwOn}");
+                    //Debug.WriteLine($"GraphService.Adding point: DateTime={dt:yyyy-MM-ddTHH:mm:ss.fff}, Turns={turns:F2}, Torque={torque:F2}, ScrewOn={screwOn}");
                 }
 
                 Debug.WriteLine($"GraphService.FetchSynchronizedData: Сформировано {data.Count} синхронизированных записей для PipeCounter={_pipeCounter}, StartTime={adjustedStartTime:yyyy-MM-ddTHH:mm:ss.fff}, EndTime={adjustedEndTime:yyyy-MM-ddTHH:mm:ss.fff}");

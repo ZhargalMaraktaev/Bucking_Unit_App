@@ -1,39 +1,40 @@
-﻿using System;
+﻿using Bucking_Unit_App._1C_Controller;
+using Bucking_Unit_App.COM_Controller;
+using Bucking_Unit_App.Interfaces;
+using Bucking_Unit_App.Models;
+using Bucking_Unit_App.Services;
+using Bucking_Unit_App.SiemensPLC.Models;
+using Bucking_Unit_App.Utilities;
+using FontAwesome.WPF;
+using LiveChartsCore;
+using LiveChartsCore.Defaults;
+using LiveChartsCore.Measure;
+using LiveChartsCore.SkiaSharpView;
+using LiveChartsCore.SkiaSharpView.Drawing.Geometries;
+using LiveChartsCore.SkiaSharpView.Painting;
+using LiveChartsCore.SkiaSharpView.WPF;
+using Microsoft.Win32;
+using PdfSharpCore.Drawing;
+using PdfSharpCore.Pdf;
+using Sharp7;
+using SkiaSharp;
+using System;
 using System.Collections.Generic;
+using System.Collections.ObjectModel;
 using System.Data;
 using System.Data.SqlClient;
 using System.Diagnostics;
+using System.Globalization;
+using System.IO;
 using System.Threading;
 using System.Threading.Tasks;
 using System.Windows;
 using System.Windows.Controls;
+using System.Windows.Data;
 using System.Windows.Media;
-using LiveChartsCore;
-using LiveChartsCore.Defaults;
-using LiveChartsCore.SkiaSharpView;
-using LiveChartsCore.SkiaSharpView.WPF;
-using SkiaSharp;
-using Bucking_Unit_App._1C_Controller;
-using Bucking_Unit_App.COM_Controller;
-using Bucking_Unit_App.Services;
-using Bucking_Unit_App.Models;
-using Bucking_Unit_App.Interfaces;
-using LiveChartsCore.Measure;
-using LiveChartsCore.SkiaSharpView.Painting;
-using LiveChartsCore.SkiaSharpView.Drawing.Geometries;
-using PdfSharpCore.Drawing;
-using PdfSharpCore.Pdf;
-using System.IO;
-using Microsoft.Win32;
 using System.Windows.Media.Imaging;
-using FontAwesome.WPF;
-using Sharp7;
-using Bucking_Unit_App.SiemensPLC.Models;
-using static Bucking_Unit_App.SiemensPLC.Models.SiemensPLCModels.PLCReadWriteModel;
-using Bucking_Unit_App.Utilities;
-using System.Globalization;
-using System.Collections.ObjectModel;
 using System.Windows.Threading;
+using static Bucking_Unit_App.SiemensPLC.Models.SiemensPLCModels.PLCReadWriteModel;
 
 namespace Bucking_Unit_App.Views
 {
@@ -481,12 +482,12 @@ namespace Bucking_Unit_App.Views
                             if (index < newLabels.Count)
                             {
                                 _xAxisLabels.Add(newLabels[index]); // Добавляем метку для каждой точки
-                                Debug.WriteLine($"MainWindow: Добавлена точка: X={point.X:F2}, Y={point.Y:F2}, Label={newLabels[index]}");
+                                //Debug.WriteLine($"MainWindow: Добавлена точка: X={point.X:F2}, Y={point.Y:F2}, Label={newLabels[index]}");
                             }
                             else
                             {
                                 _xAxisLabels.Add("0.00"); // Запасное значение, если меток меньше
-                                Debug.WriteLine($"MainWindow: Добавлена точка: X={point.X:F2}, Y={point.Y:F2}, Label=0.00 (запасное)");
+                                //Debug.WriteLine($"MainWindow: Добавлена точка: X={point.X:F2}, Y={point.Y:F2}, Label=0.00 (запасное)");
                             }
                             index++;
                         }
@@ -640,7 +641,6 @@ namespace Bucking_Unit_App.Views
                                     {
                                         label.Content = result != null ? Convert.ToSingle(result).ToString(CultureInfo.InvariantCulture) : "N/A";
                                     }
-                                    Debug.WriteLine($"MainWindow: Обновлено {tag.Key} ({tag.Value}) = {label?.Content}");
                                 });
                             }
                         }
@@ -817,14 +817,21 @@ namespace Bucking_Unit_App.Views
             }
             else if (e.State == COMControllerParamsModel.COMStates.Removed)
             {
-                await _operatorService.AuthenticateOperatorAsync(_operatorService.CurrentOperator.CardNumber, false, DateTime.Now);
-                _operatorService.CurrentOperator = null;
+                if (_operatorService.CurrentOperator != null)
+                {
+                    await _operatorService.AuthenticateOperatorAsync(_operatorService.CurrentOperator.CardNumber, false, DateTime.Now);
+                    _operatorService.CurrentOperator = null;
+                }
+                else
+                {
+                    Debug.WriteLine("MainWindow: Попытка деавторизации при отсутствии текущего оператора.");
+                }
                 StopOperatorUpdateLoop();
                 Debug.WriteLine("MainWindow: Оператор деавторизован и отвязан от SectorId=8");
                 Dispatcher.Invoke(() =>
                 {
-                    lblStatus.Visibility = Visibility.Collapsed;
-                    _currentPipeCounter = null;
+                    //lblStatus.Visibility = Visibility.Collapsed;
+                    //_currentPipeCounter = null;
                     operatorDataPanel.Visibility = Visibility.Collapsed;
                     statsDataPanel.Visibility = Visibility.Collapsed;
                     txtInsertCardPrompt.Visibility = Visibility.Visible;
@@ -838,7 +845,9 @@ namespace Bucking_Unit_App.Views
                     lblShiftDowntime.Content = string.Empty;
                     lblMonthItems.Content = string.Empty;
                     lblMonthDowntime.Content = string.Empty;
-                    txtCurrentPipe.Content = string.Empty;
+                    lblShiftPlanItems.Content = string.Empty;
+                    lblMonthPlanItems.Content = string.Empty;
+                    //txtCurrentPipe.Content = string.Empty;
                 });
             }
             else if (e.State == COMControllerParamsModel.COMStates.None && e.ErrorCode == (int)COMControllerParamsModel.ErrorCodes.ReadingError)
@@ -904,11 +913,13 @@ namespace Bucking_Unit_App.Views
                     lblShiftDowntime.Content = string.Empty;
                     lblMonthItems.Content = string.Empty;
                     lblMonthDowntime.Content = string.Empty;
+                    lblMonthPlanItems.Content = string.Empty;
+                    lblShiftPlanItems.Content = string.Empty;
                     operatorDataPanel.Visibility = Visibility.Collapsed;
                     statsDataPanel.Visibility = Visibility.Collapsed;
                     txtInsertCardPrompt.Visibility = Visibility.Visible;
                     txtNoStatsPrompt.Visibility = Visibility.Visible;
-                    txtCurrentPipe.Content = string.Empty;
+                    //txtCurrentPipe.Content = string.Empty;
                 }
                 else
                 {
@@ -935,11 +946,11 @@ namespace Bucking_Unit_App.Views
                 {
                     System.Diagnostics.Debug.WriteLine($"Обновление в {DateTime.Now}");
                     await _statsService.UpdateIdsAsync(_operatorService.CurrentOperator.PersonnelNumber);
-                    await _statsService.UpdateStatsAsync(_operatorService.CurrentOperator.PersonnelNumber, (shiftItems, shiftDowntime, monthItems, monthDowntime) =>
+                    await _statsService.UpdateStatsAsync(_operatorService.CurrentOperator.PersonnelNumber, (shiftItems, shiftDowntime, monthItems, monthDowntime, monthPlan, shiftPlan) =>
                     {
                         Dispatcher.Invoke(() =>
                         {
-                            if (string.IsNullOrEmpty(shiftItems) || string.IsNullOrEmpty(shiftDowntime) || string.IsNullOrEmpty(monthItems) || string.IsNullOrEmpty(monthDowntime))
+                            if (string.IsNullOrEmpty(shiftItems) || string.IsNullOrEmpty(shiftDowntime) || string.IsNullOrEmpty(monthItems) || string.IsNullOrEmpty(monthDowntime) || string.IsNullOrEmpty(monthPlan) || string.IsNullOrEmpty(shiftPlan))
                             {
                                 txtNoStatsPrompt.Visibility = Visibility.Visible;
                                 statsDataPanel.Visibility = Visibility.Collapsed;
@@ -947,6 +958,8 @@ namespace Bucking_Unit_App.Views
                                 lblShiftDowntime.Content = string.Empty;
                                 lblMonthItems.Content = string.Empty;
                                 lblMonthDowntime.Content = string.Empty;
+                                lblShiftPlanItems.Content = string.Empty;
+                                lblMonthPlanItems.Content += string.Empty;
                             }
                             else
                             {
@@ -955,6 +968,8 @@ namespace Bucking_Unit_App.Views
                                 lblShiftDowntime.Content = shiftDowntime;
                                 lblMonthItems.Content = monthItems;
                                 lblMonthDowntime.Content = monthDowntime;
+                                lblShiftPlanItems.Content = shiftPlan;
+                                lblMonthPlanItems.Content = monthPlan;
                                 statsDataPanel.Visibility = Visibility.Visible;
                             }
                         });
@@ -975,6 +990,7 @@ namespace Bucking_Unit_App.Views
         {
             _currentPipeUpdateCts?.Dispose();
             _currentPipeUpdateCts = new CancellationTokenSource();
+            UpdateNomenclatureAsync();
             var token = _currentPipeUpdateCts.Token;
 
             _currentPipeUpdateTask = Task.Run(async () =>
@@ -988,55 +1004,69 @@ namespace Bucking_Unit_App.Views
         }
 
         private void StartAllStatsUpdateLoop()
-   {
-       _allStatsUpdateCts?.Dispose();
-       _allStatsUpdateCts = new CancellationTokenSource();
-       var token = _allStatsUpdateCts.Token;
+        {
+            _allStatsUpdateCts?.Dispose();
+            _allStatsUpdateCts = new CancellationTokenSource();
+            var token = _allStatsUpdateCts.Token;
 
-       _allStatsUpdateTask = Task.Run(async () =>
-       {
-           while (!token.IsCancellationRequested)
-           {
-               await _statsService.UpdateStatsForAllOperatorsAsync((dailyDowntime, monthlyDowntime, dailyOps, monthlyOps) =>
-               {
-                   Dispatcher.Invoke(() =>
-                   {
-                       decimal totalShiftDowntime = 0;
-                       decimal totalMonthDowntime = 0;
-                       int totalShiftItems = 0;
-                       int totalMonthItems = 0;
+            _allStatsUpdateTask = Task.Run(async () =>
+            {
+                while (!token.IsCancellationRequested)
+                {
+                    await _statsService.UpdateStatsForAllOperatorsAsync((monthlyDowntimeByShift, monthlyOperationCountByShift, monthlyPlanByShift) =>
+                    {
+                        Dispatcher.Invoke(() =>
+                        {
+                            // Обнуляем общие суммы для каждой итерации
+                            decimal totalDowntime = 0;
+                            int totalFactItems = 0;
+                            double totalPlanItems = 0;
 
-                       foreach (var kvp in dailyDowntime)
-                       {
-                           totalShiftDowntime += kvp.Value.IsDayShift ? kvp.Value.DayShiftDowntime : kvp.Value.NightShiftDowntime;
-                           Debug.WriteLine($"DailyDowntime: OperatorId={(kvp.Key == -1 ? "NULL" : kvp.Key.ToString())}, Downtime={(kvp.Value.IsDayShift ? kvp.Value.DayShiftDowntime : kvp.Value.NightShiftDowntime)}");
-                       }
-                       foreach (var kvp in monthlyDowntime)
-                       {
-                           totalMonthDowntime += kvp.Value;
-                           Debug.WriteLine($"MonthlyDowntime: OperatorId={(kvp.Key == -1 ? "NULL" : kvp.Key.ToString())}, TotalDowntimeMinutes={kvp.Value}");
-                       }
-                       foreach (var kvp in dailyOps)
-                       {
-                           totalShiftItems += kvp.Value.ShiftOperationCount;
-                           Debug.WriteLine($"DailyOps: OperatorId={(kvp.Key == -1 ? "NULL" : kvp.Key.ToString())}, Count={kvp.Value.ShiftOperationCount}");
-                       }
-                       foreach (var kvp in monthlyOps)
-                       {
-                           totalMonthItems += kvp.Value;
-                           Debug.WriteLine($"MonthlyOps: OperatorId={(kvp.Key == -1 ? "NULL" : kvp.Key.ToString())}, TotalOperationCount={kvp.Value}");
-                       }
+                            // Суммируем данные по всем сменам
+                            foreach (var kvp in monthlyDowntimeByShift)
+                            {
+                                totalDowntime += kvp.Value;
+                            }
+                            foreach (var kvp in monthlyOperationCountByShift)
+                            {
+                                totalFactItems += kvp.Value;
+                            }
+                            foreach (var kvp in monthlyPlanByShift)
+                            {
+                                totalPlanItems += kvp.Value;
+                            }
 
-                       lblAllShiftItems.Content = totalShiftItems.ToString();
-                       lblAllShiftDowntime.Content = totalShiftDowntime.ToString("F2");
-                       lblAllMonthItems.Content = totalMonthItems.ToString();
-                       lblAllMonthDowntime.Content = totalMonthDowntime.ToString("F2");
-                   });
-               });
-               await Task.Delay(5000, token); // Интервал 5 секунд
-           }
-       }, token);
-   }
+                            // Обновляем общие метки (если они есть в UI)
+                            //lblAllMonthItems.Content = totalFactItems.ToString();
+                            //lblAllMonthDowntime.Content = totalDowntime.ToString("F2");
+                            // lblAllShiftItems и lblAllShiftDowntime можно убрать или адаптировать, если они не используются
+                            // lblAllShiftItems.Content = ""; // Очистить, если не нужно
+                            // lblAllShiftDowntime.Content = ""; // Очистить, если не нужно
+
+                            // Обновляем метки для каждой смены в allStatsDataPanel
+                            lblShiftAPlanItems.Content = monthlyPlanByShift.GetValueOrDefault(1, 0).ToString();
+                            lblShiftAFactItems.Content = monthlyOperationCountByShift.GetValueOrDefault(1, 0).ToString();
+                            lblShiftADowntime.Content = monthlyDowntimeByShift.GetValueOrDefault(1, 0).ToString("F2");
+
+                            lblShiftBPlanItems.Content = monthlyPlanByShift.GetValueOrDefault(2, 0).ToString();
+                            lblShiftBFactItems.Content = monthlyOperationCountByShift.GetValueOrDefault(2, 0).ToString();
+                            lblShiftBDowntime.Content = monthlyDowntimeByShift.GetValueOrDefault(2, 0).ToString("F2");
+
+                            lblShiftVPlanItems.Content = monthlyPlanByShift.GetValueOrDefault(3, 0).ToString();
+                            lblShiftVFactItems.Content = monthlyOperationCountByShift.GetValueOrDefault(3, 0).ToString();
+                            lblShiftVDowntime.Content = monthlyDowntimeByShift.GetValueOrDefault(3, 0).ToString("F2");
+
+                            lblShiftGPlanItems.Content = monthlyPlanByShift.GetValueOrDefault(4, 0).ToString();
+                            lblShiftGFactItems.Content = monthlyOperationCountByShift.GetValueOrDefault(4, 0).ToString();
+                            lblShiftGDowntime.Content = monthlyDowntimeByShift.GetValueOrDefault(4, 0).ToString("F2");
+
+                            allStatsDataPanel.Visibility = Visibility.Visible;
+                        });
+                    });
+                    await Task.Delay(5000, token); // Интервал 5 секунд
+                }
+            }, token);
+        }
 
         private async Task UpdateCurrentPipeCounter()
         {
@@ -1086,9 +1116,12 @@ namespace Bucking_Unit_App.Views
                                 {
                                     if (_wasCycleStoppedRecently)
                                     {
-                                        Debug.WriteLine("MainWindow: Запуск цикла предотвращён, так как он был остановлен для текущего PipeCounter.");
-                                        UpdateGraphAsync(); // Однократное обновление
-                                        return;
+                                        _isInScrewOnWindow = true;
+                                        if (!_lastScrewOnTrueTime.HasValue)
+                                        {
+                                            _lastScrewOnTrueTime = DateTime.Now; // Устанавливаем время, если не было ранее
+                                        }
+                                        Debug.WriteLine("MainWindow: NOT_MN3_SCREW_ON переключилось на false, начато 8-секундное окно.");
                                     }
 
                                     UpdateGraphAsync();
@@ -1402,6 +1435,54 @@ namespace Bucking_Unit_App.Views
             }
         }
 
+        private async Task UpdateNomenclatureAsync()
+        {
+            try
+            {
+                using (SqlConnection conn = new SqlConnection(_connectionString))
+                {
+                    await conn.OpenAsync();
+                    string query = @"
+                SELECT TOP 1
+                pn.pipe_diameter, 
+                pn.pipe_wall, 
+                psc.StrengthClass, 
+                pt.pipe_thread
+                FROM PipeNomenclature.dbo.PipeNomenclature pn
+                INNER JOIN PipeNomenclature.dbo.Product_Nomenclature pn2 ON pn2.PipeNom_id = pn.id
+                INNER JOIN PipeNomenclature.dbo.pipeStrengthClass psc ON pn2.StrClass_id = psc.id
+                INNER JOIN PipeNomenclature.dbo.Product p ON p.ProductNomencl_id = pn2.id
+                INNER JOIN PipeNomenclature.dbo.PipeThread pt ON p.Thread_id = pt.id
+                INNER JOIN PipeNomenclature.dbo.Productivity pr ON pr.Product_id = p.id
+                INNER JOIN Pilot.dbo.MuftN3_REP mnr ON mnr.Product_id = pr.id;";
+                    using (SqlCommand cmd = new SqlCommand(query, conn))
+                    {
+                        using (SqlDataReader reader = await cmd.ExecuteReaderAsync())
+                        {
+                            if (await reader.ReadAsync())
+                            {
+                                double diameter = reader.GetDouble(0);
+                                double wall = reader.GetDouble(1);
+                                string strength = reader.GetString(2);
+                                string thread = reader.IsDBNull(3) ? "N/A" : reader.GetString(3);
+                                string nomenclature = $"Диаметр: {diameter} мм, Стенка: {wall} мм, Группа прочности: {strength}, Резьба: {thread}";
+                                Dispatcher.Invoke(() => lblNomenclature.Text = nomenclature);
+                            }
+                            else
+                            {
+                                Dispatcher.Invoke(() => lblNomenclature.Text = "Данные не найдены");
+                            }
+                        }
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                Debug.WriteLine($"Ошибка обновления номенклатуры: {ex.Message}");
+                Dispatcher.Invoke(() => lblNomenclature.Text = "Ошибка загрузки");
+            }
+        }
+
         private async void Window_Closing(object sender, System.ComponentModel.CancelEventArgs e)
         {
             _comController.StateChanged -= ComController_StateChanged;
@@ -1483,4 +1564,6 @@ namespace Bucking_Unit_App.Views
             }
         }
     }
+    // Добавленный конвертер для сравнения плана и факта
+    
 }

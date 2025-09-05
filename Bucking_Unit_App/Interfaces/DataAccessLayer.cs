@@ -615,5 +615,486 @@ namespace Bucking_Unit_App.Interfaces
             var result = await cmd.ExecuteScalarAsync();
             return result != null && result != DBNull.Value ? Convert.ToInt32(result) : null;
         }
+        public async Task<Dictionary<int, decimal>> GetMonthlyDowntimeByShiftAsync()
+        {
+            using var conn = new SqlConnection(_connectionString);
+            await conn.OpenAsync();
+            using var cmd = new SqlCommand("GetMonthlyDowntimeByAllOperatorsByShift", conn);
+            cmd.CommandType = CommandType.StoredProcedure;
+            using var reader = await cmd.ExecuteReaderAsync();
+
+            var dict = new Dictionary<int, decimal>();
+            while (await reader.ReadAsync())
+            {
+                int shift = reader.GetInt32(reader.GetOrdinal("Shift")); // Smena (1=А, 2=Б, 3=В, 4=Г)
+                decimal downtime = reader.IsDBNull(reader.GetOrdinal("TotalDowntimeMinutes")) ? 0 : reader.GetDecimal(reader.GetOrdinal("TotalDowntimeMinutes"));
+
+                if (dict.ContainsKey(shift))
+                    dict[shift] += downtime;
+                else
+                    dict[shift] = downtime;
+            }
+            return dict;
+        }
+        // Новый метод: Месячное количество операций по сменам (агрегация по Smena)
+        public async Task<Dictionary<int, int>> GetMonthlyOperationCountByShiftAsync()
+        {
+            using var conn = new SqlConnection(_connectionString);
+            await conn.OpenAsync();
+            using var cmd = new SqlCommand("GetPipeCounterBySmenaForProductionMonth", conn);
+            cmd.CommandType = CommandType.StoredProcedure;
+            using var reader = await cmd.ExecuteReaderAsync();
+
+            var dict = new Dictionary<int, int>();
+            while (await reader.ReadAsync())
+            {
+                int shift = reader.GetInt32(reader.GetOrdinal("Smena")); // Smena (1=А, 2=Б, 3=В, 4=Г)
+                int count = reader.IsDBNull(reader.GetOrdinal("TotalOperationCount")) ? 0 : reader.GetInt32(reader.GetOrdinal("TotalOperationCount"));
+
+                if (dict.ContainsKey(shift))
+                    dict[shift] += count;
+                else
+                    dict[shift] = count;
+            }
+            return dict;
+        }
+
+        // (Если нужно план — добавьте метод с hardcoded значениями на основе изображения)
+        public async Task<Dictionary<int, double>> GetMonthlyPlanByShiftAsync(DateTime month)
+        {
+            using var conn = new SqlConnection(_connectionString);
+            try
+            {
+                await conn.OpenAsync();
+                DateTime now = DateTime.Now;
+                // Начало производственного месяца: 08:00 первого числа
+                DateTime monthStart = new DateTime(now.Year, now.Month, 1);
+                // Начало производственного месяца: 08:00 первого числа
+                DateTime periodStart = monthStart.AddHours(8);
+                // Конец периода: текущий момент
+                DateTime periodEnd = now;
+
+                string query = @"
+WITH ShiftIntervals AS (
+    SELECT 
+        Id,
+        [DateTime],
+        Smena,
+        [Plan],
+        CAST(DATEADD(HOUR, -8, [DateTime]) AS DATE) AS ProductionDay,
+        LEAD([DateTime]) OVER (PARTITION BY Smena, CAST(DATEADD(HOUR, -8, [DateTime]) AS DATE) ORDER BY [DateTime]) AS NextDateTime,
+        CASE 
+            WHEN DATEPART(HOUR, [DateTime]) >= 8 AND DATEPART(HOUR, [DateTime]) < 20 
+            THEN CAST(CAST([DateTime] AS DATE) AS DATETIME) + CAST('08:00:00' AS DATETIME)
+            WHEN DATEPART(HOUR, [DateTime]) >= 20 
+            THEN CAST(CAST([DateTime] AS DATE) AS DATETIME) + CAST('20:00:00' AS DATETIME)
+            WHEN DATEPART(HOUR, [DateTime]) < 8 
+            THEN DATEADD(DAY, -1, CAST(CAST([DateTime] AS DATE) AS DATETIME)) + CAST('20:00:00' AS DATETIME)
+        END AS ShiftStart,
+        CASE 
+            WHEN DATEPART(HOUR, [DateTime]) >= 8 AND DATEPART(HOUR, [DateTime]) < 20 
+            THEN CAST(CAST([DateTime] AS DATE) AS DATETIME) + CAST('20:00:00' AS DATETIME)
+            WHEN DATEPART(HOUR, [DateTime]) >= 20 
+            THEN DATEADD(DAY, 1, CAST(CAST([DateTime] AS DATE) AS DATETIME)) + CAST('08:00:00' AS DATETIME)
+            WHEN DATEPART(HOUR, [DateTime]) < 8 
+            THEN CAST(CAST([DateTime] AS DATE) AS DATETIME) + CAST('08:00:00' AS DATETIME)
+        END AS ShiftEnd
+    FROM Pilot.dbo.MuftN3_REP
+    WHERE 
+        [DateTime] >= @PeriodStart
+        AND [DateTime] <= @PeriodEnd
+        AND Smena IN (1, 2, 3, 4)
+        AND [DateTime] IS NOT NULL
+        AND Smena = dbo.SmenaNOT([DateTime])
+        AND [Plan] IS NOT NULL
+),
+PlanDurations AS (
+    SELECT 
+        ProductionDay,
+        Smena,
+        [Plan],
+        [DateTime],
+        DATEDIFF(SECOND, 
+            [DateTime], 
+            COALESCE(NextDateTime, ShiftEnd)
+        ) / 3600.0 AS DurationHours
+    FROM ShiftIntervals
+    WHERE 
+        [DateTime] >= ShiftStart
+        AND [DateTime] < ShiftEnd
+),
+AdjustedTotals AS (
+    SELECT 
+        ProductionDay,
+        Smena,
+        [Plan],
+        [DateTime],
+        DurationHours,
+        SUM(DurationHours) OVER (PARTITION BY ProductionDay, Smena ORDER BY [DateTime] ROWS UNBOUNDED PRECEDING) AS RunningTotal
+    FROM PlanDurations
+),
+ShiftPlans AS (
+    SELECT 
+        ProductionDay,
+        Smena,
+        FLOOR(SUM([Plan] * CASE 
+            WHEN (RunningTotal - DurationHours) >= 10.5 THEN 0
+            WHEN RunningTotal <= 10.5 THEN DurationHours
+            ELSE 10.5 - (RunningTotal - DurationHours)
+        END)) AS ShiftPlan
+    FROM AdjustedTotals
+    GROUP BY ProductionDay, Smena
+)
+SELECT 
+    Smena,
+    CAST(SUM(ShiftPlan) AS FLOAT) AS CumulativePlan
+FROM ShiftPlans
+GROUP BY Smena
+ORDER BY Smena;";
+
+                using var cmd = new SqlCommand(query, conn);
+                cmd.CommandTimeout = 30;
+                cmd.Parameters.AddWithValue("@PeriodStart", periodStart);
+                cmd.Parameters.AddWithValue("@PeriodEnd", periodEnd);
+
+                var result = new Dictionary<int, double>();
+                using var reader = await cmd.ExecuteReaderAsync();
+                while (await reader.ReadAsync())
+                {
+                    int smena = reader.GetInt32(0);
+                    double cumulativePlan = reader.IsDBNull(1) ? 0.0 : reader.GetDouble(1);
+                    result[smena] = cumulativePlan;
+                    Debug.WriteLine($"GetMonthlyPlanByShiftAsync: Smena={smena}, CumulativePlan={cumulativePlan:F0}");
+                }
+                await reader.CloseAsync();
+
+                // Убедимся, что все смены присутствуют
+                for (int smena = 1; smena <= 4; smena++)
+                {
+                    if (!result.ContainsKey(smena))
+                    {
+                        result[smena] = 0.0;
+                    }
+                }
+
+                return result;
+            }
+            catch (TaskCanceledException ex)
+            {
+                Debug.WriteLine($"GetMonthlyPlanByShiftAsync: Задача отменена: {ex.Message}");
+                return new Dictionary<int, double> { { 1, 0 }, { 2, 0 }, { 3, 0 }, { 4, 0 } };
+            }
+            catch (Exception ex)
+            {
+                Debug.WriteLine($"GetMonthlyPlanByShiftAsync: Ошибка: {ex.Message}");
+                return new Dictionary<int, double> { { 1, 0 }, { 2, 0 }, { 3, 0 }, { 4, 0 } };
+            }
+            finally
+            {
+                if (conn.State != ConnectionState.Closed)
+                {
+                    conn.Close();
+                }
+            }
+        }
+        public async Task<int> GetSmenaNumber(DateTime dt)
+        {
+            if (dt == DateTime.MinValue)
+                return 0;
+
+            using var conn = new SqlConnection(_connectionString); // Предполагается, что _connectionString определена
+            try
+            {
+                await conn.OpenAsync();
+
+                // Определяем границы текущей смены (08:00–20:00 или 20:00–08:00)
+                var mskTime = dt.Kind == DateTimeKind.Utc ? dt.AddHours(3) : dt;
+                int hour = mskTime.Hour;
+                DateTime shiftStart, shiftEnd;
+
+                if (hour >= 8 && hour < 20)
+                {
+                    // Смена 1: 08:00–20:00 текущего дня
+                    shiftStart = mskTime.Date.AddHours(8);
+                    shiftEnd = mskTime.Date.AddHours(20);
+                }
+                else
+                {
+                    // Смена 3: 20:00 (предыдущего дня) – 08:00 (текущего дня) или 20:00 (текущего дня) – 08:00 (следующего дня)
+                    if (hour >= 20)
+                    {
+                        shiftStart = mskTime.Date.AddHours(20);
+                        shiftEnd = mskTime.Date.AddDays(1).AddHours(8);
+                    }
+                    else
+                    {
+                        shiftStart = mskTime.Date.AddDays(-1).AddHours(20);
+                        shiftEnd = mskTime.Date.AddHours(8);
+                    }
+                }
+
+                string query = @"
+            SELECT TOP 1 Smena
+            FROM Pilot.dbo.MuftN3_REP
+            WHERE 
+                [DateTime] >= @ShiftStart
+                AND [DateTime] < @ShiftEnd
+                AND Smena IS NOT NULL
+            ORDER BY [DateTime] DESC";
+
+                using var cmd = new SqlCommand(query, conn);
+                cmd.Parameters.AddWithValue("@ShiftStart", shiftStart);
+                cmd.Parameters.AddWithValue("@ShiftEnd", shiftEnd);
+
+                var result = await cmd.ExecuteScalarAsync();
+                int smena = result != null && result != DBNull.Value ? Convert.ToInt32(result) : 0;
+
+                Debug.WriteLine($"GetSmenaNumber: DateTime={dt:yyyy-MM-dd HH:mm:ss}, ShiftStart={shiftStart}, ShiftEnd={shiftEnd}, Smena={smena}");
+                return smena;
+            }
+            catch (Exception ex)
+            {
+                Debug.WriteLine($"GetSmenaNumber: Ошибка: {ex.Message}");
+                return 0;
+            }
+        }
+
+        private (DateTime shiftStart, DateTime shiftEnd) GetShiftBoundaries(DateTime productionDay)
+        {
+            var currentTime = DateTime.Now;
+            int hour = currentTime.Hour;
+
+            // Определяем границы смены
+            DateTime dayStart = productionDay.Date.AddHours(8);
+            DateTime dayEnd = productionDay.Date.AddHours(20);
+            DateTime nightStart = productionDay.Date.AddHours(20);
+            DateTime nightEnd = productionDay.Date.AddDays(1).AddHours(8);
+
+            // Проверяем, находится ли текущее время в дневной смене (08:00–20:00)
+            if (hour >= 8 && hour < 20)
+            {
+                // Дневная смена
+                return (dayStart, dayEnd);
+            }
+            else
+            {
+                // Ночная смена
+                // Если время до 08:00, корректируем границы для ночной смены предыдущего дня
+                if (hour < 8)
+                {
+                    nightStart = productionDay.Date.AddDays(-1).AddHours(20);
+                    nightEnd = productionDay.Date.AddHours(8);
+                }
+                return (nightStart, nightEnd);
+            }
+        }
+
+        private async Task<double> GetShiftPlanAsync(int? operatorId, int smena, DateTime productionDay)
+        {
+            using var conn = new SqlConnection(_connectionString);
+            try
+            {
+                await conn.OpenAsync();
+                var (shiftStart, shiftEnd) = GetShiftBoundaries(productionDay);
+                Debug.WriteLine($"GetShiftPlanAsync: Smena={smena}, ProductionDay={productionDay:yyyy-MM-dd}, ShiftStart={shiftStart:yyyy-MM-dd HH:mm}, ShiftEnd={shiftEnd:yyyy-MM-dd HH:mm}, OperatorId={operatorId}");
+
+                string query = @"
+WITH ShiftIntervals AS (
+    SELECT 
+        [Plan],
+        [DateTime],
+        LEAD([DateTime]) OVER (ORDER BY [DateTime]) AS NextDateTime
+    FROM Pilot.dbo.MuftN3_REP
+    WHERE 
+        [DateTime] IS NOT NULL
+        AND Smena = @Smena
+        AND [DateTime] >= @ShiftStart
+        AND [DateTime] < @ShiftEnd
+        AND [Plan] IS NOT NULL
+        AND Smena = dbo.SmenaNOT([DateTime])";
+
+                if (operatorId.HasValue)
+                {
+                    query += " AND OperatorId = @OperatorId";
+                }
+
+                query += @"
+),
+PlanDurations AS (
+    SELECT 
+        [Plan],
+        [DateTime],
+        DATEDIFF(SECOND, 
+            [DateTime], 
+            COALESCE(NextDateTime, @ShiftEnd)
+        ) / 3600.0 AS DurationHours
+    FROM ShiftIntervals
+    WHERE 
+        [DateTime] >= @ShiftStart
+        AND [DateTime] < @ShiftEnd
+),
+AdjustedTotals AS (
+    SELECT 
+        [Plan],
+        [DateTime],
+        DurationHours,
+        SUM(DurationHours) OVER (ORDER BY [DateTime] ROWS UNBOUNDED PRECEDING) AS RunningTotal
+    FROM PlanDurations
+)
+SELECT 
+    CAST(FLOOR(SUM([Plan] * CASE 
+        WHEN (RunningTotal - DurationHours) >= 10.5 THEN 0
+        WHEN RunningTotal <= 10.5 THEN DurationHours
+        ELSE 10.5 - (RunningTotal - DurationHours)
+    END)) AS FLOAT) AS ShiftPlan
+FROM AdjustedTotals;";
+
+                using var cmd = new SqlCommand(query, conn);
+                cmd.CommandTimeout = 30;
+                cmd.Parameters.AddWithValue("@Smena", smena);
+                cmd.Parameters.AddWithValue("@ShiftStart", shiftStart);
+                cmd.Parameters.AddWithValue("@ShiftEnd", shiftEnd);
+                if (operatorId.HasValue)
+                {
+                    cmd.Parameters.AddWithValue("@OperatorId", operatorId.Value);
+                }
+
+                double shiftPlan = await cmd.ExecuteScalarAsync() as double? ?? 0.0;
+                Debug.WriteLine($"GetShiftPlanAsync: Итоговый ShiftPlan={shiftPlan:F0}");
+
+                return shiftPlan;
+            }
+            catch (TaskCanceledException ex)
+            {
+                Debug.WriteLine($"GetShiftPlanAsync: Задача отменена: {ex.Message}");
+                return 0.0;
+            }
+            catch (Exception ex)
+            {
+                Debug.WriteLine($"GetShiftPlanAsync: Ошибка: {ex.Message}");
+                return 0.0;
+            }
+            finally
+            {
+                if (conn.State != ConnectionState.Closed)
+                {
+                    conn.Close();
+                }
+            }
+        }
+
+        public async Task<(int monthPlan, double shiftPlan)> CalculatePlansAsync(int? operatorId = null)
+        {
+            using var conn = new SqlConnection(_connectionString);
+            try
+            {
+                await conn.OpenAsync();
+                DateTime now = DateTime.Now;
+                DateTime monthStart = new DateTime(now.Year, now.Month, 1);
+                DateTime periodStart = monthStart.AddHours(8); // Начало производственного месяца: 08:00 первого числа
+                DateTime periodEnd = now; // Конец периода: текущий момент
+                DateTime currentProductionDay = now.Hour < 8 ? now.Date.AddDays(-1) : now.Date;
+
+                // Текущая смена
+                int smena = await GetSmenaNumber(now);
+                var (shiftStart, _) = GetShiftBoundaries(currentProductionDay);
+                double shiftPlan = await GetShiftPlanAsync(operatorId, smena, currentProductionDay);
+
+                string query = @"
+DECLARE @TempShiftPlans TABLE (
+    ProductionDay DATE,
+    Smena INT,
+    ShiftPlan INT
+);
+
+WITH ShiftIntervals AS (
+    SELECT 
+        Id,
+        [DateTime],
+        Smena,
+        [Plan],
+        CAST(DATEADD(HOUR, -8, [DateTime]) AS DATE) AS ProductionDay,
+        ROW_NUMBER() OVER (PARTITION BY Smena, CAST(DATEADD(HOUR, -8, [DateTime]) AS DATE) ORDER BY [DateTime] DESC) AS RowNum
+    FROM Pilot.dbo.MuftN3_REP
+    WHERE 
+        [DateTime] >= @PeriodStart
+        AND [DateTime] <= @PeriodEnd
+        AND Smena IN (1, 2, 3, 4)
+        AND [DateTime] IS NOT NULL
+        AND [Plan] IS NOT NULL";
+
+                if (operatorId.HasValue)
+                {
+                    query += " AND OperatorId = @OperatorId";
+                }
+
+                query += @"
+),
+ShiftPlans AS (
+    SELECT 
+        ProductionDay,
+        Smena,
+        CAST(FLOOR([Plan] * 10.5) AS INT) AS ShiftPlan
+    FROM ShiftIntervals
+    WHERE RowNum = 1
+)
+INSERT INTO @TempShiftPlans (ProductionDay, Smena, ShiftPlan)
+SELECT ProductionDay, Smena, ShiftPlan
+FROM ShiftPlans;
+
+SELECT ProductionDay, Smena, ShiftPlan
+FROM @TempShiftPlans
+ORDER BY Smena, ProductionDay;
+
+SELECT 
+    SUM(ShiftPlan) AS MonthPlan
+FROM @TempShiftPlans;";
+
+                using var cmd = new SqlCommand(query, conn);
+                cmd.CommandTimeout = 60;
+                cmd.Parameters.AddWithValue("@PeriodStart", periodStart);
+                cmd.Parameters.AddWithValue("@PeriodEnd", periodEnd);
+                if (operatorId.HasValue)
+                {
+                    cmd.Parameters.AddWithValue("@OperatorId", operatorId.Value);
+                }
+
+                using var reader = await cmd.ExecuteReaderAsync();
+                // Чтение промежуточных результатов
+                while (await reader.ReadAsync())
+                {
+                    DateTime productionDay = reader.GetDateTime(0);
+                    int Smena = reader.GetInt32(1);
+                    int shiftPlanValue = reader.GetInt32(2); // Используем GetInt32 для ShiftPlan
+                    Debug.WriteLine($"CalculatePlansAsync: ProductionDay={productionDay:yyyy-MM-dd}, Smena={smena}, ShiftPlan={shiftPlanValue}");
+                }
+
+                // Перейти к следующему набору результатов (MonthPlan)
+                await reader.NextResultAsync();
+                int monthPlan = await reader.ReadAsync() && !reader.IsDBNull(0) ? reader.GetInt32(0) : 0; // Используем GetInt32 для MonthPlan
+
+                Debug.WriteLine($"CalculatePlansAsync: OperatorId={operatorId}, MonthPlan={monthPlan}, ShiftPlan={shiftPlan}");
+
+                return (monthPlan, shiftPlan);
+            }
+            catch (TaskCanceledException ex)
+            {
+                Debug.WriteLine($"CalculatePlansAsync: Задача отменена: {ex.Message}");
+                return (0, 0.0);
+            }
+            catch (Exception ex)
+            {
+                Debug.WriteLine($"CalculatePlansAsync: Ошибка: {ex.Message}");
+                Debug.WriteLine($"StackTrace: {ex.StackTrace}");
+                return (0, 0.0);
+            }
+            finally
+            {
+                if (conn.State != ConnectionState.Closed)
+                {
+                    conn.Close();
+                }
+            }
+        }
     }
 }

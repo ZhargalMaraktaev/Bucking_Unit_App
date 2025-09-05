@@ -1,9 +1,10 @@
-﻿using System;
+﻿using Bucking_Unit_App.Interfaces;
+using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
-using Bucking_Unit_App.Interfaces;
 
 namespace Bucking_Unit_App.Services
 {
@@ -21,7 +22,7 @@ namespace Bucking_Unit_App.Services
             _employeeRepository = employeeRepository;
         }
 
-        public async Task UpdateStatsAsync(string personnelNumber, Action<string, string, string, string> updateUI)
+        public async Task UpdateStatsAsync(string personnelNumber, Action<string, string, string, string, string, string> updateUI)
         {
             var operatorId = await _employeeRepository.GetOperatorIdAsync(personnelNumber);
             if (operatorId == null) return;
@@ -30,12 +31,15 @@ namespace Bucking_Unit_App.Services
             var monthlyDowntime = await _statsRepository.GetMonthlyDowntimeAsync(operatorId.Value);
             var dailyOperationCount = await _statsRepository.GetDailyOperationCountAsync(operatorId.Value);
             var monthlyOperationCount = await _statsRepository.GetMonthlyOperationCountAsync(operatorId.Value);
+            var (monthPlan, shiftPlan) = await _statsRepository.CalculatePlansAsync(operatorId.Value);
 
             updateUI(
                 dailyOperationCount.ToString(),
                 (isDayShift ? (double)dayShiftDowntime : (double)nightShiftDowntime).ToString("F2"),
                 monthlyOperationCount.ToString(),
-                ((double)monthlyDowntime).ToString("F2")
+                ((double)monthlyDowntime).ToString("F2"),
+                monthPlan.ToString(),
+                shiftPlan.ToString()
             );
         }
 
@@ -55,18 +59,19 @@ namespace Bucking_Unit_App.Services
 
         // Новый метод для обновления статистики всех операторов
         public async Task UpdateStatsForAllOperatorsAsync(
-    Action<
-        Dictionary<int, (bool IsDayShift, decimal DayShiftDowntime, decimal NightShiftDowntime)>,
-        Dictionary<int, decimal>,
-        Dictionary<int, (bool IsDayShift, int ShiftOperationCount)>,
-        Dictionary<int, int>> updateAllUI)
+    Action<Dictionary<int, decimal>, Dictionary<int, int>, Dictionary<int, double>> updateAllUI)
         {
-            var dailyDowntime = await _statsRepository.GetDailyDowntimeByAllOperatorsAsync();
-            var monthlyDowntime = await _statsRepository.GetMonthlyDowntimeByAllOperatorsAsync();
-            var dailyOperationCount = await _statsRepository.GetDailyShiftOperationCountByAllOperatorsAsync();
-            var monthlyOperationCount = await _statsRepository.GetMonthlyShiftOperationCountByAllOperatorsAsync();
+            var monthlyDowntimeByShift = await _statsRepository.GetMonthlyDowntimeByShiftAsync();
+            var monthlyOperationCountByShift = await _statsRepository.GetMonthlyOperationCountByShiftAsync();
+            var monthlyPlanByShift = await _statsRepository.GetMonthlyPlanByShiftAsync(DateTime.Now);
 
-            updateAllUI(dailyDowntime, monthlyDowntime, dailyOperationCount, monthlyOperationCount);
+            Debug.WriteLine("UpdateStatsForAllOperatorsAsync: Планы по сменам:");
+            foreach (var kvp in monthlyPlanByShift)
+            {
+                Debug.WriteLine($"Smena={kvp.Key}, Plan={kvp.Value:F0}");
+            }
+
+            updateAllUI(monthlyDowntimeByShift, monthlyOperationCountByShift, monthlyPlanByShift);
         }
     }
 }

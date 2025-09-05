@@ -17,6 +17,7 @@ namespace Bucking_Unit_App.Services
         private Employee1CModel _currentOperator;
         private readonly IStatsRepository _statsRepository;  // Добавьте зависимость в конструктор
 
+
         public OperatorService(IEmployeeRepository employeeRepository, Controller1C controller1C, IStatsRepository statsRepository)
         {
             _employeeRepository = employeeRepository;
@@ -55,6 +56,10 @@ namespace Bucking_Unit_App.Services
 
         public event EventHandler OnOperatorChanged;
 
+        public async Task<int?> GetOperatorIdAsync(string personnelNumber)
+        {
+            return await _employeeRepository.GetOperatorIdAsync(personnelNumber);
+        }
         public async Task InitializeOperatorAsync(string cardNumber)
         {
             CurrentOperator = await _employeeRepository.GetEmployeeAsync(cardNumber) ?? await FetchAndSaveFrom1C(cardNumber);
