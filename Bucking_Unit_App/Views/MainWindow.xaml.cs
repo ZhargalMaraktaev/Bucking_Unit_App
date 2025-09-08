@@ -40,7 +40,7 @@ namespace Bucking_Unit_App.Views
 {
     public partial class MainWindow : Window
     {
-        private readonly string _connectionString = "Data Source=192.168.11.222,1433;Initial Catalog=Pilot;User ID=UserNotTrend;Password=NotTrend";
+        private readonly string _connectionString = "Data Source=192.168.0.230,1433;Initial Catalog=Pilot;User ID=UserNotTrend;Password=NotTrend";
         private readonly SqlConnection _conn;
         private readonly COMController _comController;
         private readonly OperatorService _operatorService;
@@ -50,7 +50,7 @@ namespace Bucking_Unit_App.Views
         private int? _selectedPipeCounter = null;
         private int _selectedYear = DateTime.Now.Year;
         private int? _currentPipeCounter = null;
-        private readonly string _runtimeConnectionString = "Data Source=192.168.11.222,1433;Initial Catalog=Runtime;User ID=UserNotTrend;Password=NotTrend";
+        private readonly string _runtimeConnectionString = "Data Source=192.168.0.230,1433;Initial Catalog=Runtime;User ID=UserNotTrend;Password=NotTrend";
         private CancellationTokenSource _currentPipeUpdateCts;
         private S7Client s7Client;
         private CancellationTokenSource _cts;
@@ -106,7 +106,7 @@ namespace Bucking_Unit_App.Views
             int retryDelayMs = 1000;
             for (int i = 0; i < maxRetries; i++)
             {
-                int result = s7Client.ConnectTo("192.168.11.241", 0, 1);
+                int result = s7Client.ConnectTo("192.168.0.200", 0, 1);
                 if (result == 0)
                 {
                     System.Diagnostics.Debug.WriteLine("MainWindow: Успешное подключение к PLC.");
@@ -1454,7 +1454,8 @@ namespace Bucking_Unit_App.Views
                 INNER JOIN PipeNomenclature.dbo.Product p ON p.ProductNomencl_id = pn2.id
                 INNER JOIN PipeNomenclature.dbo.PipeThread pt ON p.Thread_id = pt.id
                 INNER JOIN PipeNomenclature.dbo.Productivity pr ON pr.Product_id = p.id
-                INNER JOIN Pilot.dbo.MuftN3_REP mnr ON mnr.Product_id = pr.id;";
+                INNER JOIN PipeNomenclature.dbo.ShiftTask st ON st.productivity_id = pr.id
+                INNER JOIN Pilot.dbo.MuftN3_REP mnr ON mnr.Product_id = p.id;";
                     using (SqlCommand cmd = new SqlCommand(query, conn))
                     {
                         using (SqlDataReader reader = await cmd.ExecuteReaderAsync())
@@ -1470,7 +1471,7 @@ namespace Bucking_Unit_App.Views
                             }
                             else
                             {
-                                Dispatcher.Invoke(() => lblNomenclature.Text = "Данные не найдены");
+                                Dispatcher.Invoke(() => lblNomenclature.Text = "Сменное задание изменилось, запись пока не добавлена так как труба еще не поступила");
                             }
                         }
                     }
@@ -1564,6 +1565,4 @@ namespace Bucking_Unit_App.Views
             }
         }
     }
-    // Добавленный конвертер для сравнения плана и факта
-    
 }

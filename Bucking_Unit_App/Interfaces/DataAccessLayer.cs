@@ -891,76 +891,223 @@ ORDER BY Smena;";
 
         private async Task<double> GetShiftPlanAsync(int? operatorId, int smena, DateTime productionDay)
         {
+            double shiftPlan;
             using var conn = new SqlConnection(_connectionString);
             try
             {
                 await conn.OpenAsync();
                 var (shiftStart, shiftEnd) = GetShiftBoundaries(productionDay);
+                // Полная смена: 12 часов (до 20:00)
                 Debug.WriteLine($"GetShiftPlanAsync: Smena={smena}, ProductionDay={productionDay:yyyy-MM-dd}, ShiftStart={shiftStart:yyyy-MM-dd HH:mm}, ShiftEnd={shiftEnd:yyyy-MM-dd HH:mm}, OperatorId={operatorId}");
 
-                string query = @"
-WITH ShiftIntervals AS (
-    SELECT 
-        [Plan],
-        [DateTime],
-        LEAD([DateTime]) OVER (ORDER BY [DateTime]) AS NextDateTime
-    FROM Pilot.dbo.MuftN3_REP
-    WHERE 
-        [DateTime] IS NOT NULL
-        AND Smena = @Smena
-        AND [DateTime] >= @ShiftStart
-        AND [DateTime] < @ShiftEnd
-        AND [Plan] IS NOT NULL
-        AND Smena = dbo.SmenaNOT([DateTime])";
-
-                if (operatorId.HasValue)
-                {
-                    query += " AND OperatorId = @OperatorId";
-                }
-
-                query += @"
-),
-PlanDurations AS (
-    SELECT 
-        [Plan],
-        [DateTime],
-        DATEDIFF(SECOND, 
-            [DateTime], 
-            COALESCE(NextDateTime, @ShiftEnd)
-        ) / 3600.0 AS DurationHours
-    FROM ShiftIntervals
-    WHERE 
-        [DateTime] >= @ShiftStart
-        AND [DateTime] < @ShiftEnd
-),
-AdjustedTotals AS (
-    SELECT 
-        [Plan],
-        [DateTime],
-        DurationHours,
-        SUM(DurationHours) OVER (ORDER BY [DateTime] ROWS UNBOUNDED PRECEDING) AS RunningTotal
-    FROM PlanDurations
-)
+                // Проверяем, изменялся ли Plan
+                string checkPlanQuery = @"
 SELECT 
-    CAST(FLOOR(SUM([Plan] * CASE 
-        WHEN (RunningTotal - DurationHours) >= 10.5 THEN 0
-        WHEN RunningTotal <= 10.5 THEN DurationHours
-        ELSE 10.5 - (RunningTotal - DurationHours)
-    END)) AS FLOAT) AS ShiftPlan
-FROM AdjustedTotals;";
-
-                using var cmd = new SqlCommand(query, conn);
-                cmd.CommandTimeout = 30;
-                cmd.Parameters.AddWithValue("@Smena", smena);
-                cmd.Parameters.AddWithValue("@ShiftStart", shiftStart);
-                cmd.Parameters.AddWithValue("@ShiftEnd", shiftEnd);
+    MIN([Plan]) AS MinPlan,
+    MAX([Plan]) AS MaxPlan
+FROM Pilot.dbo.MuftN3_REP
+WHERE 
+    [DateTime] IS NOT NULL
+    AND Smena = @Smena
+    AND [DateTime] >= @ShiftStart
+    AND [DateTime] < @ShiftEnd
+    AND [Plan] IS NOT NULL";
                 if (operatorId.HasValue)
                 {
-                    cmd.Parameters.AddWithValue("@OperatorId", operatorId.Value);
+                    checkPlanQuery += " AND OperatorId = @OperatorId";
                 }
 
-                double shiftPlan = await cmd.ExecuteScalarAsync() as double? ?? 0.0;
-                Debug.WriteLine($"GetShiftPlanAsync: Итоговый ShiftPlan={shiftPlan:F0}");
+                using var checkCmd = new SqlCommand(checkPlanQuery, conn);
+                checkCmd.Parameters.AddWithValue("@Smena", smena);
+                checkCmd.Parameters.AddWithValue("@ShiftStart", shiftStart);
+                checkCmd.Parameters.AddWithValue("@ShiftEnd", shiftEnd);
+                if (operatorId.HasValue)
+                {
+                    checkCmd.Parameters.AddWithValue("@OperatorId", operatorId.Value);
+                }
+
+                double? minPlan = null, maxPlan = null;
+                using (var reader = await checkCmd.ExecuteReaderAsync())
+                {
+                    if (await reader.ReadAsync() && !reader.IsDBNull(0) && !reader.IsDBNull(1))
+                    {
+                        minPlan = Convert.ToDouble(reader.GetInt32(0)); // Приводим INT к Double
+                        maxPlan = Convert.ToDouble(reader.GetInt32(1)); // Приводим INT к Double
+                    }
+                }
+
+                if (!minPlan.HasValue || !maxPlan.HasValue)
+                {
+                    if (operatorId.HasValue)
+                    {
+                        string authQuery = @"
+                        SELECT COUNT(*)
+                        FROM Pilot.dbo.OperatorIdExchange
+                        WHERE SectorId = 8
+                        AND OperatorId = @OperatorId";
+
+                        using var authCmd = new SqlCommand(authQuery, conn);
+                        authCmd.Parameters.AddWithValue("@OperatorId", operatorId.Value);
+
+                        int authCount = (int)await authCmd.ExecuteScalarAsync();
+                        if (authCount > 0)
+                        {
+                            // Получаем последний Plan из MuftN3_REP для SectorId=8
+                            string lastPlanQuery = @"
+                        SELECT TOP 1 [Plan]
+                        FROM Pilot.dbo.MuftN3_REP
+                        WHERE 
+                            [Plan] IS NOT NULL
+                        ORDER BY [DateTime] DESC";
+
+                            using var lastPlanCmd = new SqlCommand(lastPlanQuery, conn);
+                            object lastPlanResult = await lastPlanCmd.ExecuteScalarAsync();
+                            if (lastPlanResult != null && lastPlanResult != DBNull.Value)
+                            {
+                                double lastPlan = Convert.ToDouble(lastPlanResult);
+                                shiftPlan = Math.Floor(lastPlan * 10.5);
+                                Debug.WriteLine($"GetShiftPlanAsync: No records in MuftN3_REP for OperatorId={operatorId}, but operator authorized. Using last Plan={lastPlan}, ShiftPlan={shiftPlan}");
+                                return shiftPlan;
+                            }
+                            Debug.WriteLine($"GetShiftPlanAsync: No records in MuftN3_REP for OperatorId={operatorId}, and no Plan found for SectorId=8, returning 0");
+                            return 0.0;
+                        }
+                    }
+                    Debug.WriteLine("GetShiftPlanAsync: No records in MuftN3_REP and no authorization in OperatorIdExchange, returning 0");
+                    return 0.0;
+                }
+
+                // Если Plan не изменялся, берем последнюю запись и умножаем на 10.5
+                if (minPlan == maxPlan)
+                {
+                    string singlePlanQuery = @"
+                    SELECT TOP 1 
+                        CAST(FLOOR([Plan] * 10.5) AS FLOAT) AS ShiftPlan
+                    FROM Pilot.dbo.MuftN3_REP
+                    WHERE 
+                        [DateTime] IS NOT NULL
+                        AND Smena = @Smena
+                        AND [DateTime] >= @ShiftStart
+                        AND [DateTime] < @ShiftEnd
+                        AND [Plan] IS NOT NULL";
+                    if (operatorId.HasValue)
+                    {
+                        singlePlanQuery += " AND OperatorId = @OperatorId";
+                    }
+                    singlePlanQuery += @"
+                    ORDER BY [DateTime] DESC";
+
+                    using var singleCmd = new SqlCommand(singlePlanQuery, conn);
+                    singleCmd.Parameters.AddWithValue("@Smena", smena);
+                    singleCmd.Parameters.AddWithValue("@ShiftStart", shiftStart);
+                    singleCmd.Parameters.AddWithValue("@ShiftEnd", shiftEnd);
+                    if (operatorId.HasValue)
+                    {
+                        singleCmd.Parameters.AddWithValue("@OperatorId", operatorId.Value);
+                    }
+
+                    double ShiftPlan = await singleCmd.ExecuteScalarAsync() as double? ?? 0.0;
+                    Debug.WriteLine($"GetShiftPlanAsync: Plan не изменялся, ShiftPlan={ShiftPlan:F0}");
+                    return ShiftPlan;
+                }
+
+                // Если Plan изменялся, учитываем DurationHours с начала смены
+                string multiPlanQuery = @"
+                WITH ShiftIntervals AS (
+                    SELECT 
+                        [Plan],
+                        [DateTime],
+                        LEAD([DateTime]) OVER (ORDER BY [DateTime]) AS NextDateTime
+                    FROM Pilot.dbo.MuftN3_REP
+                    WHERE 
+                        [DateTime] IS NOT NULL
+                        AND Smena = @Smena
+                        AND [DateTime] >= @ShiftStart
+                        AND [DateTime] < @ShiftEnd
+                        AND [Plan] IS NOT NULL";
+                if (operatorId.HasValue)
+                {
+                    multiPlanQuery += " AND OperatorId = @OperatorId";
+                }
+                multiPlanQuery += @"
+                    ),
+                    PlanDurations AS (
+                        SELECT 
+                            [Plan],
+                            [DateTime],
+                            DATEDIFF(SECOND, 
+                                [DateTime], 
+                                COALESCE(NextDateTime, @ShiftEnd)
+                            ) / 3600.0 AS DurationHours
+                        FROM ShiftIntervals
+                        WHERE 
+                            [DateTime] >= @ShiftStart
+                            AND [DateTime] < @ShiftEnd
+                        UNION ALL
+                        -- Добавляем начальный интервал от shiftStart до первой записи
+                        SELECT 
+                            @FirstPlan AS [Plan],
+                            @ShiftStart AS [DateTime],
+                            DATEDIFF(SECOND, @ShiftStart, (SELECT MIN([DateTime]) FROM ShiftIntervals)) / 3600.0 AS DurationHours
+                        FROM ShiftIntervals
+                        WHERE EXISTS (SELECT 1 FROM ShiftIntervals WHERE [DateTime] > @ShiftStart)
+                    )
+                    SELECT 
+                        CAST(FLOOR(SUM([Plan] * DurationHours) * 10.5 / 12.0) AS FLOAT) AS ShiftPlan
+                    FROM PlanDurations;";
+
+                // Получаем первый Plan для начального интервала
+                string firstPlanQuery = @"
+                SELECT TOP 1 [Plan]
+                FROM Pilot.dbo.MuftN3_REP
+                WHERE 
+                [DateTime] IS NOT NULL
+                AND Smena = @Smena
+                AND [DateTime] >= @ShiftStart
+                AND [DateTime] < @ShiftEnd
+                AND [Plan] IS NOT NULL";
+                if (operatorId.HasValue)
+                {
+                    firstPlanQuery += " AND OperatorId = @OperatorId";
+                }
+                firstPlanQuery += @"
+                ORDER BY [DateTime] ASC";
+
+                using var firstPlanCmd = new SqlCommand(firstPlanQuery, conn);
+                firstPlanCmd.Parameters.AddWithValue("@Smena", smena);
+                firstPlanCmd.Parameters.AddWithValue("@ShiftStart", shiftStart);
+                firstPlanCmd.Parameters.AddWithValue("@ShiftEnd", shiftEnd);
+                if (operatorId.HasValue)
+                {
+                    firstPlanCmd.Parameters.AddWithValue("@OperatorId", operatorId.Value);
+                }
+
+                double? firstPlan = null;
+                object firstPlanResult = await firstPlanCmd.ExecuteScalarAsync();
+                if (firstPlanResult != null && firstPlanResult != DBNull.Value)
+                {
+                    firstPlan = Convert.ToDouble(firstPlanResult); // Приводим INT к Double
+                }
+
+                if (!firstPlan.HasValue)
+                {
+                    Debug.WriteLine("GetShiftPlanAsync: Нет первой записи для начального интервала, возвращаем 0");
+                    return 0.0;
+                }
+
+                using var multiCmd = new SqlCommand(multiPlanQuery, conn);
+                multiCmd.CommandTimeout = 30;
+                multiCmd.Parameters.AddWithValue("@Smena", smena);
+                multiCmd.Parameters.AddWithValue("@ShiftStart", shiftStart);
+                multiCmd.Parameters.AddWithValue("@ShiftEnd", shiftEnd);
+                multiCmd.Parameters.AddWithValue("@FirstPlan", firstPlan.Value);
+                if (operatorId.HasValue)
+                {
+                    multiCmd.Parameters.AddWithValue("@OperatorId", operatorId.Value);
+                }
+
+                shiftPlan = await multiCmd.ExecuteScalarAsync() as double? ?? 0.0;
+                Debug.WriteLine($"GetShiftPlanAsync: Plan изменялся, ShiftPlan={shiftPlan:F0}");
 
                 return shiftPlan;
             }

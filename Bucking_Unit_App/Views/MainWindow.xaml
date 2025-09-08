@@ -7,8 +7,7 @@
         Title="Операторская статистика" Height="720" Width="1280" WindowState="Maximized">
     <Window.Resources>
         <local:ComparePlanFactConverter x:Key="ComparePlanFactConverter" />
-        <local:MaxPlanFactDifferenceConverter x:Key="MaxPlanFactDifferenceConverter" />
-        <!-- Обновленный стиль DataRowStyle только для statsDataPanel -->
+        <local:GradientBackgroundConverter x:Key="GradientBackgroundConverter" />
         <Style x:Key="DataRowStyle" TargetType="Border">
             <Style.Triggers>
                 <!-- Для строки "За смену" в statsDataPanel -->
@@ -50,7 +49,7 @@
         <Border Grid.Row="0" Grid.Column="0" BorderBrush="Gray" BorderThickness="1">
             <StackPanel Margin="10">
                 <TextBlock Text="Данные оператора" FontSize="25" FontWeight="Bold" TextAlignment="Center"/>
-                    <StackPanel x:Name="operatorDataPanel" Visibility="Collapsed">
+                <StackPanel x:Name="operatorDataPanel" Visibility="Collapsed">
                     <StackPanel Orientation="Horizontal" Margin="0,0,0,5">
                         <Label Content="Номер карты:" VerticalAlignment="Center" Width="100" FontSize="15" Padding="0,5,0,0"/>
                         <Label x:Name="lblIdCard" Content="" VerticalAlignment="Center" Margin="5,5,0,0" FontSize="15"/>
@@ -95,15 +94,11 @@
                 <Grid>
                     <Grid.ColumnDefinitions>
                         <ColumnDefinition Width="Auto" />
-                        <!-- Для заголовка -->
                         <ColumnDefinition Width="*" />
-                        <!-- Для текста, чтобы он занимал остальное пространство -->
                     </Grid.ColumnDefinitions>
-
                     <TextBlock Grid.Column="0" Text="Тип и размер продукции:" FontSize="15" FontWeight="Bold" TextAlignment="Center" HorizontalAlignment="Left" Padding="0,0,0,0"/>
-
                     <TextBlock x:Name="lblNomenclature" Grid.Column="1" Text="" FontSize="15" VerticalAlignment="Center" HorizontalAlignment="Left" 
-               Margin="10,0,0,0" TextWrapping="Wrap" Width="Auto" />
+                               Margin="10,0,0,0" TextWrapping="Wrap" Width="Auto" />
                 </Grid>
                 <!-- statsDataPanel -->
                 <Grid x:Name="statsDataPanel" Visibility="Collapsed">
@@ -126,7 +121,7 @@
                             <RowDefinition Height="1"/>
                             <RowDefinition Height="Auto"/>
                         </Grid.RowDefinitions>
-                        <!-- Заголовки (без стиля) -->
+                        <!-- Заголовки -->
                         <Border Grid.Row="0" Grid.Column="0" BorderBrush="Black" BorderThickness="1,1,1,0">
                             <TextBlock Text="Период" FontWeight="Bold" FontSize="15" HorizontalAlignment="Center" VerticalAlignment="Center"/>
                         </Border>
@@ -140,7 +135,6 @@
                             <TextBlock Text="Простои мин." FontWeight="Bold" FontSize="15" HorizontalAlignment="Center" VerticalAlignment="Center"/>
                         </Border>
                         <Rectangle Grid.Row="1" Grid.Column="0" Grid.ColumnSpan="4" Fill="Black" Height="1"/>
-
                         <!-- Строка "За смену" -->
                         <Border x:Name="shiftPeriodBorder" Grid.Row="2" Grid.Column="0" BorderBrush="Black" BorderThickness="1,0,1,0" Style="{StaticResource DataRowStyle}">
                             <TextBlock Text="За смену" FontSize="15" VerticalAlignment="Center" HorizontalAlignment="Center"/>
@@ -155,7 +149,6 @@
                             <Label x:Name="lblShiftDowntime" Content="" FontSize="15" VerticalAlignment="Center" HorizontalAlignment="Center"/>
                         </Border>
                         <Rectangle Grid.Row="3" Grid.Column="0" Grid.ColumnSpan="4" Fill="Black" Height="1"/>
-
                         <!-- Строка "За месяц" -->
                         <Border x:Name="monthPeriodBorder" Grid.Row="4" Grid.Column="0" BorderBrush="Black" BorderThickness="1,0,1,1" Style="{StaticResource DataRowStyle}">
                             <TextBlock Text="За месяц" FontSize="15" VerticalAlignment="Center" HorizontalAlignment="Center"/>
@@ -169,34 +162,6 @@
                         <Border x:Name="monthDowntimeBorder" Grid.Row="4" Grid.Column="3" BorderBrush="Black" BorderThickness="0,0,1,1" Style="{StaticResource DataRowStyle}">
                             <Label x:Name="lblMonthDowntime" Content="" FontSize="15" VerticalAlignment="Center" HorizontalAlignment="Center"/>
                         </Border>
-
-                        <!-- Стиль для строк данных -->
-                        <Grid.Resources>
-                            <Style x:Key="DataRowStyle" TargetType="Border">
-                                <Style.Triggers>
-                                    <!-- Для строки "За смену" -->
-                                    <DataTrigger Value="True">
-                                        <DataTrigger.Binding>
-                                            <MultiBinding Converter="{StaticResource ComparePlanFactConverter}">
-                                                <Binding ElementName="lblShiftPlanItems" Path="Content"/>
-                                                <Binding ElementName="lblShiftItems" Path="Content"/>
-                                            </MultiBinding>
-                                        </DataTrigger.Binding>
-                                        <Setter Property="Background" Value="#FFE6E6"/>
-                                    </DataTrigger>
-                                    <!-- Для строки "За месяц" -->
-                                    <DataTrigger Value="True">
-                                        <DataTrigger.Binding>
-                                            <MultiBinding Converter="{StaticResource ComparePlanFactConverter}">
-                                                <Binding ElementName="lblMonthPlanItems" Path="Content"/>
-                                                <Binding ElementName="lblMonthItems" Path="Content"/>
-                                            </MultiBinding>
-                                        </DataTrigger.Binding>
-                                        <Setter Property="Background" Value="#FFE6E6"/>
-                                    </DataTrigger>
-                                </Style.Triggers>
-                            </Style>
-                        </Grid.Resources>
                     </Grid>
                 </Grid>
                 <TextBox x:Name="txtNoStatsPrompt" Text="ВСТАВЬТЕ ПРОПУСК" 
@@ -209,8 +174,7 @@
                         <Thickness Left="0" Top="100" Right="0" Bottom="0"/>
                     </TextBox.Margin>
                 </TextBox>
-                <TextBlock Text="Выполнение плана по сменам за текущий месяц" FontSize="20" FontWeight="Bold" TextAlignment="Center" Grid.Row="0"/>
-                <!-- allStatsDataPanel -->
+                <TextBlock Text="Выполнение плана по сменам за текущий месяц" FontSize="20" FontWeight="Bold" TextAlignment="Center"/>
                 <!-- allStatsDataPanel -->
                 <Grid x:Name="allStatsDataPanel" Visibility="Collapsed">
                     <Grid.ColumnDefinitions>
@@ -221,29 +185,17 @@
                     </Grid.ColumnDefinitions>
                     <Grid.RowDefinitions>
                         <RowDefinition Height="Auto"/>
-                        <!-- Заголовок -->
                         <RowDefinition Height="1"/>
-                        <!-- Разделитель -->
                         <RowDefinition Height="Auto"/>
-                        <!-- Строка А (index 0) -->
                         <RowDefinition Height="1"/>
-                        <!-- Разделитель -->
                         <RowDefinition Height="Auto"/>
-                        <!-- Строка Б (index 1) -->
                         <RowDefinition Height="1"/>
-                        <!-- Разделитель -->
                         <RowDefinition Height="Auto"/>
-                        <!-- Строка В (index 2) -->
                         <RowDefinition Height="1"/>
-                        <!-- Разделитель -->
                         <RowDefinition Height="Auto"/>
-                        <!-- Строка Г (index 3) -->
                         <RowDefinition Height="1"/>
-                        <!-- Разделитель -->
                         <RowDefinition Height="Auto"/>
-                        <!-- Итоговая строка -->
                     </Grid.RowDefinitions>
-
                     <!-- Заголовки -->
                     <Border Grid.Row="0" Grid.Column="0" BorderBrush="Black" BorderThickness="1,1,1,0">
                         <TextBlock Text="Смена" FontWeight="Bold" FontSize="15" HorizontalAlignment="Center" VerticalAlignment="Center"/>
@@ -258,399 +210,251 @@
                         <TextBlock Text="Простои мин." FontWeight="Bold" FontSize="15" HorizontalAlignment="Center" VerticalAlignment="Center"/>
                     </Border>
                     <Rectangle Grid.Row="1" Grid.Column="0" Grid.ColumnSpan="4" Fill="Black" Height="1"/>
-
-                    <!-- Строка А (Grid.Row=2) -->
+                    <!-- Строка "А" -->
                     <Border Grid.Row="2" Grid.Column="0" BorderBrush="Black" BorderThickness="1,0,1,0">
-                        <Border.Style>
-                            <Style TargetType="Border">
-                                <Style.Triggers>
-                                    <DataTrigger Value="True">
-                                        <DataTrigger.Binding>
-                                            <MultiBinding Converter="{StaticResource MaxPlanFactDifferenceConverter}" ConverterParameter="0">
-                                                <Binding ElementName="lblShiftAPlanItems" Path="Content"/>
-                                                <Binding ElementName="lblShiftAFactItems" Path="Content"/>
-                                                <Binding ElementName="lblShiftBPlanItems" Path="Content"/>
-                                                <Binding ElementName="lblShiftBFactItems" Path="Content"/>
-                                                <Binding ElementName="lblShiftVPlanItems" Path="Content"/>
-                                                <Binding ElementName="lblShiftVFactItems" Path="Content"/>
-                                                <Binding ElementName="lblShiftGPlanItems" Path="Content"/>
-                                                <Binding ElementName="lblShiftGFactItems" Path="Content"/>
-                                            </MultiBinding>
-                                        </DataTrigger.Binding>
-                                        <Setter Property="Background" Value="#FFE6E6"/>
-                                    </DataTrigger>
-                                </Style.Triggers>
-                            </Style>
-                        </Border.Style>
+                        <Border.Background>
+                            <MultiBinding Converter="{StaticResource GradientBackgroundConverter}" ConverterParameter="0">
+                                <Binding ElementName="lblShiftAPlanItems" Path="Content"/>
+                                <Binding ElementName="lblShiftAFactItems" Path="Content"/>
+                                <Binding ElementName="lblShiftBPlanItems" Path="Content"/>
+                                <Binding ElementName="lblShiftBFactItems" Path="Content"/>
+                                <Binding ElementName="lblShiftVPlanItems" Path="Content"/>
+                                <Binding ElementName="lblShiftVFactItems" Path="Content"/>
+                                <Binding ElementName="lblShiftGPlanItems" Path="Content"/>
+                                <Binding ElementName="lblShiftGFactItems" Path="Content"/>
+                            </MultiBinding>
+                        </Border.Background>
                         <TextBlock Text="А" FontSize="15" VerticalAlignment="Center" HorizontalAlignment="Center"/>
                     </Border>
                     <Border Grid.Row="2" Grid.Column="1" BorderBrush="Black" BorderThickness="0,0,1,0">
-                        <Border.Style>
-                            <Style TargetType="Border">
-                                <Style.Triggers>
-                                    <DataTrigger Value="True">
-                                        <DataTrigger.Binding>
-                                            <MultiBinding Converter="{StaticResource MaxPlanFactDifferenceConverter}" ConverterParameter="0">
-                                                <Binding ElementName="lblShiftAPlanItems" Path="Content"/>
-                                                <Binding ElementName="lblShiftAFactItems" Path="Content"/>
-                                                <Binding ElementName="lblShiftBPlanItems" Path="Content"/>
-                                                <Binding ElementName="lblShiftBFactItems" Path="Content"/>
-                                                <Binding ElementName="lblShiftVPlanItems" Path="Content"/>
-                                                <Binding ElementName="lblShiftVFactItems" Path="Content"/>
-                                                <Binding ElementName="lblShiftGPlanItems" Path="Content"/>
-                                                <Binding ElementName="lblShiftGFactItems" Path="Content"/>
-                                            </MultiBinding>
-                                        </DataTrigger.Binding>
-                                        <Setter Property="Background" Value="#FFE6E6"/>
-                                    </DataTrigger>
-                                </Style.Triggers>
-                            </Style>
-                        </Border.Style>
+                        <Border.Background>
+                            <MultiBinding Converter="{StaticResource GradientBackgroundConverter}" ConverterParameter="0">
+                                <Binding ElementName="lblShiftAPlanItems" Path="Content"/>
+                                <Binding ElementName="lblShiftAFactItems" Path="Content"/>
+                                <Binding ElementName="lblShiftBPlanItems" Path="Content"/>
+                                <Binding ElementName="lblShiftBFactItems" Path="Content"/>
+                                <Binding ElementName="lblShiftVPlanItems" Path="Content"/>
+                                <Binding ElementName="lblShiftVFactItems" Path="Content"/>
+                                <Binding ElementName="lblShiftGPlanItems" Path="Content"/>
+                                <Binding ElementName="lblShiftGFactItems" Path="Content"/>
+                            </MultiBinding>
+                        </Border.Background>
                         <Label x:Name="lblShiftAPlanItems" Content="" FontSize="15" VerticalAlignment="Center" HorizontalAlignment="Center"/>
                     </Border>
                     <Border Grid.Row="2" Grid.Column="2" BorderBrush="Black" BorderThickness="0,0,1,0">
-                        <Border.Style>
-                            <Style TargetType="Border">
-                                <Style.Triggers>
-                                    <DataTrigger Value="True">
-                                        <DataTrigger.Binding>
-                                            <MultiBinding Converter="{StaticResource MaxPlanFactDifferenceConverter}" ConverterParameter="0">
-                                                <Binding ElementName="lblShiftAPlanItems" Path="Content"/>
-                                                <Binding ElementName="lblShiftAFactItems" Path="Content"/>
-                                                <Binding ElementName="lblShiftBPlanItems" Path="Content"/>
-                                                <Binding ElementName="lblShiftBFactItems" Path="Content"/>
-                                                <Binding ElementName="lblShiftVPlanItems" Path="Content"/>
-                                                <Binding ElementName="lblShiftVFactItems" Path="Content"/>
-                                                <Binding ElementName="lblShiftGPlanItems" Path="Content"/>
-                                                <Binding ElementName="lblShiftGFactItems" Path="Content"/>
-                                            </MultiBinding>
-                                        </DataTrigger.Binding>
-                                        <Setter Property="Background" Value="#FFE6E6"/>
-                                    </DataTrigger>
-                                </Style.Triggers>
-                            </Style>
-                        </Border.Style>
+                        <Border.Background>
+                            <MultiBinding Converter="{StaticResource GradientBackgroundConverter}" ConverterParameter="0">
+                                <Binding ElementName="lblShiftAPlanItems" Path="Content"/>
+                                <Binding ElementName="lblShiftAFactItems" Path="Content"/>
+                                <Binding ElementName="lblShiftBPlanItems" Path="Content"/>
+                                <Binding ElementName="lblShiftBFactItems" Path="Content"/>
+                                <Binding ElementName="lblShiftVPlanItems" Path="Content"/>
+                                <Binding ElementName="lblShiftVFactItems" Path="Content"/>
+                                <Binding ElementName="lblShiftGPlanItems" Path="Content"/>
+                                <Binding ElementName="lblShiftGFactItems" Path="Content"/>
+                            </MultiBinding>
+                        </Border.Background>
                         <Label x:Name="lblShiftAFactItems" Content="" FontSize="15" VerticalAlignment="Center" HorizontalAlignment="Center"/>
                     </Border>
                     <Border Grid.Row="2" Grid.Column="3" BorderBrush="Black" BorderThickness="0,0,1,0">
-                        <Border.Style>
-                            <Style TargetType="Border">
-                                <Style.Triggers>
-                                    <DataTrigger Value="True">
-                                        <DataTrigger.Binding>
-                                            <MultiBinding Converter="{StaticResource MaxPlanFactDifferenceConverter}" ConverterParameter="0">
-                                                <Binding ElementName="lblShiftAPlanItems" Path="Content"/>
-                                                <Binding ElementName="lblShiftAFactItems" Path="Content"/>
-                                                <Binding ElementName="lblShiftBPlanItems" Path="Content"/>
-                                                <Binding ElementName="lblShiftBFactItems" Path="Content"/>
-                                                <Binding ElementName="lblShiftVPlanItems" Path="Content"/>
-                                                <Binding ElementName="lblShiftVFactItems" Path="Content"/>
-                                                <Binding ElementName="lblShiftGPlanItems" Path="Content"/>
-                                                <Binding ElementName="lblShiftGFactItems" Path="Content"/>
-                                            </MultiBinding>
-                                        </DataTrigger.Binding>
-                                        <Setter Property="Background" Value="#FFE6E6"/>
-                                    </DataTrigger>
-                                </Style.Triggers>
-                            </Style>
-                        </Border.Style>
+                        <Border.Background>
+                            <MultiBinding Converter="{StaticResource GradientBackgroundConverter}" ConverterParameter="0">
+                                <Binding ElementName="lblShiftAPlanItems" Path="Content"/>
+                                <Binding ElementName="lblShiftAFactItems" Path="Content"/>
+                                <Binding ElementName="lblShiftBPlanItems" Path="Content"/>
+                                <Binding ElementName="lblShiftBFactItems" Path="Content"/>
+                                <Binding ElementName="lblShiftVPlanItems" Path="Content"/>
+                                <Binding ElementName="lblShiftVFactItems" Path="Content"/>
+                                <Binding ElementName="lblShiftGPlanItems" Path="Content"/>
+                                <Binding ElementName="lblShiftGFactItems" Path="Content"/>
+                            </MultiBinding>
+                        </Border.Background>
                         <Label x:Name="lblShiftADowntime" Content="" FontSize="15" VerticalAlignment="Center" HorizontalAlignment="Center"/>
                     </Border>
                     <Rectangle Grid.Row="3" Grid.Column="0" Grid.ColumnSpan="4" Fill="Black" Height="1"/>
-
-                    <!-- Строка Б (Grid.Row=4) -->
+                    <!-- Строка "Б" -->
                     <Border Grid.Row="4" Grid.Column="0" BorderBrush="Black" BorderThickness="1,0,1,0">
-                        <Border.Style>
-                            <Style TargetType="Border">
-                                <Style.Triggers>
-                                    <DataTrigger Value="True">
-                                        <DataTrigger.Binding>
-                                            <MultiBinding Converter="{StaticResource MaxPlanFactDifferenceConverter}" ConverterParameter="1">
-                                                <Binding ElementName="lblShiftAPlanItems" Path="Content"/>
-                                                <Binding ElementName="lblShiftAFactItems" Path="Content"/>
-                                                <Binding ElementName="lblShiftBPlanItems" Path="Content"/>
-                                                <Binding ElementName="lblShiftBFactItems" Path="Content"/>
-                                                <Binding ElementName="lblShiftVPlanItems" Path="Content"/>
-                                                <Binding ElementName="lblShiftVFactItems" Path="Content"/>
-                                                <Binding ElementName="lblShiftGPlanItems" Path="Content"/>
-                                                <Binding ElementName="lblShiftGFactItems" Path="Content"/>
-                                            </MultiBinding>
-                                        </DataTrigger.Binding>
-                                        <Setter Property="Background" Value="#FFE6E6"/>
-                                    </DataTrigger>
-                                </Style.Triggers>
-                            </Style>
-                        </Border.Style>
+                        <Border.Background>
+                            <MultiBinding Converter="{StaticResource GradientBackgroundConverter}" ConverterParameter="1">
+                                <Binding ElementName="lblShiftAPlanItems" Path="Content"/>
+                                <Binding ElementName="lblShiftAFactItems" Path="Content"/>
+                                <Binding ElementName="lblShiftBPlanItems" Path="Content"/>
+                                <Binding ElementName="lblShiftBFactItems" Path="Content"/>
+                                <Binding ElementName="lblShiftVPlanItems" Path="Content"/>
+                                <Binding ElementName="lblShiftVFactItems" Path="Content"/>
+                                <Binding ElementName="lblShiftGPlanItems" Path="Content"/>
+                                <Binding ElementName="lblShiftGFactItems" Path="Content"/>
+                            </MultiBinding>
+                        </Border.Background>
                         <TextBlock Text="Б" FontSize="15" VerticalAlignment="Center" HorizontalAlignment="Center"/>
                     </Border>
                     <Border Grid.Row="4" Grid.Column="1" BorderBrush="Black" BorderThickness="0,0,1,0">
-                        <Border.Style>
-                            <Style TargetType="Border">
-                                <Style.Triggers>
-                                    <DataTrigger Value="True">
-                                        <DataTrigger.Binding>
-                                            <MultiBinding Converter="{StaticResource MaxPlanFactDifferenceConverter}" ConverterParameter="1">
-                                                <Binding ElementName="lblShiftAPlanItems" Path="Content"/>
-                                                <Binding ElementName="lblShiftAFactItems" Path="Content"/>
-                                                <Binding ElementName="lblShiftBPlanItems" Path="Content"/>
-                                                <Binding ElementName="lblShiftBFactItems" Path="Content"/>
-                                                <Binding ElementName="lblShiftVPlanItems" Path="Content"/>
-                                                <Binding ElementName="lblShiftVFactItems" Path="Content"/>
-                                                <Binding ElementName="lblShiftGPlanItems" Path="Content"/>
-                                                <Binding ElementName="lblShiftGFactItems" Path="Content"/>
-                                            </MultiBinding>
-                                        </DataTrigger.Binding>
-                                        <Setter Property="Background" Value="#FFE6E6"/>
-                                    </DataTrigger>
-                                </Style.Triggers>
-                            </Style>
-                        </Border.Style>
+                        <Border.Background>
+                            <MultiBinding Converter="{StaticResource GradientBackgroundConverter}" ConverterParameter="1">
+                                <Binding ElementName="lblShiftAPlanItems" Path="Content"/>
+                                <Binding ElementName="lblShiftAFactItems" Path="Content"/>
+                                <Binding ElementName="lblShiftBPlanItems" Path="Content"/>
+                                <Binding ElementName="lblShiftBFactItems" Path="Content"/>
+                                <Binding ElementName="lblShiftVPlanItems" Path="Content"/>
+                                <Binding ElementName="lblShiftVFactItems" Path="Content"/>
+                                <Binding ElementName="lblShiftGPlanItems" Path="Content"/>
+                                <Binding ElementName="lblShiftGFactItems" Path="Content"/>
+                            </MultiBinding>
+                        </Border.Background>
                         <Label x:Name="lblShiftBPlanItems" Content="" FontSize="15" VerticalAlignment="Center" HorizontalAlignment="Center"/>
                     </Border>
                     <Border Grid.Row="4" Grid.Column="2" BorderBrush="Black" BorderThickness="0,0,1,0">
-                        <Border.Style>
-                            <Style TargetType="Border">
-                                <Style.Triggers>
-                                    <DataTrigger Value="True">
-                                        <DataTrigger.Binding>
-                                            <MultiBinding Converter="{StaticResource MaxPlanFactDifferenceConverter}" ConverterParameter="1">
-                                                <Binding ElementName="lblShiftAPlanItems" Path="Content"/>
-                                                <Binding ElementName="lblShiftAFactItems" Path="Content"/>
-                                                <Binding ElementName="lblShiftBPlanItems" Path="Content"/>
-                                                <Binding ElementName="lblShiftBFactItems" Path="Content"/>
-                                                <Binding ElementName="lblShiftVPlanItems" Path="Content"/>
-                                                <Binding ElementName="lblShiftVFactItems" Path="Content"/>
-                                                <Binding ElementName="lblShiftGPlanItems" Path="Content"/>
-                                                <Binding ElementName="lblShiftGFactItems" Path="Content"/>
-                                            </MultiBinding>
-                                        </DataTrigger.Binding>
-                                        <Setter Property="Background" Value="#FFE6E6"/>
-                                    </DataTrigger>
-                                </Style.Triggers>
-                            </Style>
-                        </Border.Style>
+                        <Border.Background>
+                            <MultiBinding Converter="{StaticResource GradientBackgroundConverter}" ConverterParameter="1">
+                                <Binding ElementName="lblShiftAPlanItems" Path="Content"/>
+                                <Binding ElementName="lblShiftAFactItems" Path="Content"/>
+                                <Binding ElementName="lblShiftBPlanItems" Path="Content"/>
+                                <Binding ElementName="lblShiftBFactItems" Path="Content"/>
+                                <Binding ElementName="lblShiftVPlanItems" Path="Content"/>
+                                <Binding ElementName="lblShiftVFactItems" Path="Content"/>
+                                <Binding ElementName="lblShiftGPlanItems" Path="Content"/>
+                                <Binding ElementName="lblShiftGFactItems" Path="Content"/>
+                            </MultiBinding>
+                        </Border.Background>
                         <Label x:Name="lblShiftBFactItems" Content="" FontSize="15" VerticalAlignment="Center" HorizontalAlignment="Center"/>
                     </Border>
                     <Border Grid.Row="4" Grid.Column="3" BorderBrush="Black" BorderThickness="0,0,1,0">
-                        <Border.Style>
-                            <Style TargetType="Border">
-                                <Style.Triggers>
-                                    <DataTrigger Value="True">
-                                        <DataTrigger.Binding>
-                                            <MultiBinding Converter="{StaticResource MaxPlanFactDifferenceConverter}" ConverterParameter="1">
-                                                <Binding ElementName="lblShiftAPlanItems" Path="Content"/>
-                                                <Binding ElementName="lblShiftAFactItems" Path="Content"/>
-                                                <Binding ElementName="lblShiftBPlanItems" Path="Content"/>
-                                                <Binding ElementName="lblShiftBFactItems" Path="Content"/>
-                                                <Binding ElementName="lblShiftVPlanItems" Path="Content"/>
-                                                <Binding ElementName="lblShiftVFactItems" Path="Content"/>
-                                                <Binding ElementName="lblShiftGPlanItems" Path="Content"/>
-                                                <Binding ElementName="lblShiftGFactItems" Path="Content"/>
-                                            </MultiBinding>
-                                        </DataTrigger.Binding>
-                                        <Setter Property="Background" Value="#FFE6E6"/>
-                                    </DataTrigger>
-                                </Style.Triggers>
-                            </Style>
-                        </Border.Style>
+                        <Border.Background>
+                            <MultiBinding Converter="{StaticResource GradientBackgroundConverter}" ConverterParameter="1">
+                                <Binding ElementName="lblShiftAPlanItems" Path="Content"/>
+                                <Binding ElementName="lblShiftAFactItems" Path="Content"/>
+                                <Binding ElementName="lblShiftBPlanItems" Path="Content"/>
+                                <Binding ElementName="lblShiftBFactItems" Path="Content"/>
+                                <Binding ElementName="lblShiftVPlanItems" Path="Content"/>
+                                <Binding ElementName="lblShiftVFactItems" Path="Content"/>
+                                <Binding ElementName="lblShiftGPlanItems" Path="Content"/>
+                                <Binding ElementName="lblShiftGFactItems" Path="Content"/>
+                            </MultiBinding>
+                        </Border.Background>
                         <Label x:Name="lblShiftBDowntime" Content="" FontSize="15" VerticalAlignment="Center" HorizontalAlignment="Center"/>
                     </Border>
                     <Rectangle Grid.Row="5" Grid.Column="0" Grid.ColumnSpan="4" Fill="Black" Height="1"/>
-
-                    <!-- Строка В (Grid.Row=6) -->
+                    <!-- Строка "В" -->
                     <Border Grid.Row="6" Grid.Column="0" BorderBrush="Black" BorderThickness="1,0,1,0">
-                        <Border.Style>
-                            <Style TargetType="Border">
-                                <Style.Triggers>
-                                    <DataTrigger Value="True">
-                                        <DataTrigger.Binding>
-                                            <MultiBinding Converter="{StaticResource MaxPlanFactDifferenceConverter}" ConverterParameter="2">
-                                                <Binding ElementName="lblShiftAPlanItems" Path="Content"/>
-                                                <Binding ElementName="lblShiftAFactItems" Path="Content"/>
-                                                <Binding ElementName="lblShiftBPlanItems" Path="Content"/>
-                                                <Binding ElementName="lblShiftBFactItems" Path="Content"/>
-                                                <Binding ElementName="lblShiftVPlanItems" Path="Content"/>
-                                                <Binding ElementName="lblShiftVFactItems" Path="Content"/>
-                                                <Binding ElementName="lblShiftGPlanItems" Path="Content"/>
-                                                <Binding ElementName="lblShiftGFactItems" Path="Content"/>
-                                            </MultiBinding>
-                                        </DataTrigger.Binding>
-                                        <Setter Property="Background" Value="#FFE6E6"/>
-                                    </DataTrigger>
-                                </Style.Triggers>
-                            </Style>
-                        </Border.Style>
+                        <Border.Background>
+                            <MultiBinding Converter="{StaticResource GradientBackgroundConverter}" ConverterParameter="2">
+                                <Binding ElementName="lblShiftAPlanItems" Path="Content"/>
+                                <Binding ElementName="lblShiftAFactItems" Path="Content"/>
+                                <Binding ElementName="lblShiftBPlanItems" Path="Content"/>
+                                <Binding ElementName="lblShiftBFactItems" Path="Content"/>
+                                <Binding ElementName="lblShiftVPlanItems" Path="Content"/>
+                                <Binding ElementName="lblShiftVFactItems" Path="Content"/>
+                                <Binding ElementName="lblShiftGPlanItems" Path="Content"/>
+                                <Binding ElementName="lblShiftGFactItems" Path="Content"/>
+                            </MultiBinding>
+                        </Border.Background>
                         <TextBlock Text="В" FontSize="15" VerticalAlignment="Center" HorizontalAlignment="Center"/>
                     </Border>
                     <Border Grid.Row="6" Grid.Column="1" BorderBrush="Black" BorderThickness="0,0,1,0">
-                        <Border.Style>
-                            <Style TargetType="Border">
-                                <Style.Triggers>
-                                    <DataTrigger Value="True">
-                                        <DataTrigger.Binding>
-                                            <MultiBinding Converter="{StaticResource MaxPlanFactDifferenceConverter}" ConverterParameter="2">
-                                                <Binding ElementName="lblShiftAPlanItems" Path="Content"/>
-                                                <Binding ElementName="lblShiftAFactItems" Path="Content"/>
-                                                <Binding ElementName="lblShiftBPlanItems" Path="Content"/>
-                                                <Binding ElementName="lblShiftBFactItems" Path="Content"/>
-                                                <Binding ElementName="lblShiftVPlanItems" Path="Content"/>
-                                                <Binding ElementName="lblShiftVFactItems" Path="Content"/>
-                                                <Binding ElementName="lblShiftGPlanItems" Path="Content"/>
-                                                <Binding ElementName="lblShiftGFactItems" Path="Content"/>
-                                            </MultiBinding>
-                                        </DataTrigger.Binding>
-                                        <Setter Property="Background" Value="#FFE6E6"/>
-                                    </DataTrigger>
-                                </Style.Triggers>
-                            </Style>
-                        </Border.Style>
+                        <Border.Background>
+                            <MultiBinding Converter="{StaticResource GradientBackgroundConverter}" ConverterParameter="2">
+                                <Binding ElementName="lblShiftAPlanItems" Path="Content"/>
+                                <Binding ElementName="lblShiftAFactItems" Path="Content"/>
+                                <Binding ElementName="lblShiftBPlanItems" Path="Content"/>
+                                <Binding ElementName="lblShiftBFactItems" Path="Content"/>
+                                <Binding ElementName="lblShiftVPlanItems" Path="Content"/>
+                                <Binding ElementName="lblShiftVFactItems" Path="Content"/>
+                                <Binding ElementName="lblShiftGPlanItems" Path="Content"/>
+                                <Binding ElementName="lblShiftGFactItems" Path="Content"/>
+                            </MultiBinding>
+                        </Border.Background>
                         <Label x:Name="lblShiftVPlanItems" Content="" FontSize="15" VerticalAlignment="Center" HorizontalAlignment="Center"/>
                     </Border>
                     <Border Grid.Row="6" Grid.Column="2" BorderBrush="Black" BorderThickness="0,0,1,0">
-                        <Border.Style>
-                            <Style TargetType="Border">
-                                <Style.Triggers>
-                                    <DataTrigger Value="True">
-                                        <DataTrigger.Binding>
-                                            <MultiBinding Converter="{StaticResource MaxPlanFactDifferenceConverter}" ConverterParameter="2">
-                                                <Binding ElementName="lblShiftAPlanItems" Path="Content"/>
-                                                <Binding ElementName="lblShiftAFactItems" Path="Content"/>
-                                                <Binding ElementName="lblShiftBPlanItems" Path="Content"/>
-                                                <Binding ElementName="lblShiftBFactItems" Path="Content"/>
-                                                <Binding ElementName="lblShiftVPlanItems" Path="Content"/>
-                                                <Binding ElementName="lblShiftVFactItems" Path="Content"/>
-                                                <Binding ElementName="lblShiftGPlanItems" Path="Content"/>
-                                                <Binding ElementName="lblShiftGFactItems" Path="Content"/>
-                                            </MultiBinding>
-                                        </DataTrigger.Binding>
-                                        <Setter Property="Background" Value="#FFE6E6"/>
-                                    </DataTrigger>
-                                </Style.Triggers>
-                            </Style>
-                        </Border.Style>
+                        <Border.Background>
+                            <MultiBinding Converter="{StaticResource GradientBackgroundConverter}" ConverterParameter="2">
+                                <Binding ElementName="lblShiftAPlanItems" Path="Content"/>
+                                <Binding ElementName="lblShiftAFactItems" Path="Content"/>
+                                <Binding ElementName="lblShiftBPlanItems" Path="Content"/>
+                                <Binding ElementName="lblShiftBFactItems" Path="Content"/>
+                                <Binding ElementName="lblShiftVPlanItems" Path="Content"/>
+                                <Binding ElementName="lblShiftVFactItems" Path="Content"/>
+                                <Binding ElementName="lblShiftGPlanItems" Path="Content"/>
+                                <Binding ElementName="lblShiftGFactItems" Path="Content"/>
+                            </MultiBinding>
+                        </Border.Background>
                         <Label x:Name="lblShiftVFactItems" Content="" FontSize="15" VerticalAlignment="Center" HorizontalAlignment="Center"/>
                     </Border>
                     <Border Grid.Row="6" Grid.Column="3" BorderBrush="Black" BorderThickness="0,0,1,0">
-                        <Border.Style>
-                            <Style TargetType="Border">
-                                <Style.Triggers>
-                                    <DataTrigger Value="True">
-                                        <DataTrigger.Binding>
-                                            <MultiBinding Converter="{StaticResource MaxPlanFactDifferenceConverter}" ConverterParameter="2">
-                                                <Binding ElementName="lblShiftAPlanItems" Path="Content"/>
-                                                <Binding ElementName="lblShiftAFactItems" Path="Content"/>
-                                                <Binding ElementName="lblShiftBPlanItems" Path="Content"/>
-                                                <Binding ElementName="lblShiftBFactItems" Path="Content"/>
-                                                <Binding ElementName="lblShiftVPlanItems" Path="Content"/>
-                                                <Binding ElementName="lblShiftVFactItems" Path="Content"/>
-                                                <Binding ElementName="lblShiftGPlanItems" Path="Content"/>
-                                                <Binding ElementName="lblShiftGFactItems" Path="Content"/>
-                                            </MultiBinding>
-                                        </DataTrigger.Binding>
-                                        <Setter Property="Background" Value="#FFE6E6"/>
-                                    </DataTrigger>
-                                </Style.Triggers>
-                            </Style>
-                        </Border.Style>
+                        <Border.Background>
+                            <MultiBinding Converter="{StaticResource GradientBackgroundConverter}" ConverterParameter="2">
+                                <Binding ElementName="lblShiftAPlanItems" Path="Content"/>
+                                <Binding ElementName="lblShiftAFactItems" Path="Content"/>
+                                <Binding ElementName="lblShiftBPlanItems" Path="Content"/>
+                                <Binding ElementName="lblShiftBFactItems" Path="Content"/>
+                                <Binding ElementName="lblShiftVPlanItems" Path="Content"/>
+                                <Binding ElementName="lblShiftVFactItems" Path="Content"/>
+                                <Binding ElementName="lblShiftGPlanItems" Path="Content"/>
+                                <Binding ElementName="lblShiftGFactItems" Path="Content"/>
+                            </MultiBinding>
+                        </Border.Background>
                         <Label x:Name="lblShiftVDowntime" Content="" FontSize="15" VerticalAlignment="Center" HorizontalAlignment="Center"/>
                     </Border>
                     <Rectangle Grid.Row="7" Grid.Column="0" Grid.ColumnSpan="4" Fill="Black" Height="1"/>
-
-                    <!-- Строка Г (Grid.Row=8) -->
+                    <!-- Строка "Г" -->
                     <Border Grid.Row="8" Grid.Column="0" BorderBrush="Black" BorderThickness="1,0,1,0">
-                        <Border.Style>
-                            <Style TargetType="Border">
-                                <Style.Triggers>
-                                    <DataTrigger Value="True">
-                                        <DataTrigger.Binding>
-                                            <MultiBinding Converter="{StaticResource MaxPlanFactDifferenceConverter}" ConverterParameter="3">
-                                                <Binding ElementName="lblShiftAPlanItems" Path="Content"/>
-                                                <Binding ElementName="lblShiftAFactItems" Path="Content"/>
-                                                <Binding ElementName="lblShiftBPlanItems" Path="Content"/>
-                                                <Binding ElementName="lblShiftBFactItems" Path="Content"/>
-                                                <Binding ElementName="lblShiftVPlanItems" Path="Content"/>
-                                                <Binding ElementName="lblShiftVFactItems" Path="Content"/>
-                                                <Binding ElementName="lblShiftGPlanItems" Path="Content"/>
-                                                <Binding ElementName="lblShiftGFactItems" Path="Content"/>
-                                            </MultiBinding>
-                                        </DataTrigger.Binding>
-                                        <Setter Property="Background" Value="#FFE6E6"/>
-                                    </DataTrigger>
-                                </Style.Triggers>
-                            </Style>
-                        </Border.Style>
+                        <Border.Background>
+                            <MultiBinding Converter="{StaticResource GradientBackgroundConverter}" ConverterParameter="3">
+                                <Binding ElementName="lblShiftAPlanItems" Path="Content"/>
+                                <Binding ElementName="lblShiftAFactItems" Path="Content"/>
+                                <Binding ElementName="lblShiftBPlanItems" Path="Content"/>
+                                <Binding ElementName="lblShiftBFactItems" Path="Content"/>
+                                <Binding ElementName="lblShiftVPlanItems" Path="Content"/>
+                                <Binding ElementName="lblShiftVFactItems" Path="Content"/>
+                                <Binding ElementName="lblShiftGPlanItems" Path="Content"/>
+                                <Binding ElementName="lblShiftGFactItems" Path="Content"/>
+                            </MultiBinding>
+                        </Border.Background>
                         <TextBlock Text="Г" FontSize="15" VerticalAlignment="Center" HorizontalAlignment="Center"/>
                     </Border>
                     <Border Grid.Row="8" Grid.Column="1" BorderBrush="Black" BorderThickness="0,0,1,0">
-                        <Border.Style>
-                            <Style TargetType="Border">
-                                <Style.Triggers>
-                                    <DataTrigger Value="True">
-                                        <DataTrigger.Binding>
-                                            <MultiBinding Converter="{StaticResource MaxPlanFactDifferenceConverter}" ConverterParameter="3">
-                                                <Binding ElementName="lblShiftAPlanItems" Path="Content"/>
-                                                <Binding ElementName="lblShiftAFactItems" Path="Content"/>
-                                                <Binding ElementName="lblShiftBPlanItems" Path="Content"/>
-                                                <Binding ElementName="lblShiftBFactItems" Path="Content"/>
-                                                <Binding ElementName="lblShiftVPlanItems" Path="Content"/>
-                                                <Binding ElementName="lblShiftVFactItems" Path="Content"/>
-                                                <Binding ElementName="lblShiftGPlanItems" Path="Content"/>
-                                                <Binding ElementName="lblShiftGFactItems" Path="Content"/>
-                                            </MultiBinding>
-                                        </DataTrigger.Binding>
-                                        <Setter Property="Background" Value="#FFE6E6"/>
-                                    </DataTrigger>
-                                </Style.Triggers>
-                            </Style>
-                        </Border.Style>
+                        <Border.Background>
+                            <MultiBinding Converter="{StaticResource GradientBackgroundConverter}" ConverterParameter="3">
+                                <Binding ElementName="lblShiftAPlanItems" Path="Content"/>
+                                <Binding ElementName="lblShiftAFactItems" Path="Content"/>
+                                <Binding ElementName="lblShiftBPlanItems" Path="Content"/>
+                                <Binding ElementName="lblShiftBFactItems" Path="Content"/>
+                                <Binding ElementName="lblShiftVPlanItems" Path="Content"/>
+                                <Binding ElementName="lblShiftVFactItems" Path="Content"/>
+                                <Binding ElementName="lblShiftGPlanItems" Path="Content"/>
+                                <Binding ElementName="lblShiftGFactItems" Path="Content"/>
+                            </MultiBinding>
+                        </Border.Background>
                         <Label x:Name="lblShiftGPlanItems" Content="" FontSize="15" VerticalAlignment="Center" HorizontalAlignment="Center"/>
                     </Border>
                     <Border Grid.Row="8" Grid.Column="2" BorderBrush="Black" BorderThickness="0,0,1,0">
-                        <Border.Style>
-                            <Style TargetType="Border">
-                                <Style.Triggers>
-                                    <DataTrigger Value="True">
-                                        <DataTrigger.Binding>
-                                            <MultiBinding Converter="{StaticResource MaxPlanFactDifferenceConverter}" ConverterParameter="3">
-                                                <Binding ElementName="lblShiftAPlanItems" Path="Content"/>
-                                                <Binding ElementName="lblShiftAFactItems" Path="Content"/>
-                                                <Binding ElementName="lblShiftBPlanItems" Path="Content"/>
-                                                <Binding ElementName="lblShiftBFactItems" Path="Content"/>
-                                                <Binding ElementName="lblShiftVPlanItems" Path="Content"/>
-                                                <Binding ElementName="lblShiftVFactItems" Path="Content"/>
-                                                <Binding ElementName="lblShiftGPlanItems" Path="Content"/>
-                                                <Binding ElementName="lblShiftGFactItems" Path="Content"/>
-                                            </MultiBinding>
-                                        </DataTrigger.Binding>
-                                        <Setter Property="Background" Value="#FFE6E6"/>
-                                    </DataTrigger>
-                                </Style.Triggers>
-                            </Style>
-                        </Border.Style>
+                        <Border.Background>
+                            <MultiBinding Converter="{StaticResource GradientBackgroundConverter}" ConverterParameter="3">
+                                <Binding ElementName="lblShiftAPlanItems" Path="Content"/>
+                                <Binding ElementName="lblShiftAFactItems" Path="Content"/>
+                                <Binding ElementName="lblShiftBPlanItems" Path="Content"/>
+                                <Binding ElementName="lblShiftBFactItems" Path="Content"/>
+                                <Binding ElementName="lblShiftVPlanItems" Path="Content"/>
+                                <Binding ElementName="lblShiftVFactItems" Path="Content"/>
+                                <Binding ElementName="lblShiftGPlanItems" Path="Content"/>
+                                <Binding ElementName="lblShiftGFactItems" Path="Content"/>
+                            </MultiBinding>
+                        </Border.Background>
                         <Label x:Name="lblShiftGFactItems" Content="" FontSize="15" VerticalAlignment="Center" HorizontalAlignment="Center"/>
                     </Border>
                     <Border Grid.Row="8" Grid.Column="3" BorderBrush="Black" BorderThickness="0,0,1,0">
-                        <Border.Style>
-                            <Style TargetType="Border">
-                                <Style.Triggers>
-                                    <DataTrigger Value="True">
-                                        <DataTrigger.Binding>
-                                            <MultiBinding Converter="{StaticResource MaxPlanFactDifferenceConverter}" ConverterParameter="3">
-                                                <Binding ElementName="lblShiftAPlanItems" Path="Content"/>
-                                                <Binding ElementName="lblShiftAFactItems" Path="Content"/>
-                                                <Binding ElementName="lblShiftBPlanItems" Path="Content"/>
-                                                <Binding ElementName="lblShiftBFactItems" Path="Content"/>
-                                                <Binding ElementName="lblShiftVPlanItems" Path="Content"/>
-                                                <Binding ElementName="lblShiftVFactItems" Path="Content"/>
-                                                <Binding ElementName="lblShiftGPlanItems" Path="Content"/>
-                                                <Binding ElementName="lblShiftGFactItems" Path="Content"/>
-                                            </MultiBinding>
-                                        </DataTrigger.Binding>
-                                        <Setter Property="Background" Value="#FFE6E6"/>
-                                    </DataTrigger>
-                                </Style.Triggers>
-                            </Style>
-                        </Border.Style>
+                        <Border.Background>
+                            <MultiBinding Converter="{StaticResource GradientBackgroundConverter}" ConverterParameter="3">
+                                <Binding ElementName="lblShiftAPlanItems" Path="Content"/>
+                                <Binding ElementName="lblShiftAFactItems" Path="Content"/>
+                                <Binding ElementName="lblShiftBPlanItems" Path="Content"/>
+                                <Binding ElementName="lblShiftBFactItems" Path="Content"/>
+                                <Binding ElementName="lblShiftVPlanItems" Path="Content"/>
+                                <Binding ElementName="lblShiftVFactItems" Path="Content"/>
+                                <Binding ElementName="lblShiftGPlanItems" Path="Content"/>
+                                <Binding ElementName="lblShiftGFactItems" Path="Content"/>
+                            </MultiBinding>
+                        </Border.Background>
                         <Label x:Name="lblShiftGDowntime" Content="" FontSize="15" VerticalAlignment="Center" HorizontalAlignment="Center"/>
                     </Border>
                     <Rectangle Grid.Row="9" Grid.Column="0" Grid.ColumnSpan="4" Fill="Black" Height="1"/>
@@ -686,7 +490,7 @@
                         </Grid.ColumnDefinitions>
                         <ComboBox x:Name="cbYear" Grid.Column="0" SelectionChanged="cbYear_SelectionChanged" Margin="10,0,5,0" Width="Auto" FontSize="15" 
                                   ItemsSource="{Binding}" DisplayMemberPath="Year" SelectedValuePath="Year"/>
-                        <TextBox x:Name="txtPipeCounter" Grid.Column="1"  LostFocus="txtPipeCounter_LostFocus" Margin="5,0,5,0" Width="Auto" FontSize="15" Padding="0,5,0,0"/>
+                        <TextBox x:Name="txtPipeCounter" Grid.Column="1" LostFocus="txtPipeCounter_LostFocus" Margin="5,0,5,0" Width="Auto" FontSize="15" Padding="0,5,0,0"/>
                         <Button x:Name="btnShowGraph" Grid.Column="2" Click="btnShowGraph_Click" Margin="5,0,5,0" FontSize="15" BorderThickness="0" Background="White" HorizontalAlignment="Stretch" HorizontalContentAlignment="Stretch" ToolTip="Показать график">
                             <StackPanel Orientation="Horizontal" HorizontalAlignment="Center">
                                 <Image x:Name="imgShowGraph" Source="images\graph.png" Width="45" Height="45" Margin="0,0,0,0" Stretch="Uniform"/>
