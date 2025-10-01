@@ -436,7 +436,7 @@ namespace Bucking_Unit_App.Views
             System.Diagnostics.Debug.WriteLine("PLCDataWindow: Закрытие окна.");
         }
 
-        private bool IsClosed { get; set; }
+        public bool IsClosed { get; set; }
 
         [Serializable]
         public class Parameter

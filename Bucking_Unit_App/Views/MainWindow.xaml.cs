@@ -40,7 +40,7 @@ namespace Bucking_Unit_App.Views
 {
     public partial class MainWindow : Window
     {
-        private readonly string _connectionString = "Data Source=192.168.0.230,1433;Initial Catalog=Pilot;User ID=UserNotTrend;Password=NotTrend";
+        private readonly string _connectionString = "Data Source=192.168.11.222,1433;Initial Catalog=Pilot;User ID=UserNotTrend;Password=NotTrend";
         private readonly SqlConnection _conn;
         private readonly COMController _comController;
         private readonly OperatorService _operatorService;
@@ -50,7 +50,7 @@ namespace Bucking_Unit_App.Views
         private int? _selectedPipeCounter = null;
         private int _selectedYear = DateTime.Now.Year;
         private int? _currentPipeCounter = null;
-        private readonly string _runtimeConnectionString = "Data Source=192.168.0.230,1433;Initial Catalog=Runtime;User ID=UserNotTrend;Password=NotTrend";
+        private readonly string _runtimeConnectionString = "Data Source=192.168.11.222,1433;Initial Catalog=Runtime;User ID=UserNotTrend;Password=NotTrend";
         private CancellationTokenSource _currentPipeUpdateCts;
         private S7Client s7Client;
         private CancellationTokenSource _cts;
@@ -75,6 +75,10 @@ namespace Bucking_Unit_App.Views
         private List<string> _xAxisLabels; // Новая коллекция для хранения меток оси X
         private const int SectorId = 8;  // Ваш SectorId
         private readonly IStatsRepository _statsRepository;  // Добавьте зависимость в конструктор
+        private bool isOperatorFixed = false;
+        private DateTime? endOfShift = null;
+        private DispatcherTimer fixTimer;  // Таймер для проверки конца смены
+        private string _lastCardId;
 
         public MainWindow()
         {
@@ -97,6 +101,9 @@ namespace Bucking_Unit_App.Views
             StartPLCUpdateLoop();
             StartTorqueDataUpdateLoop();
             txtPipeCounter.LostFocus += txtPipeCounter_LostFocus;
+            fixTimer = new DispatcherTimer();
+            fixTimer.Interval = TimeSpan.FromMinutes(1);  // Проверять каждую минуту
+            fixTimer.Tick += FixTimer_Tick;
         }
 
         private bool TryConnectToPLC()
@@ -106,7 +113,7 @@ namespace Bucking_Unit_App.Views
             int retryDelayMs = 1000;
             for (int i = 0; i < maxRetries; i++)
             {
-                int result = s7Client.ConnectTo("192.168.0.200", 0, 1);
+                int result = s7Client.ConnectTo("192.168.11.241", 0, 1);
                 if (result == 0)
                 {
                     System.Diagnostics.Debug.WriteLine("MainWindow: Успешное подключение к PLC.");
@@ -692,17 +699,26 @@ namespace Bucking_Unit_App.Views
 
         private void btnShowPLCData_Click(object sender, RoutedEventArgs e)
         {
-            if (_plcDataWindow == null || !_plcDataWindow.IsLoaded)
+            try
             {
-                _plcDataWindow = new PLCDataWindow(_plcReader, s7Client);
-                _plcDataWindow.Closed += (s, args) => _plcDataWindow = null;
-                _plcDataWindow.Show();
-                System.Diagnostics.Debug.WriteLine("MainWindow: PLCDataWindow создан и открыт.");
+                if (_plcDataWindow == null || _plcDataWindow.IsClosed)
+                {
+                    _plcDataWindow = new PLCDataWindow(_plcReader, s7Client);
+                    _plcDataWindow.Owner = this;  // Устанавливаем MainWindow как владельца, чтобы избежать перекрытия
+                    _plcDataWindow.Show();
+                    _plcDataWindow.Activate();  // Выводим на передний план
+                    Debug.WriteLine("MainWindow: Открыто окно PLCDataWindow как дочернее.");
+                }
+                else
+                {
+                    _plcDataWindow.Activate();  // Если окно уже открыто, просто выводим на передний план
+                    Debug.WriteLine("MainWindow: Окно PLCDataWindow активировано (уже открыто).");
+                }
             }
-            else
+            catch (Exception ex)
             {
-                _plcDataWindow.Activate();
-                System.Diagnostics.Debug.WriteLine("MainWindow: PLCDataWindow активирован.");
+                Debug.WriteLine($"MainWindow: Ошибка при открытии PLCDataWindow: {ex.Message}");
+                MessageBox.Show($"Ошибка при открытии окна ПЛК: {ex.Message}", "Ошибка", MessageBoxButton.OK, MessageBoxImage.Error);
             }
         }
 
@@ -804,105 +820,153 @@ namespace Bucking_Unit_App.Views
 
         private async void ComController_StateChanged(object sender, COMEventArgs.ReadingDataEventArgs e)
         {
-            if (e.State == COMControllerParamsModel.COMStates.Detected && !string.IsNullOrEmpty(e.CardId))
+            try
             {
-                await _operatorService.InitializeOperatorAsync(e.CardId);
-                await _operatorService.AuthenticateOperatorAsync(_operatorService.CurrentOperator.CardNumber, true, DateTime.Now);
-                Debug.WriteLine("MainWindow: Оператор авторизован и привязан к SectorId=8");
-                if (_operatorService.CurrentOperator != null)
-                {
-                    await _statsService.UpdateIdsAsync(_operatorService.CurrentOperator.PersonnelNumber);
-                    StartOperatorUpdateLoop();
-                }
-            }
-            else if (e.State == COMControllerParamsModel.COMStates.Removed)
-            {
-                if (_operatorService.CurrentOperator != null)
-                {
-                    await _operatorService.AuthenticateOperatorAsync(_operatorService.CurrentOperator.CardNumber, false, DateTime.Now);
-                    _operatorService.CurrentOperator = null;
-                }
-                else
-                {
-                    Debug.WriteLine("MainWindow: Попытка деавторизации при отсутствии текущего оператора.");
-                }
-                StopOperatorUpdateLoop();
-                Debug.WriteLine("MainWindow: Оператор деавторизован и отвязан от SectorId=8");
+                Debug.WriteLine($"MainWindow: ComController_StateChanged: State={e.State}, CardId={e.CardId}, isOperatorFixed={isOperatorFixed}, CurrentOperator={_operatorService.CurrentOperator?.CardNumber}");
+
+                // Общие обновления UI (синхронные) — используем Invoke
                 Dispatcher.Invoke(() =>
                 {
-                    //lblStatus.Visibility = Visibility.Collapsed;
-                    //_currentPipeCounter = null;
-                    operatorDataPanel.Visibility = Visibility.Collapsed;
-                    statsDataPanel.Visibility = Visibility.Collapsed;
-                    txtInsertCardPrompt.Visibility = Visibility.Visible;
-                    txtNoStatsPrompt.Visibility = Visibility.Visible;
-                    lblIdCard.Content = string.Empty;
-                    lblTabNumber.Content = string.Empty;
-                    lblFIO.Content = string.Empty;
-                    lblDepartment.Text = string.Empty;
-                    lblEmployName.Content = string.Empty;
-                    lblShiftItems.Content = string.Empty;
-                    lblShiftDowntime.Content = string.Empty;
-                    lblMonthItems.Content = string.Empty;
-                    lblMonthDowntime.Content = string.Empty;
-                    lblShiftPlanItems.Content = string.Empty;
-                    lblMonthPlanItems.Content = string.Empty;
-                    //txtCurrentPipe.Content = string.Empty;
-                });
-            }
-            else if (e.State == COMControllerParamsModel.COMStates.None && e.ErrorCode == (int)COMControllerParamsModel.ErrorCodes.ReadingError)
-            {
-                Dispatcher.Invoke(() =>
-                {
-                    lblCOMConnectionStatus.Content = e.ErrorText ?? "Считыватель отключен.";
-                    lblCOMConnectionStatus.Foreground = Brushes.Red;
-                    lblCOMConnectionStatus.Visibility = Visibility.Visible;
-                    if (_comStatusTimer != null)
+                    if (e.State == COMControllerParamsModel.COMStates.None && e.ErrorCode == (int)COMControllerParamsModel.ErrorCodes.ReadingError)
                     {
-                        _comStatusTimer.Stop();
-                        Debug.WriteLine("MainWindow: Таймер остановлен при отключении считывателя.");
-                    }
-                    else
-                    {
-                        Debug.WriteLine("MainWindow: Попытка остановки таймера, но _comStatusTimer равен null.");
-                    }
-                });
-            }
-            else if (e.State == COMControllerParamsModel.COMStates.ReaderConnecting && e.ErrorCode == (int)COMControllerParamsModel.ErrorCodes.ReaderConnecting)
-            {
-                Dispatcher.Invoke(() =>
-                {
-                    lblCOMConnectionStatus.Content = "Подключение к считывателю восстановлено.";
-                    lblCOMConnectionStatus.Foreground = Brushes.Green;
-                    lblCOMConnectionStatus.Visibility = Visibility.Visible;
-                    if (_comStatusTimer != null)
-                    {
-                        _comStatusTimer.Stop();
-                        _comStatusTimer.Start();
-                        Debug.WriteLine("MainWindow: Таймер запущен для скрытия сообщения об успешном подключении.");
-                    }
-                    else
-                    {
-                        Debug.WriteLine("MainWindow: Попытка запуска таймера, но _comStatusTimer равен null.");
-                        Task.Delay(5000).ContinueWith(_ =>
+                        lblCOMConnectionStatus.Content = e.ErrorText ?? "Считыватель отключен.";
+                        lblCOMConnectionStatus.Foreground = Brushes.Red;
+                        lblCOMConnectionStatus.Visibility = Visibility.Visible;
+                        if (_comStatusTimer != null)
                         {
-                            Dispatcher.Invoke(() =>
-                            {
-                                lblCOMConnectionStatus.Visibility = Visibility.Collapsed;
-                                Debug.WriteLine("MainWindow: Метка скрыта через Task.Delay из-за null таймера.");
-                            });
-                        });
+                            _comStatusTimer.Stop();
+                            Debug.WriteLine("MainWindow: Таймер остановлен при отключении считывателя.");
+                        }
+                        else
+                        {
+                            Debug.WriteLine("MainWindow: Попытка остановки таймера, но _comStatusTimer равен null.");
+                        }
+                        return; // Обработка завершена
                     }
+
+                    if (e.State == COMControllerParamsModel.COMStates.ReaderConnecting && e.ErrorCode == (int)COMControllerParamsModel.ErrorCodes.ReaderConnecting)
+                    {
+                        lblCOMConnectionStatus.Content = "Подключение к считывателю восстановлено.";
+                        lblCOMConnectionStatus.Foreground = Brushes.Green;
+                        lblCOMConnectionStatus.Visibility = Visibility.Visible;
+                        if (_comStatusTimer != null)
+                        {
+                            _comStatusTimer.Stop();
+                            _comStatusTimer.Start();
+                            Debug.WriteLine("MainWindow: Таймер запущен для скрытия сообщения об успешном подключении.");
+                        }
+                        else
+                        {
+                            Debug.WriteLine("MainWindow: Попытка запуска таймера, но _comStatusTimer равен null.");
+                            _ = Task.Delay(5000).ContinueWith(_ =>
+                            {
+                                Dispatcher.Invoke(() =>
+                                {
+                                    lblCOMConnectionStatus.Visibility = Visibility.Collapsed;
+                                    Debug.WriteLine("MainWindow: Метка скрыта через Task.Delay из-за null таймера.");
+                                });
+                            });
+                        }
+                        return; // Обработка завершена
+                    }
+                });
+
+                // Асинхронная логика для Detected и Removed — используем InvokeAsync для UI + await для операций
+                if (e.State == COMControllerParamsModel.COMStates.Detected && !string.IsNullOrEmpty(e.CardId))
+                {
+                    _lastCardId = e.CardId;
+
+                    // Синхронное обновление статуса подключения
+                    Dispatcher.Invoke(() =>
+                    {
+                        lblCOMConnectionStatus.Content = "Пропуск вставлен";
+                        lblCOMConnectionStatus.Foreground = Brushes.Green;
+                        lblCOMConnectionStatus.Visibility = Visibility.Visible;
+                    });
+
+                    if (isOperatorFixed)
+                    {
+                        // Проверяем, совпадает ли новый CardId с зафиксированным
+                        if (e.CardId != _operatorService.CurrentOperator?.CardNumber)
+                        {
+                            Debug.WriteLine($"MainWindow: Обнаружен новый пропуск (CardId={e.CardId}) при зафиксированном операторе — снимаем фиксацию и деаутентифицируем предыдущего.");
+
+                            // Снимаем фиксацию (синхронно, но вызовет деаутентификацию асинхронно, если нужно)
+                            UnfixOperator();
+
+                            // Аутентифицируем нового асинхронно (без Invoke, так как мы уже на UI потоке)
+                            await _operatorService.AuthenticateOperatorAsync(e.CardId, true, DateTime.Now);
+                        }
+                        else
+                        {
+                            Debug.WriteLine($"MainWindow: Пропуск обнаружен, но это тот же оператор (CardId={e.CardId}) — игнорируем повторную аутентификацию.");
+                            return;
+                        }
+                    }
+                    else
+                    {
+                        // Обычная аутентификация
+                        await _operatorService.AuthenticateOperatorAsync(e.CardId, true, DateTime.Now);
+                        Debug.WriteLine($"MainWindow: Оператор авторизован, CardId={e.CardId}, SectorId=8");
+                    }
+
+                    if (_operatorService.CurrentOperator != null)
+                    {
+                        await _statsService.UpdateIdsAsync(_operatorService.CurrentOperator.PersonnelNumber);
+                        StartOperatorUpdateLoop();
+                    }
+                }
+                else if (e.State == COMControllerParamsModel.COMStates.Removed)
+                {
+                    _lastCardId = null;
+
+                    // Асинхронное обновление UI для зафиксированного оператора
+                    if (isOperatorFixed)
+                    {
+                        Debug.WriteLine("MainWindow: Пропуск удалён, но оператор зафиксирован — сохраняем данные и UI");
+                        await Dispatcher.InvokeAsync((Action)(() =>
+                        {
+                            lblCOMConnectionStatus.Content = "Оператор зафиксирован";
+                            lblCOMConnectionStatus.Foreground = Brushes.Green;
+                            lblCOMConnectionStatus.Visibility = Visibility.Visible;
+                            operatorDataPanel.Visibility = Visibility.Visible;
+                            statsDataPanel.Visibility = Visibility.Visible;
+                            txtInsertCardPrompt.Visibility = Visibility.Collapsed;
+                            txtNoStatsPrompt.Visibility = Visibility.Collapsed;
+                        }));
+                        return;
+                    }
+
+                    StopOperatorUpdateLoop(); // Останавливаем цикл до деаутентификации
+                    await _operatorService.AuthenticateOperatorAsync(null, false, DateTime.Now);
+                    Debug.WriteLine("MainWindow: Оператор деавторизован и отвязан от SectorId=8");
+                }
+            }
+            catch (Exception ex)
+            {
+                Debug.WriteLine($"MainWindow: Исключение в ComController_StateChanged: {ex.Message}");
+                // Опционально: Показать MessageBox или обновить UI об ошибке
+                Dispatcher.Invoke(() =>
+                {
+                    lblCOMConnectionStatus.Content = $"Ошибка: {ex.Message}";
+                    lblCOMConnectionStatus.Foreground = Brushes.Red;
                 });
             }
         }
-
+        private bool IsCardInserted()
+        {
+            // Логика: Проверьте, есть ли detectedCardIdStr в COMController (добавьте публичное свойство в COMController, если нужно)
+            // Или храните lastCardState в MainWindow
+            return _lastCardId != null;  // Пример; добавьте private string _lastCardId; и обновляйте в StateChanged
+        }
         private void OperatorService_OnOperatorChanged(object sender, EventArgs e)
         {
             Dispatcher.Invoke(() =>
             {
                 var operatorInfo = _operatorService.CurrentOperator;
-                if (operatorInfo == null)
+                Debug.WriteLine($"MainWindow: OperatorService_OnOperatorChanged, CurrentOperator={operatorInfo?.CardNumber}, isOperatorFixed={isOperatorFixed}");
+
+                if (operatorInfo == null && !isOperatorFixed)
                 {
                     lblIdCard.Content = string.Empty;
                     lblTabNumber.Content = string.Empty;
@@ -919,7 +983,11 @@ namespace Bucking_Unit_App.Views
                     statsDataPanel.Visibility = Visibility.Collapsed;
                     txtInsertCardPrompt.Visibility = Visibility.Visible;
                     txtNoStatsPrompt.Visibility = Visibility.Visible;
-                    //txtCurrentPipe.Content = string.Empty;
+                    btnFixOperator.Visibility = Visibility.Collapsed;
+                    btnUnfixOperator.Visibility = Visibility.Collapsed;
+                    lblCOMConnectionStatus.Content = "Пропуск вставлен";
+                    lblCOMConnectionStatus.Foreground = Brushes.Green;
+                    lblCOMConnectionStatus.Visibility = Visibility.Collapsed;
                 }
                 else
                 {
@@ -928,62 +996,253 @@ namespace Bucking_Unit_App.Views
                     lblFIO.Content = operatorInfo?.FullName ?? string.Empty;
                     lblDepartment.Text = operatorInfo?.Department ?? string.Empty;
                     lblEmployName.Content = operatorInfo?.Position ?? string.Empty;
-                    txtInsertCardPrompt.Visibility = Visibility.Collapsed;
                     operatorDataPanel.Visibility = Visibility.Visible;
+                    statsDataPanel.Visibility = Visibility.Visible;
+                    txtInsertCardPrompt.Visibility = Visibility.Collapsed;
+                    txtNoStatsPrompt.Visibility = Visibility.Collapsed;
+                    btnFixOperator.Visibility = isOperatorFixed ? Visibility.Collapsed : Visibility.Visible;
+                    btnUnfixOperator.Visibility = isOperatorFixed ? Visibility.Visible : Visibility.Collapsed;
+                    lblCOMConnectionStatus.Content = isOperatorFixed ? "Оператор зафиксирован" : "Пропуск вставлен";
+                    lblCOMConnectionStatus.Foreground = Brushes.Green;
                 }
             });
+        }
+        private void btnFixOperator_Click(object sender, RoutedEventArgs e)
+        {
+            if (_operatorService.CurrentOperator == null)
+            {
+                MessageBox.Show("Сначала вставьте пропуск для аутентификации.", "Ошибка", MessageBoxButton.OK, MessageBoxImage.Warning);
+                return;
+            }
+
+            isOperatorFixed = true;
+            endOfShift = CalculateEndOfShift(DateTime.Now);
+            lblFixStatus.Content = $"Оператор зафиксирован до {endOfShift.Value:HH:mm dd.MM.yyyy}";
+            lblFixStatus.Visibility = Visibility.Visible;
+            btnFixOperator.Visibility = Visibility.Collapsed;
+            btnUnfixOperator.Visibility = Visibility.Visible;
+
+            fixTimer.Start();  // Запустить таймер проверки
+
+            // Обновить в базе (если нужно, вызовите _statsRepository.UpdateOperatorIdExchangeAsync с isAuth=true)
+            // Здесь можно добавить логику持久ства фиксации в БД, если требуется (например, флаг в sysStat)
+
+            MessageBox.Show($"Оператор зафиксирован на смену до {endOfShift.Value:HH:mm}.", "Успех", MessageBoxButton.OK, MessageBoxImage.Information);
+            Debug.WriteLine($"MainWindow: Оператор зафиксирован до {endOfShift}.");
+        }
+        // Новый обработчик для снятия фиксации
+        private void btnUnfixOperator_Click(object sender, RoutedEventArgs e)
+        {
+            UnfixOperator();
+            MessageBox.Show("Фиксация снята. Вставьте пропуск для продолжения.", "Успех", MessageBoxButton.OK, MessageBoxImage.Information);
+        }
+
+        // Метод для расчёта конца смены
+        private DateTime CalculateEndOfShift(DateTime now)
+        {
+            if (now.Hour >= 8 && now.Hour < 20)
+            {
+                // Дневная смена: конец в 20:00 сегодня
+                return now.Date.AddHours(20);
+            }
+            else
+            {
+                // Ночная смена
+                if (now.Hour < 8)
+                {
+                    // До 08:00: конец в 08:00 сегодня
+                    return now.Date.AddHours(8);
+                }
+                else
+                {
+                    // После 20:00: конец в 08:00 завтра
+                    return now.Date.AddDays(1).AddHours(8);
+                }
+            }
+        }
+
+        // Обработчик таймера
+        private void FixTimer_Tick(object sender, EventArgs e)
+        {
+            if (endOfShift.HasValue && DateTime.Now >= endOfShift.Value)
+            {
+                UnfixOperator();
+                Debug.WriteLine("MainWindow: Фиксация автоматически снята по окончании смены.");
+            }
+        }
+
+        // Метод для снятия фиксации
+        private async void UnfixOperator()
+        {
+            try
+            {
+                // Маршалим все UI-изменения и остановку на UI-поток
+                await Dispatcher.InvokeAsync(async () =>
+                {
+                    isOperatorFixed = false;
+                    endOfShift = null;
+                    lblFixStatus.Visibility = Visibility.Collapsed;
+                    btnFixOperator.Visibility = Visibility.Visible;
+                    btnUnfixOperator.Visibility = Visibility.Collapsed;
+                    fixTimer.Stop();
+
+                    // Останавливаем цикл с ожиданием (асинхронно)
+                    await StopOperatorUpdateLoopAsync();
+
+                    // Деаутентификация только если пропуск не вставлен
+                    if (!IsCardInserted())
+                    {
+                        await _operatorService.AuthenticateOperatorAsync(null, false, DateTime.Now);
+                        Debug.WriteLine("MainWindow: Фиксация снята, пропуск не вставлен — выполнена деаутентификация.");
+                    }
+                    else
+                    {
+                        Debug.WriteLine("MainWindow: Фиксация снята, но пропуск вставлен — деаутентификация пропущена (новый оператор будет аутентифицирован).");
+                    }
+                });
+            }
+            catch (Exception ex)
+            {
+                Debug.WriteLine($"MainWindow: UnfixOperator: Ошибка: {ex.Message}");
+            }
         }
 
         private void StartOperatorUpdateLoop()
         {
+            // Проверяем, не запущен ли уже цикл (избегаем дубликатов)
+            if (_operatorUpdateCts != null && !_operatorUpdateCts.IsCancellationRequested)
+            {
+                Debug.WriteLine("MainWindow: StartOperatorUpdateLoop: Цикл уже запущен, пропускаем.");
+                return;
+            }
+
             _operatorUpdateCts?.Dispose();
             _operatorUpdateCts = new CancellationTokenSource();
             var token = _operatorUpdateCts.Token;
 
             _operatorUpdateTask = Task.Run(async () =>
             {
-                while (!token.IsCancellationRequested)
+                try
                 {
-                    System.Diagnostics.Debug.WriteLine($"Обновление в {DateTime.Now}");
-                    await _statsService.UpdateIdsAsync(_operatorService.CurrentOperator.PersonnelNumber);
-                    await _statsService.UpdateStatsAsync(_operatorService.CurrentOperator.PersonnelNumber, (shiftItems, shiftDowntime, monthItems, monthDowntime, monthPlan, shiftPlan) =>
+                    while (!token.IsCancellationRequested)
                     {
-                        Dispatcher.Invoke(() =>
+                        Debug.WriteLine($"MainWindow: StartOperatorUpdateLoop: Обновление в {DateTime.Now}, CurrentOperator={_operatorService.CurrentOperator?.CardNumber}, isOperatorFixed={isOperatorFixed}");
+
+                        // Проверка на null перед использованием CurrentOperator
+                        if (_operatorService.CurrentOperator == null)
                         {
-                            if (string.IsNullOrEmpty(shiftItems) || string.IsNullOrEmpty(shiftDowntime) || string.IsNullOrEmpty(monthItems) || string.IsNullOrEmpty(monthDowntime) || string.IsNullOrEmpty(monthPlan) || string.IsNullOrEmpty(shiftPlan))
+                            Debug.WriteLine("MainWindow: StartOperatorUpdateLoop: CurrentOperator is null, stopping loop.");
+                            break; // Прерываем цикл, если оператор не аутентифицирован
+                        }
+
+                        try
+                        {
+                            // Обновление статистики (ConfigureAwait(false) для background-потока)
+                            await _statsService.UpdateIdsAsync(_operatorService.CurrentOperator.PersonnelNumber).ConfigureAwait(false);
+                            await _statsService.UpdateStatsAsync(_operatorService.CurrentOperator.PersonnelNumber, (shiftItems, shiftDowntime, monthItems, monthDowntime, monthPlan, shiftPlan) =>
                             {
-                                txtNoStatsPrompt.Visibility = Visibility.Visible;
-                                statsDataPanel.Visibility = Visibility.Collapsed;
-                                lblShiftItems.Content = string.Empty;
-                                lblShiftDowntime.Content = string.Empty;
-                                lblMonthItems.Content = string.Empty;
-                                lblMonthDowntime.Content = string.Empty;
-                                lblShiftPlanItems.Content = string.Empty;
-                                lblMonthPlanItems.Content += string.Empty;
-                            }
-                            else
-                            {
-                                txtNoStatsPrompt.Visibility = Visibility.Collapsed;
-                                lblShiftItems.Content = shiftItems;
-                                lblShiftDowntime.Content = shiftDowntime;
-                                lblMonthItems.Content = monthItems;
-                                lblMonthDowntime.Content = monthDowntime;
-                                lblShiftPlanItems.Content = shiftPlan;
-                                lblMonthPlanItems.Content = monthPlan;
-                                statsDataPanel.Visibility = Visibility.Visible;
-                            }
-                        });
-                    });
-                    await Task.Delay(5000, token);
+                                // Правильный синтаксис: сначала лямбда (Action), потом DispatcherPriority
+                                _ = Dispatcher.InvokeAsync((Action)(() =>
+                                {
+                                    try
+                                    {
+                                        if (string.IsNullOrEmpty(shiftItems) || string.IsNullOrEmpty(shiftDowntime) || string.IsNullOrEmpty(monthItems) || string.IsNullOrEmpty(monthDowntime) || string.IsNullOrEmpty(monthPlan) || string.IsNullOrEmpty(shiftPlan))
+                                        {
+                                            if (!isOperatorFixed)
+                                            {
+                                                txtNoStatsPrompt.Visibility = Visibility.Visible;
+                                                statsDataPanel.Visibility = Visibility.Collapsed;
+                                                lblShiftItems.Content = string.Empty;
+                                                lblShiftDowntime.Content = string.Empty;
+                                                lblMonthItems.Content = string.Empty;
+                                                lblMonthDowntime.Content = string.Empty;
+                                                lblShiftPlanItems.Content = string.Empty;
+                                                lblMonthPlanItems.Content = string.Empty;
+                                            }
+                                        }
+                                        else
+                                        {
+                                            txtNoStatsPrompt.Visibility = Visibility.Collapsed;
+                                            lblShiftItems.Content = shiftItems;
+                                            lblShiftDowntime.Content = shiftDowntime;
+                                            lblMonthItems.Content = monthItems;
+                                            lblMonthDowntime.Content = monthDowntime;
+                                            lblShiftPlanItems.Content = shiftPlan;
+                                            lblMonthPlanItems.Content = monthPlan;
+                                            statsDataPanel.Visibility = Visibility.Visible;
+                                        }
+                                    }
+                                    catch (Exception ex)
+                                    {
+                                        Debug.WriteLine($"MainWindow: StartOperatorUpdateLoop: Ошибка UI-обновления: {ex.Message}");
+                                    }
+                                }), DispatcherPriority.Background);
+                            }).ConfigureAwait(false);
+                        }
+                        catch (Exception ex)
+                        {
+                            Debug.WriteLine($"MainWindow: StartOperatorUpdateLoop: Ошибка при обновлении статистики: {ex.Message}");
+                        }
+
+                        await Task.Delay(5000, token).ConfigureAwait(false);
+                    }
+                }
+                catch (TaskCanceledException)
+                {
+                    Debug.WriteLine("MainWindow: StartOperatorUpdateLoop: Цикл остановлен по токену отмены.");
+                }
+                catch (Exception ex)
+                {
+                    Debug.WriteLine($"MainWindow: StartOperatorUpdateLoop: Неожиданная ошибка: {ex.Message}");
+                }
+                finally
+                {
+                    // Правильный синтаксис в finally: сначала лямбда, потом DispatcherPriority
+                    _ = Dispatcher.InvokeAsync((Action)(() =>
+                    {
+                        _operatorUpdateCts?.Dispose();
+                        _operatorUpdateCts = null;
+                        Debug.WriteLine("MainWindow: StartOperatorUpdateLoop: Цикл завершён, _operatorUpdateCts очищен на UI-потоке.");
+                    }), DispatcherPriority.Background);
                 }
             }, token);
         }
 
+        private async Task StopOperatorUpdateLoopAsync()
+        {
+            if (_operatorUpdateCts != null)
+            {
+                _operatorUpdateCts.Cancel();
+                Debug.WriteLine("MainWindow: StopOperatorUpdateLoopAsync: Токен отменён.");
+
+                // Ожидаем завершения Task с таймаутом (2 секунды), чтобы избежать race с UI
+                if (_operatorUpdateTask != null && !_operatorUpdateTask.IsCompleted)
+                {
+                    try
+                    {
+                        await Task.WhenAny(_operatorUpdateTask, Task.Delay(2000));
+                        if (!_operatorUpdateTask.IsCompleted)
+                        {
+                            Debug.WriteLine("MainWindow: StopOperatorUpdateLoopAsync: Task не завершился timely — принудительно.");
+                        }
+                    }
+                    catch (Exception ex)
+                    {
+                        Debug.WriteLine($"MainWindow: StopOperatorUpdateLoopAsync: Ошибка ожидания Task: {ex.Message}");
+                    }
+                }
+
+                _operatorUpdateCts.Dispose();
+                _operatorUpdateCts = null;
+                _operatorUpdateTask = null;
+                Debug.WriteLine("MainWindow: StopOperatorUpdateLoopAsync: Цикл остановлен и очищен.");
+            }
+        }
+
+        // Синхронная обёртка для совместимости (если вызывается без await)
         private void StopOperatorUpdateLoop()
         {
-            _operatorUpdateCts?.Cancel();
-            _operatorUpdateCts?.Dispose();
-            _operatorUpdateCts = null;
+            _ = StopOperatorUpdateLoopAsync();  // Запускаем асинхронно
         }
 
         private void StartCurrentPipeUpdateLoop()

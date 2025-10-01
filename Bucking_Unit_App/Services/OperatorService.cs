@@ -1,11 +1,12 @@
-﻿using System;
+﻿using Bucking_Unit_App._1C_Controller;
+using Bucking_Unit_App.Interfaces;
+using Bucking_Unit_App.Models;
+using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
-using Bucking_Unit_App._1C_Controller;
-using Bucking_Unit_App.Interfaces;
-using Bucking_Unit_App.Models;
 
 namespace Bucking_Unit_App.Services
 {
@@ -27,22 +28,41 @@ namespace Bucking_Unit_App.Services
 
         public async Task AuthenticateOperatorAsync(string cardNumber, bool isAuth, DateTime? authTime)
         {
-            await InitializeOperatorAsync(cardNumber);  // Инициализация оператора
-            if (CurrentOperator == null) return;
+            try
+            {
+                Employee1CModel current = null;
+                if (isAuth)
+                {
+                    await InitializeOperatorAsync(cardNumber);
+                    current = CurrentOperator;
+                    if (current == null) return;
+                }
+                else
+                {
+                    current = CurrentOperator; // Используем текущего для deauth
+                    if (current == null) return;
+                }
 
-            int? operatorId = await _employeeRepository.GetOperatorIdAsync(CurrentOperator.PersonnelNumber);
-            if (!operatorId.HasValue) return;
+                int? operatorId = await _employeeRepository.GetOperatorIdAsync(current.PersonnelNumber);
+                if (!operatorId.HasValue) return;
 
-            // Привязка/отвязка
-            await _statsRepository.UpdateOperatorIdExchangeAsync(8, isAuth ? operatorId : null, isAuth);
+                // Обновление с null для deauth
+                await _statsRepository.UpdateOperatorIdExchangeAsync(8, isAuth ? operatorId : null, isAuth);
 
-            // Статистика авторизации
-            DateTime? authFrom = isAuth ? authTime : null;
-            DateTime? authTo = isAuth ? null : authTime;
-            await _statsRepository.UpdateOperatorSysStatAsync(operatorId.Value, isAuth, authFrom, authTo, 8);
+                DateTime? authFrom = isAuth ? authTime : null;
+                DateTime? authTo = isAuth ? null : authTime;
+                await _statsRepository.UpdateOperatorSysStatAsync(operatorId.Value, isAuth, authFrom, authTo, 8);
 
-            // Вызов события изменения оператора
-            OnOperatorChanged?.Invoke(this, EventArgs.Empty);
+                if (!isAuth)
+                {
+                    CurrentOperator = null; // Сброс после всех обновлений, вызовет OnOperatorChanged
+                }
+            }
+            catch (Exception ex)
+            {
+                Debug.WriteLine($"OperatorService: Ошибка в AuthenticateOperatorAsync: {ex.Message}");
+                // Можно добавить логирование или обработку
+            }
         }
         public Employee1CModel CurrentOperator
         {
