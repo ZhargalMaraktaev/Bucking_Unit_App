@@ -2,6 +2,7 @@
 using Bucking_Unit_App.COM_Controller;
 using Bucking_Unit_App.Interfaces;
 using Bucking_Unit_App.Models;
+using Bucking_Unit_App.Models.InspectionWorkModels;
 using Bucking_Unit_App.Services;
 using Bucking_Unit_App.SiemensPLC.Models;
 using Bucking_Unit_App.Utilities;
@@ -13,6 +14,9 @@ using LiveChartsCore.SkiaSharpView;
 using LiveChartsCore.SkiaSharpView.Drawing.Geometries;
 using LiveChartsCore.SkiaSharpView.Painting;
 using LiveChartsCore.SkiaSharpView.WPF;
+using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.Logging;
 using Microsoft.Win32;
 using PdfSharpCore.Drawing;
 using PdfSharpCore.Pdf;
@@ -26,6 +30,8 @@ using System.Data.SqlClient;
 using System.Diagnostics;
 using System.Globalization;
 using System.IO;
+using System.IO.Ports;
+using System.Runtime.InteropServices;
 using System.Threading;
 using System.Threading.Tasks;
 using System.Windows;
@@ -34,61 +40,78 @@ using System.Windows.Data;
 using System.Windows.Media;
 using System.Windows.Media.Imaging;
 using System.Windows.Threading;
-using static Bucking_Unit_App.SiemensPLC.Models.SiemensPLCModels.PLCReadWriteModel;
 
 namespace Bucking_Unit_App.Views
 {
     public partial class MainWindow : Window
     {
-        private readonly string _connectionString = "Data Source=192.168.11.222,1433;Initial Catalog=Pilot;User ID=UserNotTrend;Password=NotTrend";
-        private readonly SqlConnection _conn;
-        private readonly COMController _comController;
+        private readonly IConfiguration _configuration;
+        private readonly IDbContextFactory<YourDbContext> _dbFactory;
+        private readonly ILogger<MainWindow> _logger;
         private readonly OperatorService _operatorService;
         private readonly StatsService _statsService;
+        private readonly COMController _comController;
+        private readonly IStatsRepository _statsRepository;
+        private readonly SqlConnection _conn;
         private CancellationTokenSource _operatorUpdateCts;
         private CancellationTokenSource _allStatsUpdateCts;
+        private CancellationTokenSource _currentPipeUpdateCts;
+        private CancellationTokenSource _connectionCheckCts;
+        private CancellationTokenSource _torqueUpdateCts;
+        private CancellationTokenSource _graphUpdateCts;
+        private ObservableCollection<ObservablePoint> _torquePoints;
+        private CartesianChart _currentChart;
         private int? _selectedPipeCounter = null;
         private int _selectedYear = DateTime.Now.Year;
         private int? _currentPipeCounter = null;
-        private readonly string _runtimeConnectionString = "Data Source=192.168.11.222,1433;Initial Catalog=Runtime;User ID=UserNotTrend;Password=NotTrend";
-        private CancellationTokenSource _currentPipeUpdateCts;
         private S7Client s7Client;
-        private CancellationTokenSource _cts;
         private PLCDataWindow _plcDataWindow;
         private ReadFromPLC _plcReader;
         private Task _plcUpdateTask;
         private Task _operatorUpdateTask;
         private Task _allStatsUpdateTask;
         private Task _currentPipeUpdateTask;
-        private CancellationTokenSource _connectionCheckCts;
-        private CancellationTokenSource _torqueUpdateCts;
-        private CancellationTokenSource _graphUpdateCts;
-        private ObservableCollection<ObservablePoint> _torquePoints;
-        private CartesianChart _currentChart;
         private int? _currentGraphPipeCounter;
         private bool _isTextChangeProgrammatic;
         private DispatcherTimer _comStatusTimer;
+        private string _runtimeConnectionString= "Data Source=192.168.0.230,1433;Initial Catalog=Runtime;User ID=UserNotTrend;Password=NotTrend;TrustServerCertificate=True";
+        private string _ConnectionString = "Data Source=192.168.0.230,1433;Initial Catalog=Pilot;User ID=UserNotTrend;Password=NotTrend;TrustServerCertificate=True";
         private bool? _lastScrewOnStatus;
         private DateTime? _lastScrewOnTrueTime;
         private bool _isInScrewOnWindow;
         private bool _wasCycleStoppedRecently = false;
-        private List<string> _xAxisLabels; // Новая коллекция для хранения меток оси X
-        private const int SectorId = 8;  // Ваш SectorId
-        private readonly IStatsRepository _statsRepository;  // Добавьте зависимость в конструктор
+        private DispatcherTimer _shiftCheckTimer;
+        private DateTime? _lastShiftAppLaunch; // Флаг для отслеживания последнего запуска
+        private List<string> _xAxisLabels;
+        private const int SectorId = 8;
         private bool isOperatorFixed = false;
         private DateTime? endOfShift = null;
-        private DispatcherTimer fixTimer;  // Таймер для проверки конца смены
+        private DispatcherTimer fixTimer;
         private string _lastCardId;
-
-        public MainWindow()
+        private DispatcherTimer _shiftTimer;
+        private bool _isAppBlocked = false;
+        private DateTime _currentShiftStart;
+        private const string InspectionWorkAppUrl = @"\\192.168.50.20\public\Программы АСУ ТП\Техосмотр\InspectionWorkApp.application";
+        private object _originalContent; // Поле для хранения исходного содержимого окна
+        private bool _isShiftCompleted; // Флаг, указывающий, завершена ли смена
+        private DateTime _lastShiftCheck = DateTime.MinValue;
+        private readonly DateTime _defaultExecutionTime = new DateTime(1900, 1, 1);
+        // Поле класса для хранения fixedRequiredTasksCount с привязкой к shiftStart
+        private static readonly Dictionary<DateTime, int> _fixedRequiredTasksCountCache = new();
+        private List<(int Hour, int Minute)> _shiftStartHoursCache = new List<(int Hour, int Minute)>(); // Кэш часов и минут смен
+        public MainWindow(IConfiguration configuration, IDbContextFactory<YourDbContext> dbFactory, ILogger<MainWindow> logger, OperatorService operatorService, StatsService statsService, COMController comController, IStatsRepository statsRepository)
         {
             InitializeComponent();
-            _conn = new SqlConnection(_connectionString);
-            var dataAccess = new DataAccessLayer(_connectionString);
-            _statsRepository = dataAccess;
-            _operatorService = new OperatorService(dataAccess, new Controller1C(), _statsRepository);
-            _statsService = new StatsService(dataAccess, dataAccess);
-            _comController = new COMController(new COMControllerParamsModel("COM3", 9600, System.IO.Ports.Parity.None, 8, System.IO.Ports.StopBits.One));
+            _configuration = configuration ?? throw new ArgumentNullException(nameof(configuration));
+            _dbFactory = dbFactory ?? throw new ArgumentNullException(nameof(dbFactory));
+            _logger = logger ?? throw new ArgumentNullException(nameof(logger));
+            _operatorService = operatorService ?? throw new ArgumentNullException(nameof(operatorService));
+            _statsService = statsService ?? throw new ArgumentNullException(nameof(statsService));
+            _comController = comController ?? throw new ArgumentNullException(nameof(comController));
+            _statsRepository = statsRepository ?? throw new ArgumentNullException(nameof(statsRepository));
+            _conn = new SqlConnection(configuration.GetConnectionString("DefaultConnection")
+                ?? "Data Source=192.168.0.230,1433;Initial Catalog=Runtime;User ID=UserNotTrend;Password=NotTrend");
+
             _comController.StateChanged += ComController_StateChanged;
             _comController.IsReading = true;
             _operatorService.OnOperatorChanged += OperatorService_OnOperatorChanged;
@@ -101,11 +124,689 @@ namespace Bucking_Unit_App.Views
             StartPLCUpdateLoop();
             StartTorqueDataUpdateLoop();
             txtPipeCounter.LostFocus += txtPipeCounter_LostFocus;
+
             fixTimer = new DispatcherTimer();
-            fixTimer.Interval = TimeSpan.FromMinutes(1);  // Проверять каждую минуту
+            fixTimer.Interval = TimeSpan.FromSeconds(1);
             fixTimer.Tick += FixTimer_Tick;
+
+            _shiftTimer = new DispatcherTimer();
+            _shiftTimer.Interval = TimeSpan.FromSeconds(1);  // Изменено с FromSeconds(1) на FromMinutes(1)
+            _shiftTimer.Tick += OnShiftTimerTick;
+            _shiftTimer.Start();
+            _logger.LogInformation("Shift timer started in Bucking_Unit_App.");
+
+            //CheckShiftStatus();
+        }
+        private readonly SemaphoreSlim _shiftLock = new SemaphoreSlim(1, 1);
+
+        private async void OnShiftTimerTick(object sender, EventArgs e)
+        {
+            var now = DateTime.Now;
+            if (!_isShiftCompleted && now > _lastShiftCheck.AddSeconds(1))
+            {
+                if (!await _shiftLock.WaitAsync(0)) return; // Если уже выполняется, пропустить
+                try
+                {
+                    _lastShiftCheck = now;
+                    _logger.LogInformation("OnShiftTimerTick triggered at {Now}, _isShiftCompleted={IsShiftCompleted}", now, _isShiftCompleted);
+                    await CheckShiftStatus();
+                }
+                catch (TaskCanceledException ex)
+                {
+                    _logger.LogError(ex, "Task canceled in OnShiftTimerTick at {Now}", now);
+                    Dispatcher.Invoke(() => MessageBox.Show("Ошибка в таймере смены: операция была отменена.", "Ошибка", MessageBoxButton.OK, MessageBoxImage.Error));
+                }
+                finally
+                {
+                    _shiftLock.Release();
+                }
+            }
+        }
+        private async Task<List<(int Hour, int Minute)>> GetShiftStartHoursAsync()
+        {
+            if (_shiftStartHoursCache.Count > 0)
+            {
+                return _shiftStartHoursCache;
+            }
+
+            try
+            {
+                using var connection = new SqlConnection(_ConnectionString);
+                await connection.OpenAsync();
+                using var command = new SqlCommand("SELECT StartHour, StartMinute FROM [dbo].[ShiftSchedules]", connection);
+                using var reader = await command.ExecuteReaderAsync();
+
+                var shifts = new List<(int Hour, int Minute)>();
+                while (await reader.ReadAsync())
+                {
+                    int hour = reader.GetInt32(0);
+                    int minute = reader.GetInt32(1);
+                    shifts.Add((hour, minute));
+                }
+
+                if (shifts.Count == 0)
+                {
+                    _logger.LogWarning("No shift schedules found in ShiftSchedules table. Using default shifts (8:00, 20:00).");
+                    shifts = new List<(int Hour, int Minute)> { (8, 0), (20, 0) }; // Значения по умолчанию
+                }
+
+                _shiftStartHoursCache = shifts;
+                _logger.LogInformation("Loaded shift start times: {Shifts}", string.Join(", ", shifts.ConvertAll(s => $"{s.Hour:D2}:{s.Minute:D2}")));
+                return shifts;
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Failed to load shift start times from ShiftSchedules. Using default shifts (8:00, 20:00).");
+                return new List<(int Hour, int Minute)> { (8, 0), (20, 0) }; // Значения по умолчанию при ошибке
+            }
+        }
+        private async Task CheckShiftStatus()
+        {
+            var shiftTimes = await GetShiftStartHoursAsync();
+            if (shiftTimes.Count < 2)
+            {
+                _logger.LogWarning("Insufficient shift times ({Count}). Using default shifts (8:00, 20:00).", shiftTimes.Count);
+                shiftTimes = new List<(int Hour, int Minute)> { (8, 0), (20, 0) };
+            }
+            var now = DateTime.Now;
+            var today = now.Date;
+            DateTime shiftStart;
+
+            // Определяем начало текущей смены
+            if (now.Hour >= 8 && now.Hour < 20)
+            {
+                shiftStart = today.AddHours(8);
+            }
+            else if (now.Hour >= 0 && now.Hour < 8)
+            {
+                shiftStart = today.AddDays(-1).AddHours(20);
+            }
+            else
+            {
+                shiftStart = today.AddHours(20);
+            }
+
+            // Сбрасываем флаг _isShiftCompleted и кэш fixedRequiredTasksCount при начале новой смены
+            if (_currentShiftStart != default && _currentShiftStart != shiftStart)
+            {
+                _isShiftCompleted = false;
+                _lastShiftAppLaunch = null;
+                _fixedRequiredTasksCountCache.Remove(_currentShiftStart); // Очищаем кэш для старой смены
+                _logger.LogInformation("New shift detected at {ShiftStart}. Resetting _isShiftCompleted, _lastShiftAppLaunch, and FixedRequiredTasksCount cache.", shiftStart);
+            }
+
+           
+            // Запускаем InspectionWorkApp в начале смены, если ещё не запущено
+            if (shiftTimes.Any(s => s.Hour == now.Hour && s.Minute == now.Minute) && now.Second <= 30 &&
+                (_lastShiftAppLaunch == null || _lastShiftAppLaunch != shiftStart))
+            {
+                _logger.LogInformation("Shift start detected at {Now}. Launching InspectionWorkApp.", now);
+                try
+                {
+                    _comController.IsReading = false;
+                    await LaunchInspectionWorkApp();
+                    
+                    _lastShiftAppLaunch = shiftStart;
+                    _currentShiftStart = shiftStart;
+                    await BlockAppUntilShiftComplete(shiftStart);
+                    // Проверяем завершение смены
+                    //if (!_isShiftCompleted)
+                    //{
+                    //    try
+                    //    {
+                    //        _isShiftCompleted = await WaitForInspectionWorkAppToCloseAsync();
+                    //        if (_isShiftCompleted)
+                    //        {
+                    //            _logger.LogInformation("Shift completed at {Now} for {ShiftStart}. Closing InspectionWorkApp and unblocking app.", now, shiftStart);
+                    //            CloseInspectionWorkApp();
+                    //            UnblockApp();
+                    //            _lastShiftAppLaunch = null;
+                    //            _currentShiftStart = default;
+                    //            _fixedRequiredTasksCountCache.Remove(shiftStart); // Очищаем кэш после завершения смены
+                    //        }
+                    //    }
+                    //    catch (TaskCanceledException ex)
+                    //    {
+                    //        _logger.LogError(ex, "Task canceled while checking shift completion for shiftStart={ShiftStart}", shiftStart);
+                    //        Dispatcher.Invoke(() => MessageBox.Show("Ошибка проверки завершения смены: операция была отменена.", "Ошибка", MessageBoxButton.OK, MessageBoxImage.Error));
+                    //    }
+                    //}
+                }
+                catch (TaskCanceledException ex)
+                {
+                    _logger.LogError(ex, "Task canceled while launching InspectionWorkApp for shiftStart={ShiftStart}", shiftStart);
+                    Dispatcher.Invoke(() => MessageBox.Show("Ошибка запуска InspectionWorkApp: операция была отменена.", "Ошибка", MessageBoxButton.OK, MessageBoxImage.Error));
+                }
+            }
+        }
+        // Импорт WinAPI
+        [DllImport("user32.dll", CharSet = CharSet.Auto, SetLastError = true)]
+        private static extern IntPtr FindWindow(string lpClassName, string lpWindowName);
+
+        [DllImport("user32.dll", CharSet = CharSet.Auto)]
+        private static extern bool ShowWindow(IntPtr hWnd, int nCmdShow);
+
+        [DllImport("user32.dll")]
+        private static extern IntPtr SendMessage(IntPtr hWnd, uint Msg, IntPtr wParam, IntPtr lParam);
+
+        private const uint WM_KEYDOWN = 0x0100;
+        private const uint WM_KEYUP = 0x0101;
+        private const uint WM_CLOSE = 0x0010;
+        private const int VK_ESCAPE = 0x1B;
+        private const int SW_SHOW = 5;
+
+        private void ShowTaskbar()
+        {
+            try
+            {
+                IntPtr taskbar = FindWindow("Shell_TrayWnd", null);
+                if (taskbar != IntPtr.Zero)
+                {
+                    ShowWindow(taskbar, SW_SHOW);
+                    _logger.LogInformation("Taskbar shown.");
+                }
+                else
+                {
+                    _logger.LogWarning("Taskbar window (Shell_TrayWnd) not found.");
+                }
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Failed to show taskbar.");
+            }
+        }
+        private void CloseInspectionWorkApp()
+        {
+            try
+            {
+                const string processName = "InspectionWorkApp";
+                var processes = Process.GetProcessesByName(processName);
+                if (processes.Length > 0)
+                {
+                    foreach (var process in processes)
+                    {
+                        if (!process.HasExited)
+                        {
+                            // Устанавливаем фокус на окно процесса
+                            SendMessage(process.MainWindowHandle, WM_KEYDOWN, (IntPtr)VK_ESCAPE, IntPtr.Zero);
+                            SendMessage(process.MainWindowHandle, WM_KEYUP, (IntPtr)VK_ESCAPE, IntPtr.Zero);
+                            _logger.LogInformation("Sent Esc key to InspectionWorkApp process ID {ProcessId}.", process.Id);
+                            if (!process.WaitForExit(2000)) // Ждём 5 секунд
+                            {
+                                ShowTaskbar();
+                                process.Kill(); // Принудительно завершаем, если не закрылось
+                                _logger.LogWarning("InspectionWorkApp process ID {ProcessId} did not close gracefully and was terminated.", process.Id);
+                            }
+                            else
+                            {
+                                _logger.LogInformation("InspectionWorkApp process ID {ProcessId} closed successfully.", process.Id);
+                            }
+                        }
+                        process.Dispose();
+                    }
+                }
+                else
+                {
+                    _logger.LogInformation("No running instances of InspectionWorkApp found.");
+                }
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error closing InspectionWorkApp.");
+                Dispatcher.Invoke(() =>
+                {
+                    MessageBox.Show($"Ошибка при закрытии InspectionWorkApp: {ex.Message}", "Ошибка", MessageBoxButton.OK, MessageBoxImage.Error);
+                });
+            }
+        }
+        private async Task<bool> WaitForInspectionWorkAppToCloseAsync()
+        {
+            const string processName = "InspectionWorkApp"; // Имя процесса без .exe
+            const int maxWaitTimeSeconds = 300; // Максимальное время ожидания (5 минут)
+            int elapsedTimeSeconds = 0;
+            const int checkIntervalMs = 2000; // Проверка каждые 2 секунды
+
+            try
+            {
+                while (elapsedTimeSeconds < maxWaitTimeSeconds)
+                {
+                    var processes = Process.GetProcessesByName(processName);
+                    if (processes.Length == 0)
+                    {
+                        _logger.LogInformation("No running instances of {ProcessName} found.", processName);
+                        return true;
+                    }
+
+                    _logger.LogInformation("Found {Count} running instances of {ProcessName}. Waiting for closure.", processes.Length, processName);
+                    await Task.Delay(checkIntervalMs);
+                    elapsedTimeSeconds += checkIntervalMs / 1000;
+                }
+
+                _logger.LogWarning("Timeout waiting for {ProcessName} to close after {MaxWaitTimeSeconds} seconds.", processName, maxWaitTimeSeconds);
+                return false;
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error checking if {ProcessName} is closed.", processName);
+                return false;
+            }
         }
 
+        private async Task LaunchInspectionWorkApp()
+        {
+            try
+            {
+                if (!File.Exists(InspectionWorkAppUrl))
+                {
+                    throw new FileNotFoundException($"Файл {InspectionWorkAppUrl} не найден или недоступен.");
+                }
+
+                // Приостанавливаем чтение COM-порта
+                _comController.IsReading = false;
+                _logger.LogInformation("Paused COMController reading before launching InspectionWorkApp.");
+
+                // Ждём освобождения порта (до 10 секунд)
+                var portName = _configuration.GetSection("COMController:PortName").Value ?? "COM3";
+                bool portFreed = false;
+                for (int i = 0; i < 10; i++)
+                {
+                    if (IsPortAvailable(portName))
+                    {
+                        portFreed = true;
+                        _logger.LogInformation("COM port {PortName} freed successfully.", portName);
+                        break;
+                    }
+                    _logger.LogInformation("Waiting for COM port {PortName} to free... Attempt {Attempt}", portName, i + 1);
+                    await Task.Delay(3000);
+                }
+
+                if (!portFreed)
+                {
+                    _logger.LogError("Failed to free COM port {PortName} after 10 seconds. Launching InspectionWorkApp may fail.", portName);
+                    // Можно добавить MessageBox или отмену запуска
+                }
+
+                var process = new Process
+                {
+                    StartInfo = new ProcessStartInfo
+                    {
+                        FileName = "rundll32.exe",
+                        Arguments = $"url.dll,FileProtocolHandler \"{InspectionWorkAppUrl}\"",
+                        UseShellExecute = true
+                    }
+                };
+                process.Start();
+                _logger.LogInformation("Launched InspectionWorkApp via ClickOnce: {Url}", InspectionWorkAppUrl);
+            }
+            catch (FileNotFoundException ex)
+            {
+                _logger.LogError(ex, "Failed to launch InspectionWorkApp: File not found at {Url}", InspectionWorkAppUrl);
+                MessageBox.Show($"Ошибка запуска InspectionWorkApp: Файл не найден по пути {InspectionWorkAppUrl}.\nПроверьте доступ к серверу 192.168.50.20.", "Ошибка", MessageBoxButton.OK, MessageBoxImage.Error);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Failed to launch InspectionWorkApp: {Url}", InspectionWorkAppUrl);
+                MessageBox.Show($"Ошибка запуска InspectionWorkApp: {ex.Message}\nПроверьте доступ к серверу 192.168.50.20.", "Ошибка", MessageBoxButton.OK, MessageBoxImage.Error);
+            }
+        }
+
+        private async Task BlockAppUntilShiftComplete(DateTime shiftStart)
+        {
+            _isAppBlocked = true;
+            Dispatcher.Invoke(() =>
+            {
+                _originalContent = Content;
+                IsEnabled = false;
+                var overlay = new Grid { Background = Brushes.LightGray, Opacity = 0.8 };
+                var message = new TextBlock
+                {
+                    Text = "Завершите все работы текущей смены в InspectionWorkApp и закройте приложение",
+                    FontSize = 20,
+                    HorizontalAlignment = HorizontalAlignment.Center,
+                    VerticalAlignment = VerticalAlignment.Center,
+                    Foreground = Brushes.Black
+                };
+                overlay.Children.Add(message);
+                Content = overlay;
+            });
+            _logger.LogInformation("Bucking_Unit_App blocked until InspectionWorkApp is closed at {ShiftStart}", shiftStart);
+
+            try
+            {
+                using var connection = new SqlConnection(_ConnectionString);
+                await connection.OpenAsync();
+                using var command = new SqlCommand(
+                    "UPDATE MechanismExchange SET IsBlock = @value WHERE Sector = @sector",
+                    connection);
+                command.Parameters.AddWithValue("@value", 1);
+                command.Parameters.AddWithValue("@sector", 8);
+                await command.ExecuteNonQueryAsync();
+                _logger.LogInformation("Updated MechanismExchange: IsBlock set to 1 for Sector=8 via SQL.");
+            }
+            catch (SqlException ex) when (ex.Number == -2146893019)
+            {
+                _logger.LogError(ex, "SSL certificate error updating MechanismExchange for Sector=8 via SQL.");
+                Dispatcher.Invoke(() =>
+                {
+                    MessageBox.Show("Ошибка подключения к базе данных: недоверенный SSL-сертификат. Обратитесь к администратору.", "Ошибка", MessageBoxButton.OK, MessageBoxImage.Error);
+                });
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error updating MechanismExchange: IsBlock for Sector=8 via SQL.");
+                Dispatcher.Invoke(() =>
+                {
+                    MessageBox.Show($"Ошибка обновления базы данных: {ex.Message}", "Ошибка", MessageBoxButton.OK, MessageBoxImage.Error);
+                });
+            }
+
+            // Ожидаем появления процесса InspectionWorkApp (до 10 секунд)
+            const string processName = "InspectionWorkApp";
+            bool processStarted = false;
+            for (int i = 0; i < 10; i++)
+            {
+                var processes = Process.GetProcessesByName(processName);
+                if (processes.Length > 0)
+                {
+                    processStarted = true;
+                    _logger.LogInformation("InspectionWorkApp process detected (ID: {ProcessId}).", processes[0].Id);
+                    processes[0].Dispose();
+                    break;
+                }
+                _logger.LogInformation("Waiting for InspectionWorkApp to start... Attempt {Attempt}", i + 1);
+                await Task.Delay(1000);
+            }
+
+            if (!processStarted)
+            {
+                _logger.LogError("InspectionWorkApp did not start within 10 seconds. Unblocking Bucking_Unit_App.");
+                UnblockApp();
+                return;
+            }
+
+            // Ожидаем закрытия InspectionWorkApp
+            bool isInspectionWorkAppClosed = await WaitForInspectionWorkAppToCloseAsync();
+            if (isInspectionWorkAppClosed)
+            {
+                _logger.LogInformation("InspectionWorkApp closed. Unblocking Bucking_Unit_App.");
+                _isShiftCompleted = true;
+                CloseInspectionWorkApp(); // Убедимся, что процесс завершён
+                UnblockApp();
+                _currentShiftStart = default;
+                _lastShiftAppLaunch = null;
+                _fixedRequiredTasksCountCache.Remove(shiftStart);
+            }
+            else
+            {
+                _logger.LogWarning("Timeout waiting for InspectionWorkApp to close. Forcing closure and unblocking.");
+                CloseInspectionWorkApp();
+                UnblockApp();
+                _isShiftCompleted = true;
+                _currentShiftStart = default;
+                _lastShiftAppLaunch = null;
+                _fixedRequiredTasksCountCache.Remove(shiftStart);
+            }
+        }
+
+        private void UnblockApp()
+        {
+            if (!_isAppBlocked) // Проверяем, чтобы избежать повторной разблокировки
+            {
+                _logger.LogInformation("UnblockApp called but app is already unblocked.");
+                return;
+            }
+
+            _isAppBlocked = false;
+            Dispatcher.Invoke(() =>
+            {
+                IsEnabled = true;
+                Content = _originalContent; // Восстанавливаем исходное содержимое
+                _originalContent = null; // Очищаем после восстановления
+            });
+            // Обновляем IsBlock = 0 в таблице MechanismExchange через ADO.NET
+            try
+            {
+                using var connection = new SqlConnection(_ConnectionString);
+                connection.Open();
+                using var command = new SqlCommand(
+                    "UPDATE MechanismExchange SET IsBlock = @value WHERE Sector = @sector",
+                    connection);
+                command.Parameters.AddWithValue("@value", 0);
+                command.Parameters.AddWithValue("@sector", 8);
+                command.ExecuteNonQuery();
+                _logger.LogInformation("Updated MechanismExchange: IsBlock set to 0 for Sector=8 via SQL.");
+            }
+            catch (SqlException ex) when (ex.Number == -2146893019) // Ошибка недоверенного сертификата
+            {
+                _logger.LogError(ex, "SSL certificate error updating MechanismExchange for Sector=8 via SQL.");
+                Dispatcher.Invoke(() =>
+                {
+                    MessageBox.Show("Ошибка подключения к базе данных: недоверенный SSL-сертификат. Обратитесь к администратору.", "Ошибка", MessageBoxButton.OK, MessageBoxImage.Error);
+                });
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error updating MechanismExchange: IsBlock for Sector=8 via SQL.");
+                Dispatcher.Invoke(() =>
+                {
+                    MessageBox.Show($"Ошибка обновления базы данных: {ex.Message}", "Ошибка", MessageBoxButton.OK, MessageBoxImage.Error);
+                });
+            }
+
+            try
+            {
+                var portName = _configuration.GetSection("COMController:PortName").Value ?? "COM3";
+                if (!IsPortAvailable(portName))
+                {
+                    _logger.LogWarning("COM port {PortName} is still in use. Retrying after 5 seconds.", portName);
+                    Task.Delay(5000).Wait();
+                    if (!IsPortAvailable(portName))
+                    {
+                        _logger.LogError("COM port {PortName} is still in use. Unable to resume COMController reading.", portName);
+                        Dispatcher.Invoke(() =>
+                        {
+                            MessageBox.Show($"Ошибка: порт {portName} всё ещё занят. Закройте другие приложения и попробуйте снова.", "Ошибка COM-порта", MessageBoxButton.OK, MessageBoxImage.Error);
+                        });
+                        return;
+                    }
+                }
+
+                _comController.IsReading = true;
+                _logger.LogInformation("Bucking_Unit_App unblocked and COMController reading resumed.");
+            }
+            catch (UnauthorizedAccessException ex)
+            {
+                _logger.LogError(ex, "Failed to resume COMController reading: COM port access denied.");
+                Dispatcher.Invoke(() =>
+                {
+                    MessageBox.Show("Ошибка возобновления чтения COM-порта: порт занят. Закройте другие приложения.", "Ошибка", MessageBoxButton.OK, MessageBoxImage.Error);
+                });
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Failed to resume COMController reading.");
+                Dispatcher.Invoke(() =>
+                {
+                    MessageBox.Show($"Ошибка возобновления чтения COM-порта: {ex.Message}", "Ошибка", MessageBoxButton.OK, MessageBoxImage.Error);
+                });
+            }
+        }
+
+
+        private bool IsPortAvailable(string portName)
+        {
+            try
+            {
+                using (var port = new SerialPort(portName))
+                {
+                    port.Open();
+                    return true;
+                }
+            }
+            catch (UnauthorizedAccessException)
+            {
+                return false;
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error checking COM port {PortName} availability.", portName);
+                return false;
+            }
+        }
+        //private async Task<bool> IsShiftCompleteAsync(DateTime shiftStart)
+        //{
+        //    try
+        //    {
+        //        using var db = _dbFactory.CreateDbContext();
+        //        var now = DateTime.Now;
+        //        var today = now.Date;
+        //        var sectorId = 8;  // Hardcoded SectorId=8
+        //        var roleIds = new List<int> { 1, 2 };  // Явно создаём список вместо массива
+
+        //        // Загружаем частоты отдельно
+        //        var frequencies = await db.TOWorkFrequencies
+        //            .AsNoTracking()
+        //            .Where(f => new List<int> { 1, 2, 3, 4, 5 }.Contains(f.Id))
+        //            .Select(f => new { f.Id, f.IntervalDay })
+        //            .ToDictionaryAsync(f => f.Id, f => f.IntervalDay)
+        //            .ConfigureAwait(false);
+
+        //        _logger.LogInformation("Loaded {Count} frequencies: {Frequencies}", frequencies.Count, string.Join(", ", frequencies.Select(f => $"Id={f.Key}, IntervalDay={f.Value}")));
+
+        //        // Проверяем, что все необходимые FreqId существуют
+        //        if (!frequencies.ContainsKey(1) || !frequencies.ContainsKey(2) || !frequencies.ContainsKey(3) ||
+        //            !frequencies.ContainsKey(4) || !frequencies.ContainsKey(5))
+        //        {
+        //            _logger.LogError("Missing required FreqId in TOWorkFrequencies for shiftStart={ShiftStart}", shiftStart);
+        //            Dispatcher.Invoke(() => MessageBox.Show("Ошибка: отсутствуют записи в таблице TOWorkFrequencies для FreqId 1, 2, 3, 4 или 5.", "Ошибка", MessageBoxButton.OK, MessageBoxImage.Error));
+        //            return false;
+        //        }
+
+        //        // Упрощённый запрос с явным указанием RoleId в WHERE
+        //        var assignmentsQuery = db.TOWorkAssignments
+        //            .AsNoTracking()
+        //            .Where(a => !a.IsCanceled && a.SectorId == sectorId && (a.RoleId == 1 || a.RoleId == 2))
+        //            .Select(a => new
+        //            {
+        //                a.Id,
+        //                a.LastExecTime,
+        //                a.FreqId
+        //            });
+
+        //        _logger.LogInformation("Executing assignments query: {Query}", assignmentsQuery.ToQueryString());
+        //        var assignments = await assignmentsQuery.ToListAsync().ConfigureAwait(false);
+        //        _logger.LogInformation("Loaded {Count} assignments for shiftStart={ShiftStart}", assignments.Count, shiftStart);
+
+        //        int requiredTasksCount = 0;
+        //        int fixedRequiredTasksCount = 0;
+        //        int initialCompleted = 0;
+        //        int initialCanceled = 0;
+
+        //        if (!_fixedRequiredTasksCountCache.ContainsKey(shiftStart))
+        //        {
+        //            foreach (var a in assignments)
+        //            {
+        //                if (!frequencies.ContainsKey(a.FreqId))
+        //                {
+        //                    _logger.LogWarning("AssignmentId={AssignmentId} has invalid FreqId={FreqId}", a.Id, a.FreqId);
+        //                    continue; // Пропускаем задания с некорректным FreqId
+        //                }
+
+        //                DateTime nextDue;
+        //                var intervalDay = frequencies[a.FreqId];
+
+        //                if (a.FreqId == 1)
+        //                {
+        //                    nextDue = shiftStart;
+        //                }
+        //                else
+        //                {
+        //                    var days = a.FreqId switch
+        //                    {
+        //                        2 => intervalDay ?? 0,
+        //                        3 => intervalDay ?? 0,
+        //                        4 => intervalDay ?? 0,
+        //                        5 => intervalDay ?? 0,
+        //                        _ => 7
+        //                    };
+        //                    nextDue = a.LastExecTime == _defaultExecutionTime
+        //                        ? today
+        //                        : (a.LastExecTime.HasValue ? a.LastExecTime.Value.AddDays((double)days) : today);
+        //                }
+
+        //                // Загружаем выполнение для текущей смены
+        //                var execution = await db.TOExecutions
+        //                    .AsNoTracking()
+        //                    .Where(e => e.AssignmentId == a.Id && e.DueDateTime == shiftStart)
+        //                    .Select(e => new { e.Status, e.ExecutionTime })
+        //                    .FirstOrDefaultAsync()
+        //                    .ConfigureAwait(false);
+
+        //                if (a.FreqId == 1 || nextDue <= now)
+        //                {
+        //                    if (execution == null)
+        //                    {
+        //                        requiredTasksCount++;
+        //                        _logger.LogInformation("Task AssignmentId={AssignmentId} requires execution: FreqId={FreqId}, NextDue={NextDue}", a.Id, a.FreqId, nextDue);
+        //                    }
+        //                    else if (execution.Status == 1)
+        //                    {
+        //                        initialCompleted++;
+        //                    }
+        //                    else if (execution.Status == 2)
+        //                    {
+        //                        initialCanceled++;
+        //                    }
+        //                }
+        //            }
+
+        //            // Устанавливаем fixedRequiredTasksCount после всего цикла
+        //            fixedRequiredTasksCount = requiredTasksCount + initialCompleted + initialCanceled;
+        //            _fixedRequiredTasksCountCache[shiftStart] = fixedRequiredTasksCount;
+        //            _logger.LogInformation("Initialized FixedRequiredTasksCount={FixedRequiredTasksCount} for shiftStart={ShiftStart}", fixedRequiredTasksCount, shiftStart);
+        //        }
+        //        else
+        //        {
+        //            fixedRequiredTasksCount = _fixedRequiredTasksCountCache[shiftStart];
+        //            _logger.LogInformation("Using cached FixedRequiredTasksCount={FixedRequiredTasksCount} for shiftStart={ShiftStart}", fixedRequiredTasksCount, shiftStart);
+        //        }
+
+        //        // Подсчёт выполненных задач (Status == 1) для текущей смены
+        //        var completedExecutions = await db.TOExecutions
+        //            .Where(e => e.DueDateTime == shiftStart && e.Status == 1)
+        //            .Join(db.TOWorkAssignments, e => e.AssignmentId, a => a.Id, (e, a) => a)
+        //            .Where(a => a.SectorId == sectorId && (a.RoleId == 1 || a.RoleId == 2))
+        //            .CountAsync()
+        //            .ConfigureAwait(false);
+
+        //        // Подсчёт отменённых задач (Status == 2) для текущей смены
+        //        var canceledExecutions = await db.TOExecutions
+        //            .Where(e => e.DueDateTime == shiftStart && e.Status == 2)
+        //            .Join(db.TOWorkAssignments, e => e.AssignmentId, a => a.Id, (e, a) => a)
+        //            .Where(a => a.SectorId == sectorId && (a.RoleId == 1 || a.RoleId == 2))
+        //            .CountAsync()
+        //            .ConfigureAwait(false);
+
+        //        // Смена завершена, если количество выполненных и отменённых задач равно или больше количеству требуемых задач
+        //        var isComplete = (completedExecutions + canceledExecutions) >= fixedRequiredTasksCount && requiredTasksCount == 0;
+        //        _logger.LogInformation("Shift completion check: RequiredTasksCount={RequiredTasksCount}, FixedRequiredTasksCount={FixedRequiredTasksCount}, Completed={Completed}, Canceled={Canceled}, IsComplete={IsComplete}",
+        //            requiredTasksCount, fixedRequiredTasksCount, completedExecutions, canceledExecutions, isComplete);
+
+        //        return isComplete;
+        //    }
+        //    catch (SqlException ex) when (ex.Number == -2146232060) // Ошибка недоверенного сертификата
+        //    {
+        //        _logger.LogError(ex, "SSL certificate error connecting to database for shiftStart={ShiftStart}. Check TrustServerCertificate or install trusted certificate.", shiftStart);
+        //        Dispatcher.Invoke(() => MessageBox.Show("Ошибка подключения к базе данных: недоверенный SSL-сертификат. Обратитесь к администратору.", "Ошибка", MessageBoxButton.OK, MessageBoxImage.Error));
+        //        return false;
+        //    }
+        //    catch (Exception ex)
+        //    {
+        //        //_logger.LogError(ex, "Error checking shift completion for shiftStart={ShiftStart}. SQL query: {Query}", assignmentsQuery.ToQueryString(), shiftStart);
+        //        Dispatcher.Invoke(() => MessageBox.Show($"Ошибка проверки завершения смены: {ex.Message}", "Ошибка", MessageBoxButton.OK, MessageBoxImage.Error));
+        //        return false;
+        //    }
+        //}
         private bool TryConnectToPLC()
         {
             System.Diagnostics.Debug.WriteLine("MainWindow: Попытка подключения к PLC...");
@@ -113,7 +814,7 @@ namespace Bucking_Unit_App.Views
             int retryDelayMs = 1000;
             for (int i = 0; i < maxRetries; i++)
             {
-                int result = s7Client.ConnectTo("192.168.11.241", 0, 1);
+                int result = s7Client.ConnectTo("192.168.0.200", 0, 1);
                 if (result == 0)
                 {
                     System.Diagnostics.Debug.WriteLine("MainWindow: Успешное подключение к PLC.");
@@ -225,7 +926,7 @@ namespace Bucking_Unit_App.Views
         {
             try
             {
-                using (var connection = new SqlConnection(_runtimeConnectionString))
+                using (var connection = new SqlConnection(_ConnectionString))
                 {
                     connection.Open();
                     string query = "SELECT TOP 10 Value FROM Runtime.dbo.History WHERE TagName = 'NOT_MN3_SCREW_ON' AND Value IS NOT NULL ORDER BY DateTime DESC";
@@ -246,6 +947,7 @@ namespace Bucking_Unit_App.Views
         }
 
         private bool _isUpdatingGraph = false;
+        private CancellationTokenSource _cts;
 
         private async Task UpdateGraphAsync()
         {
@@ -738,7 +1440,7 @@ namespace Bucking_Unit_App.Views
         {
             try
             {
-                using (var conn = new SqlConnection(_connectionString))
+                using (var conn = new SqlConnection(_ConnectionString))
                 {
                     await conn.OpenAsync();
                     string query = "SELECT DISTINCT Year FROM MuftN3_REP WHERE Year IS NOT NULL ORDER BY Year";
@@ -1027,14 +1729,14 @@ namespace Bucking_Unit_App.Views
             // Обновить в базе (если нужно, вызовите _statsRepository.UpdateOperatorIdExchangeAsync с isAuth=true)
             // Здесь можно добавить логику持久ства фиксации в БД, если требуется (например, флаг в sysStat)
 
-            MessageBox.Show($"Оператор зафиксирован на смену до {endOfShift.Value:HH:mm}.", "Успех", MessageBoxButton.OK, MessageBoxImage.Information);
+            //MessageBox.Show($"Оператор зафиксирован на смену до {endOfShift.Value:HH:mm}.", "Успех", MessageBoxButton.OK, MessageBoxImage.Information);
             Debug.WriteLine($"MainWindow: Оператор зафиксирован до {endOfShift}.");
         }
         // Новый обработчик для снятия фиксации
         private void btnUnfixOperator_Click(object sender, RoutedEventArgs e)
         {
             UnfixOperator();
-            MessageBox.Show("Фиксация снята. Вставьте пропуск для продолжения.", "Успех", MessageBoxButton.OK, MessageBoxImage.Information);
+            //MessageBox.Show("Фиксация снята. Вставьте пропуск для продолжения.", "Успех", MessageBoxButton.OK, MessageBoxImage.Information);
         }
 
         // Метод для расчёта конца смены
@@ -1451,7 +2153,7 @@ namespace Bucking_Unit_App.Views
 
             try
             {
-                using (var conn = new SqlConnection(_connectionString))
+                using (var conn = new SqlConnection(_ConnectionString))
                 {
                     await conn.OpenAsync();
                     var checkCmd = new SqlCommand(
@@ -1698,7 +2400,7 @@ namespace Bucking_Unit_App.Views
         {
             try
             {
-                using (SqlConnection conn = new SqlConnection(_connectionString))
+                using (SqlConnection conn = new SqlConnection(_ConnectionString))
                 {
                     await conn.OpenAsync();
                     string query = @"
@@ -1749,6 +2451,8 @@ namespace Bucking_Unit_App.Views
             _operatorService.OnOperatorChanged -= OperatorService_OnOperatorChanged;
 
             _cts?.Cancel();
+            _shiftTimer?.Stop();
+            _shiftCheckTimer?.Stop();
             _operatorUpdateCts?.Cancel();
             _allStatsUpdateCts?.Cancel();
             _currentPipeUpdateCts?.Cancel();
@@ -1803,6 +2507,8 @@ namespace Bucking_Unit_App.Views
                 Debug.WriteLine("MainWindow: PLCDataWindow закрыт.");
             }
 
+            _shiftTimer = null;
+            _shiftCheckTimer = null;
             _cts?.Dispose();
             _operatorUpdateCts?.Dispose();
             _allStatsUpdateCts?.Dispose();

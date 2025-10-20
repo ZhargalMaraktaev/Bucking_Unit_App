@@ -12,6 +12,10 @@ namespace Bucking_Unit_App.Views
 {
     public class ComparePlanFactConverter : IMultiValueConverter
     {
+        public ComparePlanFactConverter()
+        {
+            // Конструктор без параметров — добавьте здесь любую инициализацию по умолчанию, если нужно
+        }
         public object Convert(object[] values, Type targetType, object parameter, CultureInfo culture)
         {
             try

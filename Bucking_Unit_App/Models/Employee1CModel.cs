@@ -43,5 +43,6 @@ namespace Bucking_Unit_App.Models
 
         public int ErrorCode { get; set; } = 0;
         public string? ErrorText { get; set; }
+        public int? TORoleId { get; set; } // Добавлено поле для TORoleId
     }
 }

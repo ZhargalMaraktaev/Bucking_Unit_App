@@ -1,12 +1,13 @@
-﻿using System;
+﻿using Bucking_Unit_App.Models;
+using Microsoft.Extensions.Logging;
+using System;
 using System.Collections.Generic;
-using System.Data.SqlClient;
 using System.Data;
+using System.Data.SqlClient;
+using System.Diagnostics;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
-using Bucking_Unit_App.Models;
-using System.Diagnostics;
 
 namespace Bucking_Unit_App.Interfaces
 {
@@ -14,10 +15,15 @@ namespace Bucking_Unit_App.Interfaces
     public class DataAccessLayer : IEmployeeRepository, IStatsRepository
     {
         private readonly string _connectionString;
+        private readonly ILogger<DataAccessLayer>? _logger; // Логгер необязательный
 
         public DataAccessLayer(string connectionString)
         {
             _connectionString = connectionString;
+        }
+        public DataAccessLayer(string connectionString, ILogger<DataAccessLayer> logger) : this(connectionString)
+        {
+            _logger = logger;
         }
 
         public async Task<Employee1CModel> GetEmployeeAsync(string cardNumber)
@@ -764,7 +770,7 @@ ORDER BY Smena;";
                     int smena = reader.GetInt32(0);
                     double cumulativePlan = reader.IsDBNull(1) ? 0.0 : reader.GetDouble(1);
                     result[smena] = cumulativePlan;
-                    Debug.WriteLine($"GetMonthlyPlanByShiftAsync: Smena={smena}, CumulativePlan={cumulativePlan:F0}");
+                    //Debug.WriteLine($"GetMonthlyPlanByShiftAsync: Smena={smena}, CumulativePlan={cumulativePlan:F0}");
                 }
                 await reader.CloseAsync();
 
