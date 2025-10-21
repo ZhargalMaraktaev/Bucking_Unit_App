@@ -74,8 +74,7 @@
               "RelativeToolTip": "Bucking_Unit_App\\Models\\InspectionWorkModels\\WorkAssignment.cs",
               "ViewState": "AgIAAAAAAAAAAAAAAAAAABkAAAAAAAAAAAAAAA==",
               "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
-              "WhenOpened": "2025-10-09T06:04:19.782Z",
-              "EditorCaption": ""
+              "WhenOpened": "2025-10-09T06:04:19.782Z"
             },
             {
               "$type": "Document",
@@ -87,8 +86,7 @@
               "RelativeToolTip": "Bucking_Unit_App\\Views\\GradientBackgroundConverter.cs",
               "ViewState": "AgIAAAAAAAAAAAAAAAAAAA4AAAAJAAAAAAAAAA==",
               "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
-              "WhenOpened": "2025-10-06T05:19:59.838Z",
-              "EditorCaption": ""
+              "WhenOpened": "2025-10-06T05:19:59.838Z"
             },
             {
               "$type": "Document",
@@ -100,8 +98,7 @@
               "RelativeToolTip": "Bucking_Unit_App\\Services\\OperatorService.cs",
               "ViewState": "AgIAADUAAAAAAAAAAAAiwD4AAABFAAAAAAAAAA==",
               "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
-              "WhenOpened": "2025-10-02T10:21:40.743Z",
-              "EditorCaption": ""
+              "WhenOpened": "2025-10-02T10:21:40.743Z"
             },
             {
               "$type": "Document",
@@ -111,7 +108,7 @@
               "RelativeDocumentMoniker": "Bucking_Unit_App\\appsettings.json",
               "ToolTip": "C:\\Users\\z.maraktaev\\source\\repos\\Bucking_Unit_App\\Bucking_Unit_App\\appsettings.json",
               "RelativeToolTip": "Bucking_Unit_App\\appsettings.json",
-              "ViewState": "AgIAAAAAAAAAAAAAAAAAAAwAAAABAAAAAAAAAA==",
+              "ViewState": "AgIAAAAAAAAAAAAAAAAAAAIAAAA0AAAAAAAAAA==",
               "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.001642|",
               "WhenOpened": "2025-10-02T08:50:44.185Z"
             },
@@ -158,7 +155,7 @@
               "RelativeDocumentMoniker": "Bucking_Unit_App\\Views\\MainWindow.xaml.cs",
               "ToolTip": "C:\\Users\\z.maraktaev\\source\\repos\\Bucking_Unit_App\\Bucking_Unit_App\\Views\\MainWindow.xaml.cs",
               "RelativeToolTip": "Bucking_Unit_App\\Views\\MainWindow.xaml.cs",
-              "ViewState": "AgIAADwAAAAAAAAAAAAIwE0AAABFAAAAAAAAAA==",
+              "ViewState": "AgIAAAIDAAAAAAAAAAAAAPQCAAAdAAAAAAAAAA==",
               "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
               "WhenOpened": "2025-06-18T11:33:54.312Z",
               "EditorCaption": ""
@@ -173,8 +170,7 @@
               "RelativeToolTip": "Bucking_Unit_App\\Interfaces\\DataAccessLayer.cs",
               "ViewState": "AgIAAAAAAAAAAAAAAAAAABUAAAAxAAAAAAAAAA==",
               "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
-              "WhenOpened": "2025-06-25T12:04:47.064Z",
-              "EditorCaption": ""
+              "WhenOpened": "2025-06-25T12:04:47.064Z"
             },
             {
               "$type": "Document",
@@ -209,8 +205,7 @@
               "RelativeToolTip": "Bucking_Unit_App\\App.xaml.cs",
               "ViewState": "AgIAABQAAAAAAAAAAAA2wCQAAAAMAAAAAAAAAA==",
               "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
-              "WhenOpened": "2025-06-27T10:09:08.012Z",
-              "EditorCaption": ""
+              "WhenOpened": "2025-06-27T10:09:08.012Z"
             }
           ]
         }

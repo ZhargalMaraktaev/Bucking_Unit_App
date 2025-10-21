@@ -74,8 +74,8 @@ namespace Bucking_Unit_App.Views
         private int? _currentGraphPipeCounter;
         private bool _isTextChangeProgrammatic;
         private DispatcherTimer _comStatusTimer;
-        private string _runtimeConnectionString= "Data Source=192.168.0.230,1433;Initial Catalog=Runtime;User ID=UserNotTrend;Password=NotTrend;TrustServerCertificate=True";
-        private string _ConnectionString = "Data Source=192.168.0.230,1433;Initial Catalog=Pilot;User ID=UserNotTrend;Password=NotTrend;TrustServerCertificate=True";
+        private string _runtimeConnectionString= "Data Source=192.168.11.222,1433;Initial Catalog=Runtime;User ID=UserNotTrend;Password=NotTrend;TrustServerCertificate=True";
+        private string _ConnectionString = "Data Source=192.168.11.222,1433;Initial Catalog=Pilot;User ID=UserNotTrend;Password=NotTrend;TrustServerCertificate=True";
         private bool? _lastScrewOnStatus;
         private DateTime? _lastScrewOnTrueTime;
         private bool _isInScrewOnWindow;
@@ -110,7 +110,7 @@ namespace Bucking_Unit_App.Views
             _comController = comController ?? throw new ArgumentNullException(nameof(comController));
             _statsRepository = statsRepository ?? throw new ArgumentNullException(nameof(statsRepository));
             _conn = new SqlConnection(configuration.GetConnectionString("DefaultConnection")
-                ?? "Data Source=192.168.0.230,1433;Initial Catalog=Runtime;User ID=UserNotTrend;Password=NotTrend");
+                ?? "Data Source=192.168.11.222,1433;Initial Catalog=Runtime;User ID=UserNotTrend;Password=NotTrend");
 
             _comController.StateChanged += ComController_StateChanged;
             _comController.IsReading = true;
@@ -249,28 +249,28 @@ namespace Bucking_Unit_App.Views
                     _lastShiftAppLaunch = shiftStart;
                     _currentShiftStart = shiftStart;
                     await BlockAppUntilShiftComplete(shiftStart);
-                    // Проверяем завершение смены
-                    //if (!_isShiftCompleted)
-                    //{
-                    //    try
-                    //    {
-                    //        _isShiftCompleted = await WaitForInspectionWorkAppToCloseAsync();
-                    //        if (_isShiftCompleted)
-                    //        {
-                    //            _logger.LogInformation("Shift completed at {Now} for {ShiftStart}. Closing InspectionWorkApp and unblocking app.", now, shiftStart);
-                    //            CloseInspectionWorkApp();
-                    //            UnblockApp();
-                    //            _lastShiftAppLaunch = null;
-                    //            _currentShiftStart = default;
-                    //            _fixedRequiredTasksCountCache.Remove(shiftStart); // Очищаем кэш после завершения смены
-                    //        }
-                    //    }
-                    //    catch (TaskCanceledException ex)
-                    //    {
-                    //        _logger.LogError(ex, "Task canceled while checking shift completion for shiftStart={ShiftStart}", shiftStart);
-                    //        Dispatcher.Invoke(() => MessageBox.Show("Ошибка проверки завершения смены: операция была отменена.", "Ошибка", MessageBoxButton.OK, MessageBoxImage.Error));
-                    //    }
-                    //}
+                    //Проверяем завершение смены
+                    while (!_isShiftCompleted)
+                    {
+                        try
+                        {
+                            _isShiftCompleted = await IsShiftCompleteAsync(shiftStart);
+                            if (_isShiftCompleted)
+                            {
+                                _logger.LogInformation("Shift completed at {Now} for {ShiftStart}. Closing InspectionWorkApp and unblocking app.", now, shiftStart);
+                                CloseInspectionWorkApp();
+                                UnblockApp();
+                                _lastShiftAppLaunch = null;
+                                _currentShiftStart = default;
+                                _fixedRequiredTasksCountCache.Remove(shiftStart); // Очищаем кэш после завершения смены
+                            }
+                        }
+                        catch (TaskCanceledException ex)
+                        {
+                            _logger.LogError(ex, "Task canceled while checking shift completion for shiftStart={ShiftStart}", shiftStart);
+                            Dispatcher.Invoke(() => MessageBox.Show("Ошибка проверки завершения смены: операция была отменена.", "Ошибка", MessageBoxButton.OK, MessageBoxImage.Error));
+                        }
+                    }
                 }
                 catch (TaskCanceledException ex)
                 {
@@ -501,51 +501,51 @@ namespace Bucking_Unit_App.Views
             }
 
             // Ожидаем появления процесса InspectionWorkApp (до 10 секунд)
-            const string processName = "InspectionWorkApp";
-            bool processStarted = false;
-            for (int i = 0; i < 10; i++)
-            {
-                var processes = Process.GetProcessesByName(processName);
-                if (processes.Length > 0)
-                {
-                    processStarted = true;
-                    _logger.LogInformation("InspectionWorkApp process detected (ID: {ProcessId}).", processes[0].Id);
-                    processes[0].Dispose();
-                    break;
-                }
-                _logger.LogInformation("Waiting for InspectionWorkApp to start... Attempt {Attempt}", i + 1);
-                await Task.Delay(1000);
-            }
+            //const string processName = "InspectionWorkApp";
+            //bool processStarted = false;
+            //for (int i = 0; i < 10; i++)
+            //{
+            //    var processes = Process.GetProcessesByName(processName);
+            //    if (processes.Length > 0)
+            //    {
+            //        processStarted = true;
+            //        _logger.LogInformation("InspectionWorkApp process detected (ID: {ProcessId}).", processes[0].Id);
+            //        processes[0].Dispose();
+            //        break;
+            //    }
+            //    _logger.LogInformation("Waiting for InspectionWorkApp to start... Attempt {Attempt}", i + 1);
+            //    await Task.Delay(1000);
+            //}
 
-            if (!processStarted)
-            {
-                _logger.LogError("InspectionWorkApp did not start within 10 seconds. Unblocking Bucking_Unit_App.");
-                UnblockApp();
-                return;
-            }
+            //if (!processStarted)
+            //{
+            //    _logger.LogError("InspectionWorkApp did not start within 10 seconds. Unblocking Bucking_Unit_App.");
+            //    UnblockApp();
+            //    return;
+            //}
 
-            // Ожидаем закрытия InspectionWorkApp
-            bool isInspectionWorkAppClosed = await WaitForInspectionWorkAppToCloseAsync();
-            if (isInspectionWorkAppClosed)
-            {
-                _logger.LogInformation("InspectionWorkApp closed. Unblocking Bucking_Unit_App.");
-                _isShiftCompleted = true;
-                CloseInspectionWorkApp(); // Убедимся, что процесс завершён
-                UnblockApp();
-                _currentShiftStart = default;
-                _lastShiftAppLaunch = null;
-                _fixedRequiredTasksCountCache.Remove(shiftStart);
-            }
-            else
-            {
-                _logger.LogWarning("Timeout waiting for InspectionWorkApp to close. Forcing closure and unblocking.");
-                CloseInspectionWorkApp();
-                UnblockApp();
-                _isShiftCompleted = true;
-                _currentShiftStart = default;
-                _lastShiftAppLaunch = null;
-                _fixedRequiredTasksCountCache.Remove(shiftStart);
-            }
+            //// Ожидаем закрытия InspectionWorkApp
+            //bool isInspectionWorkAppClosed = await WaitForInspectionWorkAppToCloseAsync();
+            //if (isInspectionWorkAppClosed)
+            //{
+            //    _logger.LogInformation("InspectionWorkApp closed. Unblocking Bucking_Unit_App.");
+            //    _isShiftCompleted = true;
+            //    CloseInspectionWorkApp(); // Убедимся, что процесс завершён
+            //    UnblockApp();
+            //    _currentShiftStart = default;
+            //    _lastShiftAppLaunch = null;
+            //    _fixedRequiredTasksCountCache.Remove(shiftStart);
+            //}
+            //else
+            //{
+            //    _logger.LogWarning("Timeout waiting for InspectionWorkApp to close. Forcing closure and unblocking.");
+            //    CloseInspectionWorkApp();
+            //    UnblockApp();
+            //    _isShiftCompleted = true;
+            //    _currentShiftStart = default;
+            //    _lastShiftAppLaunch = null;
+            //    _fixedRequiredTasksCountCache.Remove(shiftStart);
+            //}
         }
 
         private void UnblockApp()
@@ -653,160 +653,160 @@ namespace Bucking_Unit_App.Views
                 return false;
             }
         }
-        //private async Task<bool> IsShiftCompleteAsync(DateTime shiftStart)
-        //{
-        //    try
-        //    {
-        //        using var db = _dbFactory.CreateDbContext();
-        //        var now = DateTime.Now;
-        //        var today = now.Date;
-        //        var sectorId = 8;  // Hardcoded SectorId=8
-        //        var roleIds = new List<int> { 1, 2 };  // Явно создаём список вместо массива
+        private async Task<bool> IsShiftCompleteAsync(DateTime shiftStart)
+        {
+            try
+            {
+                using var db = _dbFactory.CreateDbContext();
+                var now = DateTime.Now;
+                var today = now.Date;
+                var sectorId = 8;  // Hardcoded SectorId=8
+                //var roleIds = new List<int> { 1, 2 };  // Явно создаём список вместо массива
 
-        //        // Загружаем частоты отдельно
-        //        var frequencies = await db.TOWorkFrequencies
-        //            .AsNoTracking()
-        //            .Where(f => new List<int> { 1, 2, 3, 4, 5 }.Contains(f.Id))
-        //            .Select(f => new { f.Id, f.IntervalDay })
-        //            .ToDictionaryAsync(f => f.Id, f => f.IntervalDay)
-        //            .ConfigureAwait(false);
+                // Загружаем частоты отдельно
+                var frequencies = await db.TOWorkFrequencies
+                    .AsNoTracking()
+                    .Where(f => new List<int> { 1, 2, 3, 4, 5 }.Contains(f.Id))
+                    .Select(f => new { f.Id, f.IntervalDay })
+                    .ToDictionaryAsync(f => f.Id, f => f.IntervalDay)
+                    .ConfigureAwait(false);
 
-        //        _logger.LogInformation("Loaded {Count} frequencies: {Frequencies}", frequencies.Count, string.Join(", ", frequencies.Select(f => $"Id={f.Key}, IntervalDay={f.Value}")));
+                _logger.LogInformation("Loaded {Count} frequencies: {Frequencies}", frequencies.Count, string.Join(", ", frequencies.Select(f => $"Id={f.Key}, IntervalDay={f.Value}")));
 
-        //        // Проверяем, что все необходимые FreqId существуют
-        //        if (!frequencies.ContainsKey(1) || !frequencies.ContainsKey(2) || !frequencies.ContainsKey(3) ||
-        //            !frequencies.ContainsKey(4) || !frequencies.ContainsKey(5))
-        //        {
-        //            _logger.LogError("Missing required FreqId in TOWorkFrequencies for shiftStart={ShiftStart}", shiftStart);
-        //            Dispatcher.Invoke(() => MessageBox.Show("Ошибка: отсутствуют записи в таблице TOWorkFrequencies для FreqId 1, 2, 3, 4 или 5.", "Ошибка", MessageBoxButton.OK, MessageBoxImage.Error));
-        //            return false;
-        //        }
+                // Проверяем, что все необходимые FreqId существуют
+                if (!frequencies.ContainsKey(1) || !frequencies.ContainsKey(2) || !frequencies.ContainsKey(3) ||
+                    !frequencies.ContainsKey(4) || !frequencies.ContainsKey(5))
+                {
+                    _logger.LogError("Missing required FreqId in TOWorkFrequencies for shiftStart={ShiftStart}", shiftStart);
+                    Dispatcher.Invoke(() => MessageBox.Show("Ошибка: отсутствуют записи в таблице TOWorkFrequencies для FreqId 1, 2, 3, 4 или 5.", "Ошибка", MessageBoxButton.OK, MessageBoxImage.Error));
+                    return false;
+                }
 
-        //        // Упрощённый запрос с явным указанием RoleId в WHERE
-        //        var assignmentsQuery = db.TOWorkAssignments
-        //            .AsNoTracking()
-        //            .Where(a => !a.IsCanceled && a.SectorId == sectorId && (a.RoleId == 1 || a.RoleId == 2))
-        //            .Select(a => new
-        //            {
-        //                a.Id,
-        //                a.LastExecTime,
-        //                a.FreqId
-        //            });
+                // Упрощённый запрос с явным указанием RoleId в WHERE
+                var assignmentsQuery = db.TOWorkAssignments
+                    .AsNoTracking()
+                    .Where(a => !a.IsCanceled && a.SectorId == sectorId && (a.RoleId == 1))
+                    .Select(a => new
+                    {
+                        a.Id,
+                        a.LastExecTime,
+                        a.FreqId
+                    });
 
-        //        _logger.LogInformation("Executing assignments query: {Query}", assignmentsQuery.ToQueryString());
-        //        var assignments = await assignmentsQuery.ToListAsync().ConfigureAwait(false);
-        //        _logger.LogInformation("Loaded {Count} assignments for shiftStart={ShiftStart}", assignments.Count, shiftStart);
+                _logger.LogInformation("Executing assignments query: {Query}", assignmentsQuery.ToQueryString());
+                var assignments = await assignmentsQuery.ToListAsync().ConfigureAwait(false);
+                _logger.LogInformation("Loaded {Count} assignments for shiftStart={ShiftStart}", assignments.Count, shiftStart);
 
-        //        int requiredTasksCount = 0;
-        //        int fixedRequiredTasksCount = 0;
-        //        int initialCompleted = 0;
-        //        int initialCanceled = 0;
+                int requiredTasksCount = 0;
+                int fixedRequiredTasksCount = 0;
+                int initialCompleted = 0;
+                int initialCanceled = 0;
 
-        //        if (!_fixedRequiredTasksCountCache.ContainsKey(shiftStart))
-        //        {
-        //            foreach (var a in assignments)
-        //            {
-        //                if (!frequencies.ContainsKey(a.FreqId))
-        //                {
-        //                    _logger.LogWarning("AssignmentId={AssignmentId} has invalid FreqId={FreqId}", a.Id, a.FreqId);
-        //                    continue; // Пропускаем задания с некорректным FreqId
-        //                }
+                if (!_fixedRequiredTasksCountCache.ContainsKey(shiftStart))
+                {
+                    foreach (var a in assignments)
+                    {
+                        if (!frequencies.ContainsKey(a.FreqId))
+                        {
+                            _logger.LogWarning("AssignmentId={AssignmentId} has invalid FreqId={FreqId}", a.Id, a.FreqId);
+                            continue; // Пропускаем задания с некорректным FreqId
+                        }
 
-        //                DateTime nextDue;
-        //                var intervalDay = frequencies[a.FreqId];
+                        DateTime nextDue;
+                        var intervalDay = frequencies[a.FreqId];
 
-        //                if (a.FreqId == 1)
-        //                {
-        //                    nextDue = shiftStart;
-        //                }
-        //                else
-        //                {
-        //                    var days = a.FreqId switch
-        //                    {
-        //                        2 => intervalDay ?? 0,
-        //                        3 => intervalDay ?? 0,
-        //                        4 => intervalDay ?? 0,
-        //                        5 => intervalDay ?? 0,
-        //                        _ => 7
-        //                    };
-        //                    nextDue = a.LastExecTime == _defaultExecutionTime
-        //                        ? today
-        //                        : (a.LastExecTime.HasValue ? a.LastExecTime.Value.AddDays((double)days) : today);
-        //                }
+                        if (a.FreqId == 1)
+                        {
+                            nextDue = shiftStart;
+                        }
+                        else
+                        {
+                            var days = a.FreqId switch
+                            {
+                                2 => intervalDay ?? 0,
+                                3 => intervalDay ?? 0,
+                                4 => intervalDay ?? 0,
+                                5 => intervalDay ?? 0,
+                                _ => 7
+                            };
+                            nextDue = a.LastExecTime == _defaultExecutionTime
+                                ? today
+                                : (a.LastExecTime.HasValue ? a.LastExecTime.Value.AddDays((double)days) : today);
+                        }
 
-        //                // Загружаем выполнение для текущей смены
-        //                var execution = await db.TOExecutions
-        //                    .AsNoTracking()
-        //                    .Where(e => e.AssignmentId == a.Id && e.DueDateTime == shiftStart)
-        //                    .Select(e => new { e.Status, e.ExecutionTime })
-        //                    .FirstOrDefaultAsync()
-        //                    .ConfigureAwait(false);
+                        // Загружаем выполнение для текущей смены
+                        var execution = await db.TOExecutions
+                            .AsNoTracking()
+                            .Where(e => e.AssignmentId == a.Id && e.DueDateTime == shiftStart)
+                            .Select(e => new { e.Status, e.ExecutionTime })
+                            .FirstOrDefaultAsync()
+                            .ConfigureAwait(false);
 
-        //                if (a.FreqId == 1 || nextDue <= now)
-        //                {
-        //                    if (execution == null)
-        //                    {
-        //                        requiredTasksCount++;
-        //                        _logger.LogInformation("Task AssignmentId={AssignmentId} requires execution: FreqId={FreqId}, NextDue={NextDue}", a.Id, a.FreqId, nextDue);
-        //                    }
-        //                    else if (execution.Status == 1)
-        //                    {
-        //                        initialCompleted++;
-        //                    }
-        //                    else if (execution.Status == 2)
-        //                    {
-        //                        initialCanceled++;
-        //                    }
-        //                }
-        //            }
+                        if (a.FreqId == 1 || nextDue <= now)
+                        {
+                            if (execution == null)
+                            {
+                                requiredTasksCount++;
+                                _logger.LogInformation("Task AssignmentId={AssignmentId} requires execution: FreqId={FreqId}, NextDue={NextDue}", a.Id, a.FreqId, nextDue);
+                            }
+                            else if (execution.Status == 1)
+                            {
+                                initialCompleted++;
+                            }
+                            else if (execution.Status == 2)
+                            {
+                                initialCanceled++;
+                            }
+                        }
+                    }
 
-        //            // Устанавливаем fixedRequiredTasksCount после всего цикла
-        //            fixedRequiredTasksCount = requiredTasksCount + initialCompleted + initialCanceled;
-        //            _fixedRequiredTasksCountCache[shiftStart] = fixedRequiredTasksCount;
-        //            _logger.LogInformation("Initialized FixedRequiredTasksCount={FixedRequiredTasksCount} for shiftStart={ShiftStart}", fixedRequiredTasksCount, shiftStart);
-        //        }
-        //        else
-        //        {
-        //            fixedRequiredTasksCount = _fixedRequiredTasksCountCache[shiftStart];
-        //            _logger.LogInformation("Using cached FixedRequiredTasksCount={FixedRequiredTasksCount} for shiftStart={ShiftStart}", fixedRequiredTasksCount, shiftStart);
-        //        }
+                    // Устанавливаем fixedRequiredTasksCount после всего цикла
+                    fixedRequiredTasksCount = requiredTasksCount + initialCompleted + initialCanceled;
+                    _fixedRequiredTasksCountCache[shiftStart] = fixedRequiredTasksCount;
+                    _logger.LogInformation("Initialized FixedRequiredTasksCount={FixedRequiredTasksCount} for shiftStart={ShiftStart}", fixedRequiredTasksCount, shiftStart);
+                }
+                else
+                {
+                    fixedRequiredTasksCount = _fixedRequiredTasksCountCache[shiftStart];
+                    _logger.LogInformation("Using cached FixedRequiredTasksCount={FixedRequiredTasksCount} for shiftStart={ShiftStart}", fixedRequiredTasksCount, shiftStart);
+                }
 
-        //        // Подсчёт выполненных задач (Status == 1) для текущей смены
-        //        var completedExecutions = await db.TOExecutions
-        //            .Where(e => e.DueDateTime == shiftStart && e.Status == 1)
-        //            .Join(db.TOWorkAssignments, e => e.AssignmentId, a => a.Id, (e, a) => a)
-        //            .Where(a => a.SectorId == sectorId && (a.RoleId == 1 || a.RoleId == 2))
-        //            .CountAsync()
-        //            .ConfigureAwait(false);
+                // Подсчёт выполненных задач (Status == 1) для текущей смены
+                var completedExecutions = await db.TOExecutions
+                    .Where(e => e.DueDateTime == shiftStart && e.Status == 1)
+                    .Join(db.TOWorkAssignments, e => e.AssignmentId, a => a.Id, (e, a) => a)
+                    .Where(a => a.SectorId == sectorId && (a.RoleId == 1))
+                    .CountAsync()
+                    .ConfigureAwait(false);
 
-        //        // Подсчёт отменённых задач (Status == 2) для текущей смены
-        //        var canceledExecutions = await db.TOExecutions
-        //            .Where(e => e.DueDateTime == shiftStart && e.Status == 2)
-        //            .Join(db.TOWorkAssignments, e => e.AssignmentId, a => a.Id, (e, a) => a)
-        //            .Where(a => a.SectorId == sectorId && (a.RoleId == 1 || a.RoleId == 2))
-        //            .CountAsync()
-        //            .ConfigureAwait(false);
+                // Подсчёт отменённых задач (Status == 2) для текущей смены
+                var canceledExecutions = await db.TOExecutions
+                    .Where(e => e.DueDateTime == shiftStart && e.Status == 2)
+                    .Join(db.TOWorkAssignments, e => e.AssignmentId, a => a.Id, (e, a) => a)
+                    .Where(a => a.SectorId == sectorId && (a.RoleId == 1))
+                    .CountAsync()
+                    .ConfigureAwait(false);
 
-        //        // Смена завершена, если количество выполненных и отменённых задач равно или больше количеству требуемых задач
-        //        var isComplete = (completedExecutions + canceledExecutions) >= fixedRequiredTasksCount && requiredTasksCount == 0;
-        //        _logger.LogInformation("Shift completion check: RequiredTasksCount={RequiredTasksCount}, FixedRequiredTasksCount={FixedRequiredTasksCount}, Completed={Completed}, Canceled={Canceled}, IsComplete={IsComplete}",
-        //            requiredTasksCount, fixedRequiredTasksCount, completedExecutions, canceledExecutions, isComplete);
+                // Смена завершена, если количество выполненных и отменённых задач равно или больше количеству требуемых задач
+                var isComplete = (completedExecutions + canceledExecutions) >= fixedRequiredTasksCount && requiredTasksCount == 0;
+                _logger.LogInformation("Shift completion check: RequiredTasksCount={RequiredTasksCount}, FixedRequiredTasksCount={FixedRequiredTasksCount}, Completed={Completed}, Canceled={Canceled}, IsComplete={IsComplete}",
+                    requiredTasksCount, fixedRequiredTasksCount, completedExecutions, canceledExecutions, isComplete);
 
-        //        return isComplete;
-        //    }
-        //    catch (SqlException ex) when (ex.Number == -2146232060) // Ошибка недоверенного сертификата
-        //    {
-        //        _logger.LogError(ex, "SSL certificate error connecting to database for shiftStart={ShiftStart}. Check TrustServerCertificate or install trusted certificate.", shiftStart);
-        //        Dispatcher.Invoke(() => MessageBox.Show("Ошибка подключения к базе данных: недоверенный SSL-сертификат. Обратитесь к администратору.", "Ошибка", MessageBoxButton.OK, MessageBoxImage.Error));
-        //        return false;
-        //    }
-        //    catch (Exception ex)
-        //    {
-        //        //_logger.LogError(ex, "Error checking shift completion for shiftStart={ShiftStart}. SQL query: {Query}", assignmentsQuery.ToQueryString(), shiftStart);
-        //        Dispatcher.Invoke(() => MessageBox.Show($"Ошибка проверки завершения смены: {ex.Message}", "Ошибка", MessageBoxButton.OK, MessageBoxImage.Error));
-        //        return false;
-        //    }
-        //}
+                return isComplete;
+            }
+            catch (SqlException ex) when (ex.Number == -2146232060) // Ошибка недоверенного сертификата
+            {
+                _logger.LogError(ex, "SSL certificate error connecting to database for shiftStart={ShiftStart}. Check TrustServerCertificate or install trusted certificate.", shiftStart);
+                Dispatcher.Invoke(() => MessageBox.Show("Ошибка подключения к базе данных: недоверенный SSL-сертификат. Обратитесь к администратору.", "Ошибка", MessageBoxButton.OK, MessageBoxImage.Error));
+                return false;
+            }
+            catch (Exception ex)
+            {
+                //_logger.LogError(ex, "Error checking shift completion for shiftStart={ShiftStart}. SQL query: {Query}", assignmentsQuery.ToQueryString(), shiftStart);
+                Dispatcher.Invoke(() => MessageBox.Show($"Ошибка проверки завершения смены: {ex.Message}", "Ошибка", MessageBoxButton.OK, MessageBoxImage.Error));
+                return false;
+            }
+        }
         private bool TryConnectToPLC()
         {
             System.Diagnostics.Debug.WriteLine("MainWindow: Попытка подключения к PLC...");
@@ -814,7 +814,7 @@ namespace Bucking_Unit_App.Views
             int retryDelayMs = 1000;
             for (int i = 0; i < maxRetries; i++)
             {
-                int result = s7Client.ConnectTo("192.168.0.200", 0, 1);
+                int result = s7Client.ConnectTo("192.168.11.241", 0, 1);
                 if (result == 0)
                 {
                     System.Diagnostics.Debug.WriteLine("MainWindow: Успешное подключение к PLC.");
