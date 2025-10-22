@@ -7,6 +7,22 @@
       "RelativeMoniker": "D:0:0:{08C6461E-F5D0-410F-9E8E-BC3E1A7EDBE3}|Bucking_Unit_App\\Bucking_Unit_App.csproj|solutionrelative:bucking_unit_app\\views\\mainwindow.xaml.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
     },
     {
+      "AbsoluteMoniker": "D:0:0:{08C6461E-F5D0-410F-9E8E-BC3E1A7EDBE3}|Bucking_Unit_App\\Bucking_Unit_App.csproj|c:\\users\\z.maraktaev\\source\\repos\\bucking_unit_app\\bucking_unit_app\\services\\operatorservice.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
+      "RelativeMoniker": "D:0:0:{08C6461E-F5D0-410F-9E8E-BC3E1A7EDBE3}|Bucking_Unit_App\\Bucking_Unit_App.csproj|solutionrelative:bucking_unit_app\\services\\operatorservice.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{08C6461E-F5D0-410F-9E8E-BC3E1A7EDBE3}|Bucking_Unit_App\\Bucking_Unit_App.csproj|c:\\users\\z.maraktaev\\source\\repos\\bucking_unit_app\\bucking_unit_app\\interfaces\\dataaccesslayer.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
+      "RelativeMoniker": "D:0:0:{08C6461E-F5D0-410F-9E8E-BC3E1A7EDBE3}|Bucking_Unit_App\\Bucking_Unit_App.csproj|solutionrelative:bucking_unit_app\\interfaces\\dataaccesslayer.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{08C6461E-F5D0-410F-9E8E-BC3E1A7EDBE3}|Bucking_Unit_App\\Bucking_Unit_App.csproj|c:\\users\\z.maraktaev\\source\\repos\\bucking_unit_app\\bucking_unit_app\\models\\employee1cmodel.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
+      "RelativeMoniker": "D:0:0:{08C6461E-F5D0-410F-9E8E-BC3E1A7EDBE3}|Bucking_Unit_App\\Bucking_Unit_App.csproj|solutionrelative:bucking_unit_app\\models\\employee1cmodel.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{08C6461E-F5D0-410F-9E8E-BC3E1A7EDBE3}|Bucking_Unit_App\\Bucking_Unit_App.csproj|c:\\users\\z.maraktaev\\source\\repos\\bucking_unit_app\\bucking_unit_app\\services\\statsservice.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
+      "RelativeMoniker": "D:0:0:{08C6461E-F5D0-410F-9E8E-BC3E1A7EDBE3}|Bucking_Unit_App\\Bucking_Unit_App.csproj|solutionrelative:bucking_unit_app\\services\\statsservice.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
+    },
+    {
       "AbsoluteMoniker": "D:0:0:{08C6461E-F5D0-410F-9E8E-BC3E1A7EDBE3}|Bucking_Unit_App\\Bucking_Unit_App.csproj|c:\\users\\z.maraktaev\\source\\repos\\bucking_unit_app\\bucking_unit_app\\appsettings.json||{90A6B3A7-C1A3-4009-A288-E2FF89E96FA0}",
       "RelativeMoniker": "D:0:0:{08C6461E-F5D0-410F-9E8E-BC3E1A7EDBE3}|Bucking_Unit_App\\Bucking_Unit_App.csproj|solutionrelative:bucking_unit_app\\appsettings.json||{90A6B3A7-C1A3-4009-A288-E2FF89E96FA0}"
     },
@@ -19,10 +35,6 @@
       "RelativeMoniker": "D:0:0:{08C6461E-F5D0-410F-9E8E-BC3E1A7EDBE3}|Bucking_Unit_App\\Bucking_Unit_App.csproj|solutionrelative:bucking_unit_app\\views\\mainwindow.xaml||{F11ACC28-31D1-4C80-A34B-F4E09D3D753C}"
     },
     {
-      "AbsoluteMoniker": "D:0:0:{08C6461E-F5D0-410F-9E8E-BC3E1A7EDBE3}|Bucking_Unit_App\\Bucking_Unit_App.csproj|c:\\users\\z.maraktaev\\source\\repos\\bucking_unit_app\\bucking_unit_app\\interfaces\\dataaccesslayer.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
-      "RelativeMoniker": "D:0:0:{08C6461E-F5D0-410F-9E8E-BC3E1A7EDBE3}|Bucking_Unit_App\\Bucking_Unit_App.csproj|solutionrelative:bucking_unit_app\\interfaces\\dataaccesslayer.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
-    },
-    {
       "AbsoluteMoniker": "D:0:0:{08C6461E-F5D0-410F-9E8E-BC3E1A7EDBE3}|Bucking_Unit_App\\Bucking_Unit_App.csproj|c:\\users\\z.maraktaev\\source\\repos\\bucking_unit_app\\bucking_unit_app\\app.xaml.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
       "RelativeMoniker": "D:0:0:{08C6461E-F5D0-410F-9E8E-BC3E1A7EDBE3}|Bucking_Unit_App\\Bucking_Unit_App.csproj|solutionrelative:bucking_unit_app\\app.xaml.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
     },
@@ -31,20 +43,12 @@
       "RelativeMoniker": "D:0:0:{08C6461E-F5D0-410F-9E8E-BC3E1A7EDBE3}|Bucking_Unit_App\\Bucking_Unit_App.csproj|solutionrelative:bucking_unit_app\\models\\inspectionworkmodels\\workassignment.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
     },
     {
-      "AbsoluteMoniker": "D:0:0:{08C6461E-F5D0-410F-9E8E-BC3E1A7EDBE3}|Bucking_Unit_App\\Bucking_Unit_App.csproj|c:\\users\\z.maraktaev\\source\\repos\\bucking_unit_app\\bucking_unit_app\\services\\operatorservice.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
-      "RelativeMoniker": "D:0:0:{08C6461E-F5D0-410F-9E8E-BC3E1A7EDBE3}|Bucking_Unit_App\\Bucking_Unit_App.csproj|solutionrelative:bucking_unit_app\\services\\operatorservice.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
-    },
-    {
       "AbsoluteMoniker": "D:0:0:{08C6461E-F5D0-410F-9E8E-BC3E1A7EDBE3}|Bucking_Unit_App\\Bucking_Unit_App.csproj|c:\\users\\z.maraktaev\\source\\repos\\bucking_unit_app\\bucking_unit_app\\app.xaml||{F11ACC28-31D1-4C80-A34B-F4E09D3D753C}",
       "RelativeMoniker": "D:0:0:{08C6461E-F5D0-410F-9E8E-BC3E1A7EDBE3}|Bucking_Unit_App\\Bucking_Unit_App.csproj|solutionrelative:bucking_unit_app\\app.xaml||{F11ACC28-31D1-4C80-A34B-F4E09D3D753C}"
     },
     {
       "AbsoluteMoniker": "D:0:0:{08C6461E-F5D0-410F-9E8E-BC3E1A7EDBE3}|Bucking_Unit_App\\Bucking_Unit_App.csproj|c:\\users\\z.maraktaev\\source\\repos\\bucking_unit_app\\bucking_unit_app\\views\\gradientbackgroundconverter.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
       "RelativeMoniker": "D:0:0:{08C6461E-F5D0-410F-9E8E-BC3E1A7EDBE3}|Bucking_Unit_App\\Bucking_Unit_App.csproj|solutionrelative:bucking_unit_app\\views\\gradientbackgroundconverter.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
-    },
-    {
-      "AbsoluteMoniker": "D:0:0:{08C6461E-F5D0-410F-9E8E-BC3E1A7EDBE3}|Bucking_Unit_App\\Bucking_Unit_App.csproj|c:\\users\\z.maraktaev\\source\\repos\\bucking_unit_app\\bucking_unit_app\\services\\statsservice.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
-      "RelativeMoniker": "D:0:0:{08C6461E-F5D0-410F-9E8E-BC3E1A7EDBE3}|Bucking_Unit_App\\Bucking_Unit_App.csproj|solutionrelative:bucking_unit_app\\services\\statsservice.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
     },
     {
       "AbsoluteMoniker": "D:0:0:{08C6461E-F5D0-410F-9E8E-BC3E1A7EDBE3}|Bucking_Unit_App\\Bucking_Unit_App.csproj|c:\\users\\z.maraktaev\\source\\repos\\bucking_unit_app\\bucking_unit_app\\models\\comcontrollerparamsmodel.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
@@ -58,7 +62,7 @@
       "DocumentGroups": [
         {
           "DockedHeight": 356,
-          "SelectedChildIndex": 8,
+          "SelectedChildIndex": 9,
           "Children": [
             {
               "$type": "Bookmark",
@@ -66,7 +70,19 @@
             },
             {
               "$type": "Document",
-              "DocumentIndex": 6,
+              "DocumentIndex": 3,
+              "Title": "Employee1CModel.cs",
+              "DocumentMoniker": "C:\\Users\\z.maraktaev\\source\\repos\\Bucking_Unit_App\\Bucking_Unit_App\\Models\\Employee1CModel.cs",
+              "RelativeDocumentMoniker": "Bucking_Unit_App\\Models\\Employee1CModel.cs",
+              "ToolTip": "C:\\Users\\z.maraktaev\\source\\repos\\Bucking_Unit_App\\Bucking_Unit_App\\Models\\Employee1CModel.cs",
+              "RelativeToolTip": "Bucking_Unit_App\\Models\\Employee1CModel.cs",
+              "ViewState": "AgIAAAAAAAAAAAAAAAAqwAUAAAARAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
+              "WhenOpened": "2025-10-21T10:44:58.356Z"
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 9,
               "Title": "WorkAssignment.cs",
               "DocumentMoniker": "C:\\Users\\z.maraktaev\\source\\repos\\Bucking_Unit_App\\Bucking_Unit_App\\Models\\InspectionWorkModels\\WorkAssignment.cs",
               "RelativeDocumentMoniker": "Bucking_Unit_App\\Models\\InspectionWorkModels\\WorkAssignment.cs",
@@ -78,7 +94,7 @@
             },
             {
               "$type": "Document",
-              "DocumentIndex": 9,
+              "DocumentIndex": 11,
               "Title": "GradientBackgroundConverter.cs",
               "DocumentMoniker": "C:\\Users\\z.maraktaev\\source\\repos\\Bucking_Unit_App\\Bucking_Unit_App\\Views\\GradientBackgroundConverter.cs",
               "RelativeDocumentMoniker": "Bucking_Unit_App\\Views\\GradientBackgroundConverter.cs",
@@ -90,19 +106,19 @@
             },
             {
               "$type": "Document",
-              "DocumentIndex": 7,
+              "DocumentIndex": 1,
               "Title": "OperatorService.cs",
               "DocumentMoniker": "C:\\Users\\z.maraktaev\\source\\repos\\Bucking_Unit_App\\Bucking_Unit_App\\Services\\OperatorService.cs",
               "RelativeDocumentMoniker": "Bucking_Unit_App\\Services\\OperatorService.cs",
               "ToolTip": "C:\\Users\\z.maraktaev\\source\\repos\\Bucking_Unit_App\\Bucking_Unit_App\\Services\\OperatorService.cs",
               "RelativeToolTip": "Bucking_Unit_App\\Services\\OperatorService.cs",
-              "ViewState": "AgIAADUAAAAAAAAAAAAiwD4AAABFAAAAAAAAAA==",
+              "ViewState": "AgIAACYAAAAAAAAAAAAtwEIAAAAfAAAAAAAAAA==",
               "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
               "WhenOpened": "2025-10-02T10:21:40.743Z"
             },
             {
               "$type": "Document",
-              "DocumentIndex": 1,
+              "DocumentIndex": 5,
               "Title": "appsettings.json",
               "DocumentMoniker": "C:\\Users\\z.maraktaev\\source\\repos\\Bucking_Unit_App\\Bucking_Unit_App\\appsettings.json",
               "RelativeDocumentMoniker": "Bucking_Unit_App\\appsettings.json",
@@ -114,7 +130,7 @@
             },
             {
               "$type": "Document",
-              "DocumentIndex": 11,
+              "DocumentIndex": 12,
               "Title": "COMControllerParamsModel.cs",
               "DocumentMoniker": "C:\\Users\\z.maraktaev\\source\\repos\\Bucking_Unit_App\\Bucking_Unit_App\\Models\\COMControllerParamsModel.cs",
               "RelativeDocumentMoniker": "Bucking_Unit_App\\Models\\COMControllerParamsModel.cs",
@@ -126,7 +142,7 @@
             },
             {
               "$type": "Document",
-              "DocumentIndex": 2,
+              "DocumentIndex": 6,
               "Title": "COMController.cs",
               "DocumentMoniker": "C:\\Users\\z.maraktaev\\source\\repos\\Bucking_Unit_App\\Bucking_Unit_App\\Controllers\\COM Controller\\COMController.cs",
               "RelativeDocumentMoniker": "Bucking_Unit_App\\Controllers\\COM Controller\\COMController.cs",
@@ -138,7 +154,7 @@
             },
             {
               "$type": "Document",
-              "DocumentIndex": 8,
+              "DocumentIndex": 10,
               "Title": "App.xaml",
               "DocumentMoniker": "C:\\Users\\z.maraktaev\\source\\repos\\Bucking_Unit_App\\Bucking_Unit_App\\App.xaml",
               "RelativeDocumentMoniker": "Bucking_Unit_App\\App.xaml",
@@ -155,38 +171,38 @@
               "RelativeDocumentMoniker": "Bucking_Unit_App\\Views\\MainWindow.xaml.cs",
               "ToolTip": "C:\\Users\\z.maraktaev\\source\\repos\\Bucking_Unit_App\\Bucking_Unit_App\\Views\\MainWindow.xaml.cs",
               "RelativeToolTip": "Bucking_Unit_App\\Views\\MainWindow.xaml.cs",
-              "ViewState": "AgIAAAIDAAAAAAAAAAAAAPQCAAAdAAAAAAAAAA==",
+              "ViewState": "AgIAAFgDAAAAAAAAAAAIwI4DAAAiAAAAAAAAAA==",
               "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
               "WhenOpened": "2025-06-18T11:33:54.312Z",
               "EditorCaption": ""
             },
             {
               "$type": "Document",
-              "DocumentIndex": 4,
+              "DocumentIndex": 2,
               "Title": "DataAccessLayer.cs",
               "DocumentMoniker": "C:\\Users\\z.maraktaev\\source\\repos\\Bucking_Unit_App\\Bucking_Unit_App\\Interfaces\\DataAccessLayer.cs",
               "RelativeDocumentMoniker": "Bucking_Unit_App\\Interfaces\\DataAccessLayer.cs",
               "ToolTip": "C:\\Users\\z.maraktaev\\source\\repos\\Bucking_Unit_App\\Bucking_Unit_App\\Interfaces\\DataAccessLayer.cs",
               "RelativeToolTip": "Bucking_Unit_App\\Interfaces\\DataAccessLayer.cs",
-              "ViewState": "AgIAAAAAAAAAAAAAAAAAABUAAAAxAAAAAAAAAA==",
+              "ViewState": "AgIAAHwAAAAAAAAAAAAtwJkAAAArAAAAAAAAAA==",
               "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
               "WhenOpened": "2025-06-25T12:04:47.064Z"
             },
             {
               "$type": "Document",
-              "DocumentIndex": 10,
+              "DocumentIndex": 4,
               "Title": "StatsService.cs",
               "DocumentMoniker": "C:\\Users\\z.maraktaev\\source\\repos\\Bucking_Unit_App\\Bucking_Unit_App\\Services\\StatsService.cs",
               "RelativeDocumentMoniker": "Bucking_Unit_App\\Services\\StatsService.cs",
               "ToolTip": "C:\\Users\\z.maraktaev\\source\\repos\\Bucking_Unit_App\\Bucking_Unit_App\\Services\\StatsService.cs",
               "RelativeToolTip": "Bucking_Unit_App\\Services\\StatsService.cs",
-              "ViewState": "AgIAACMAAAAAAAAAAAAUwDcAAAAQAAAAAAAAAA==",
+              "ViewState": "AgIAABoAAAAAAAAAAAAIwDkAAAAIAAAAAAAAAA==",
               "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
               "WhenOpened": "2025-06-25T12:06:22.286Z"
             },
             {
               "$type": "Document",
-              "DocumentIndex": 3,
+              "DocumentIndex": 7,
               "Title": "MainWindow.xaml",
               "DocumentMoniker": "C:\\Users\\z.maraktaev\\source\\repos\\Bucking_Unit_App\\Bucking_Unit_App\\Views\\MainWindow.xaml",
               "RelativeDocumentMoniker": "Bucking_Unit_App\\Views\\MainWindow.xaml",
@@ -197,7 +213,7 @@
             },
             {
               "$type": "Document",
-              "DocumentIndex": 5,
+              "DocumentIndex": 8,
               "Title": "App.xaml.cs",
               "DocumentMoniker": "C:\\Users\\z.maraktaev\\source\\repos\\Bucking_Unit_App\\Bucking_Unit_App\\App.xaml.cs",
               "RelativeDocumentMoniker": "Bucking_Unit_App\\App.xaml.cs",

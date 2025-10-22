@@ -99,6 +99,7 @@ namespace Bucking_Unit_App.Views
         // Поле класса для хранения fixedRequiredTasksCount с привязкой к shiftStart
         private static readonly Dictionary<DateTime, int> _fixedRequiredTasksCountCache = new();
         private List<(int Hour, int Minute)> _shiftStartHoursCache = new List<(int Hour, int Minute)>(); // Кэш часов и минут смен
+        int? roleId = null;
         public MainWindow(IConfiguration configuration, IDbContextFactory<YourDbContext> dbFactory, ILogger<MainWindow> logger, OperatorService operatorService, StatsService statsService, COMController comController, IStatsRepository statsRepository)
         {
             InitializeComponent();
@@ -258,7 +259,7 @@ namespace Bucking_Unit_App.Views
                             if (_isShiftCompleted)
                             {
                                 _logger.LogInformation("Shift completed at {Now} for {ShiftStart}. Closing InspectionWorkApp and unblocking app.", now, shiftStart);
-                                CloseInspectionWorkApp();
+                                await CloseInspectionWorkAppAsync();
                                 UnblockApp();
                                 _lastShiftAppLaunch = null;
                                 _currentShiftStart = default;
@@ -315,44 +316,123 @@ namespace Bucking_Unit_App.Views
                 _logger.LogError(ex, "Failed to show taskbar.");
             }
         }
-        private void CloseInspectionWorkApp()
+        private async Task CloseInspectionWorkAppAsync()
         {
             try
             {
                 const string processName = "InspectionWorkApp";
-                var processes = Process.GetProcessesByName(processName);
-                if (processes.Length > 0)
+                const int maxWaitTimeMs = 30000; // 30 секунд максимального ожидания
+                const int checkIntervalMs = 1000; // Проверяем каждую секунду
+
+                _logger.LogInformation("Waiting for InspectionWorkApp to start...");
+
+                // Ждем запуска процесса
+                List<Process> processesToClose = new List<Process>();
+                int elapsedTime = 0;
+
+                while (elapsedTime < maxWaitTimeMs)
                 {
-                    foreach (var process in processes)
+                    var currentProcesses = Process.GetProcessesByName(processName);
+                    if (currentProcesses.Length > 0)
                     {
-                        if (!process.HasExited)
+                        _logger.LogInformation("Found {Count} instance(s) of InspectionWorkApp.", currentProcesses.Length);
+
+                        // Добавляем только живые процессы
+                        foreach (var proc in currentProcesses)
                         {
-                            // Устанавливаем фокус на окно процесса
+                            try
+                            {
+                                if (!proc.HasExited)
+                                {
+                                    processesToClose.Add(proc);
+                                }
+                                else
+                                {
+                                    proc.Dispose();
+                                }
+                            }
+                            catch
+                            {
+                                // Игнорируем ошибки при проверке процесса
+                                proc?.Dispose();
+                            }
+                        }
+                        break;
+                    }
+
+                    await Task.Delay(checkIntervalMs);
+                    elapsedTime += checkIntervalMs;
+                }
+
+                if (processesToClose.Count == 0)
+                {
+                    _logger.LogWarning("InspectionWorkApp did not start within {MaxWaitTime} seconds.", maxWaitTimeMs / 1000);
+                    return;
+                }
+
+                // Закрываем все найденные процессы
+                foreach (var process in processesToClose)
+                {
+                    try
+                    {
+                        // Дополнительная проверка перед использованием
+                        if (process == null || process.HasExited)
+                        {
+                            _logger.LogDebug("Process already exited or is null.");
+                            continue;
+                        }
+
+                        // Проверяем MainWindowHandle
+                        if (process.MainWindowHandle == IntPtr.Zero)
+                        {
+                            _logger.LogWarning("Process ID {ProcessId} has no main window handle.", process.Id);
+                        }
+                        else
+                        {
+                            // Отправляем Esc
                             SendMessage(process.MainWindowHandle, WM_KEYDOWN, (IntPtr)VK_ESCAPE, IntPtr.Zero);
                             SendMessage(process.MainWindowHandle, WM_KEYUP, (IntPtr)VK_ESCAPE, IntPtr.Zero);
                             _logger.LogInformation("Sent Esc key to InspectionWorkApp process ID {ProcessId}.", process.Id);
-                            if (!process.WaitForExit(2000)) // Ждём 5 секунд
-                            {
-                                ShowTaskbar();
-                                process.Kill(); // Принудительно завершаем, если не закрылось
-                                _logger.LogWarning("InspectionWorkApp process ID {ProcessId} did not close gracefully and was terminated.", process.Id);
-                            }
-                            else
-                            {
-                                _logger.LogInformation("InspectionWorkApp process ID {ProcessId} closed successfully.", process.Id);
-                            }
                         }
-                        process.Dispose();
+
+                        // Ждем закрытия
+                        if (!process.WaitForExit(2000))
+                        {
+                            ShowTaskbar();
+                            process.Kill();
+                            _logger.LogWarning("InspectionWorkApp process ID {ProcessId} did not close gracefully and was terminated.", process.Id);
+                        }
+                        else
+                        {
+                            _logger.LogInformation("InspectionWorkApp process ID {ProcessId} closed successfully.", process.Id);
+                        }
+                    }
+                    catch (InvalidOperationException ioEx) when (ioEx.Message.Contains("No process is associated"))
+                    {
+                        _logger.LogDebug("Process ID {ProcessId} became invalid during closing.", process.Id);
+                    }
+                    catch (Exception procEx)
+                    {
+                        _logger.LogError(procEx, "Error closing InspectionWorkApp process ID {ProcessId}.", process.Id);
+                    }
+                    finally
+                    {
+                        try
+                        {
+                            process?.Dispose();
+                        }
+                        catch
+                        {
+                            // Игнорируем ошибки Dispose
+                        }
                     }
                 }
-                else
-                {
-                    _logger.LogInformation("No running instances of InspectionWorkApp found.");
-                }
+
+                _logger.LogInformation("All instances of InspectionWorkApp closed successfully.");
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Error closing InspectionWorkApp.");
+                _logger.LogError(ex, "Error in CloseInspectionWorkAppAsync.");
                 Dispatcher.Invoke(() =>
                 {
                     MessageBox.Show($"Ошибка при закрытии InspectionWorkApp: {ex.Message}", "Ошибка", MessageBoxButton.OK, MessageBoxImage.Error);
@@ -661,8 +741,44 @@ namespace Bucking_Unit_App.Views
                 var now = DateTime.Now;
                 var today = now.Date;
                 var sectorId = 8;  // Hardcoded SectorId=8
-                //var roleIds = new List<int> { 1, 2 };  // Явно создаём список вместо массива
+                try
+                {
+                    using var connection = new SqlConnection(_ConnectionString);
+                    await connection.OpenAsync();
 
+                    // Добавьте проверку на null перед использованием CurrentOperator
+                    if (_operatorService.CurrentOperator == null || string.IsNullOrEmpty(_operatorService.CurrentOperator.PersonnelNumber))
+                    {
+                        _logger.LogWarning("CurrentOperator or PersonnelNumber is null (no card in reader). Using default roleId=1.");
+                        roleId = 1;  // Значение по умолчанию, если оператор не аутентифицирован
+                    }
+                    else
+                    {
+                        using var command = new SqlCommand(
+                            "SELECT TORoleId FROM Pilot.dbo.dic_SKUD WHERE TabNumber=@tabnumber",
+                            connection);
+                        command.Parameters.AddWithValue("@tabnumber", _operatorService.CurrentOperator.PersonnelNumber);
+
+                        var result = await command.ExecuteScalarAsync();
+
+                        if (result != null && result != DBNull.Value)
+                        {
+                            roleId = Convert.ToInt32(result);  // Преобразуем в int
+                        }
+                        else
+                        {
+                            roleId = 1; // Значение по умолчанию, если роль не найдена
+                            _logger.LogWarning("Роль не найдена для TabNumber: {TabNumber}", _operatorService.CurrentOperator?.PersonnelNumber);
+                        }
+                        _logger.LogInformation("Текущая роль оператора:{roleId}, {_operatorService.CurrentOperator.PersonnelNumber}", roleId, _operatorService.CurrentOperator.PersonnelNumber);
+                    }
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogError(ex, "Ошибка получения роли оператора из базы Pilot.dbo.dic_SKUD");
+                    Dispatcher.Invoke(() => MessageBox.Show($"Ошибка получения роли оператора: {ex.Message}", "Ошибка", MessageBoxButton.OK, MessageBoxImage.Error));
+                    return false;
+                }
                 // Загружаем частоты отдельно
                 var frequencies = await db.TOWorkFrequencies
                     .AsNoTracking()
@@ -685,7 +801,7 @@ namespace Bucking_Unit_App.Views
                 // Упрощённый запрос с явным указанием RoleId в WHERE
                 var assignmentsQuery = db.TOWorkAssignments
                     .AsNoTracking()
-                    .Where(a => !a.IsCanceled && a.SectorId == sectorId && (a.RoleId == 1))
+                    .Where(a => !a.IsCanceled && a.SectorId == sectorId && (a.RoleId == roleId))
                     .Select(a => new
                     {
                         a.Id,
@@ -775,7 +891,7 @@ namespace Bucking_Unit_App.Views
                 var completedExecutions = await db.TOExecutions
                     .Where(e => e.DueDateTime == shiftStart && e.Status == 1)
                     .Join(db.TOWorkAssignments, e => e.AssignmentId, a => a.Id, (e, a) => a)
-                    .Where(a => a.SectorId == sectorId && (a.RoleId == 1))
+                    .Where(a => a.SectorId == sectorId && (a.RoleId == roleId))
                     .CountAsync()
                     .ConfigureAwait(false);
 
@@ -783,7 +899,7 @@ namespace Bucking_Unit_App.Views
                 var canceledExecutions = await db.TOExecutions
                     .Where(e => e.DueDateTime == shiftStart && e.Status == 2)
                     .Join(db.TOWorkAssignments, e => e.AssignmentId, a => a.Id, (e, a) => a)
-                    .Where(a => a.SectorId == sectorId && (a.RoleId == 1))
+                    .Where(a => a.SectorId == sectorId && (a.RoleId == roleId))
                     .CountAsync()
                     .ConfigureAwait(false);
 
