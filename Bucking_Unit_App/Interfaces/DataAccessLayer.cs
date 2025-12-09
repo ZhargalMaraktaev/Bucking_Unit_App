@@ -803,8 +803,7 @@ WITH ShiftIntervals AS (
         AND [DateTime] <= @PeriodEnd
         AND Smena IN (1, 2, 3, 4)
         AND [DateTime] IS NOT NULL
-        AND Smena = dbo.SmenaNOT([DateTime])
-        AND [Plan] IS NOT NULL
+
 ),
 PlanDurations AS (
     SELECT 

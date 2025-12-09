@@ -36,7 +36,7 @@ namespace Bucking_Unit_App.Views
                     string factStr = values[i * 2 + 1]?.ToString();
                     if (string.IsNullOrEmpty(planStr) || string.IsNullOrEmpty(factStr))
                     {
-                        //Debug.WriteLine($"GradientBackgroundConverter: Пустое значение в строке {i} (Смена {(char)('А' + i)}). Plan: '{planStr}', Fact: '{factStr}'");
+                        Debug.WriteLine($"GradientBackgroundConverter: Пустое значение в строке {i} (Смена {(char)('А' + i)}). Plan: '{planStr}', Fact: '{factStr}'");
                         differences[i] = 0;
                         continue;
                     }
@@ -45,11 +45,11 @@ namespace Bucking_Unit_App.Views
                     {
                         differences[i] = plan - fact;
                         hasValidData = true;
-                        //Debug.WriteLine($"GradientBackgroundConverter: Строка {i} (Смена {(char)('А' + i)}), Plan={plan}, Fact={fact}, Diff={differences[i]}");
+                        Debug.WriteLine($"GradientBackgroundConverter: Строка {i} (Смена {(char)('А' + i)}), Plan={plan}, Fact={fact}, Diff={differences[i]}");
                     }
                     else
                     {
-                        //Debug.WriteLine($"GradientBackgroundConverter: Не удалось преобразовать в double в строке {i} (Смена {(char)('А' + i)}). Plan: '{planStr}', Fact: '{factStr}'");
+                        Debug.WriteLine($"GradientBackgroundConverter: Не удалось преобразовать в double в строке {i} (Смена {(char)('А' + i)}). Plan: '{planStr}', Fact: '{factStr}'");
                         differences[i] = 0;
                     }
                 }
@@ -82,7 +82,7 @@ namespace Bucking_Unit_App.Views
                     byte r = (byte)(255 - (255 - 139) * (1 - ratio)); // От 255 до 139
                     byte g = (byte)(245 * (1 - ratio));               // От 245 до 0
                     byte b = (byte)(245 * (1 - ratio));               // От 245 до 0
-                    //Debug.WriteLine($"GradientBackgroundConverter: Row {rowIndex} (Смена {(char)('А' + rowIndex)}), Diff={currentDiff}, Red Gradient, Color=({r},{g},{b})");
+                    Debug.WriteLine($"GradientBackgroundConverter: Row {rowIndex} (Смена {(char)('А' + rowIndex)}), Diff={currentDiff}, Red Gradient, Color=({r},{g},{b})");
                     return new SolidColorBrush(Color.FromRgb(r, g, b));
                 }
                 else
@@ -96,7 +96,7 @@ namespace Bucking_Unit_App.Views
                     byte r = (byte)(245 * (1 - ratio));               // От 245 до 0
                     byte g = (byte)(255 - (255 - 100) * (1 - ratio)); // От 255 до 100
                     byte b = (byte)(245 * (1 - ratio));               // От 245 до 0
-                    //Debug.WriteLine($"GradientBackgroundConverter: Row {rowIndex} (Смена {(char)('А' + rowIndex)}), Diff={currentDiff}, Green Gradient, Color=({r},{g},{b})");
+                    Debug.WriteLine($"GradientBackgroundConverter: Row {rowIndex} (Смена {(char)('А' + rowIndex)}), Diff={currentDiff}, Green Gradient, Color=({r},{g},{b})");
                     return new SolidColorBrush(Color.FromRgb(r, g, b));
                 }
             }

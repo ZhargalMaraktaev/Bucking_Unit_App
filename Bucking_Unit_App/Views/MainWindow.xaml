@@ -71,7 +71,7 @@
                         <Label x:Name="lblEmployName" Content="" VerticalAlignment="Center" Margin="5,0,0,0" FontSize="15"/>
                     </StackPanel>
                     <StackPanel Orientation="Horizontal" Margin="0,10,0,0">
-                        <Button x:Name="btnFixOperator" Content="Зафиксировать на смену" Click="btnFixOperator_Click" Width="200" Height="30" FontSize="14" Visibility="Collapsed"/>
+                        <Button x:Name="btnFixOperator" Content="Зафиксировать пропуск" Click="btnFixOperator_Click" Width="200" Height="30" FontSize="14" Visibility="Collapsed"/>
                         <Button x:Name="btnUnfixOperator" Content="Снять фиксацию" Click="btnUnfixOperator_Click" Width="150" Height="30" FontSize="14" Visibility="Collapsed" Margin="10,0,0,0"/>
                     </StackPanel>
                     <Label x:Name="lblFixStatus" Content="" Foreground="Green" Visibility ="Visible" HorizontalAlignment="Left" VerticalAlignment="Top" Margin="0,10,0,0" FontSize="15"/>

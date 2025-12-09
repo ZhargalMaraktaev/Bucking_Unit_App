@@ -74,8 +74,8 @@ namespace Bucking_Unit_App.Views
         private int? _currentGraphPipeCounter;
         private bool _isTextChangeProgrammatic;
         private DispatcherTimer _comStatusTimer;
-        private string _runtimeConnectionString= "Data Source=192.168.11.222,1433;Initial Catalog=Runtime;User ID=UserNotTrend;Password=NotTrend;TrustServerCertificate=True";
-        private string _ConnectionString = "Data Source=192.168.11.222,1433;Initial Catalog=Pilot;User ID=UserNotTrend;Password=NotTrend;TrustServerCertificate=True";
+        private string _runtimeConnectionString;
+        private string _ConnectionString;
         private bool? _lastScrewOnStatus;
         private DateTime? _lastScrewOnTrueTime;
         private bool _isInScrewOnWindow;
@@ -91,7 +91,7 @@ namespace Bucking_Unit_App.Views
         private DispatcherTimer _shiftTimer;
         private bool _isAppBlocked = false;
         private DateTime _currentShiftStart;
-        private const string InspectionWorkAppUrl = @"\\192.168.50.20\public\Программы АСУ ТП\Техосмотр\InspectionWorkApp.application";
+        private string InspectionWorkAppUrl=Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.Desktop), "Техосмотр.appref-ms");
         private object _originalContent; // Поле для хранения исходного содержимого окна
         private bool _isShiftCompleted; // Флаг, указывающий, завершена ли смена
         private DateTime _lastShiftCheck = DateTime.MinValue;
@@ -100,6 +100,19 @@ namespace Bucking_Unit_App.Views
         private static readonly Dictionary<DateTime, int> _fixedRequiredTasksCountCache = new();
         private List<(int Hour, int Minute)> _shiftStartHoursCache = new List<(int Hour, int Minute)>(); // Кэш часов и минут смен
         int? roleId = null;
+        private bool _isMechanicAppLaunched = false;
+        // Кэш последней статистики (чтобы показывать при потере связи)
+        private string _lastShiftItems = "";
+        private string _lastShiftDowntime = "";
+        private string _lastMonthItems = "";
+        private string _lastMonthDowntime = "";
+        private string _lastShiftPlanItems = "";
+        private string _lastMonthPlanItems = "";
+        private string PLC_Connection;
+
+        // Кэш общей статистики
+        private readonly Dictionary<int, (double Plan, int Fact, decimal Downtime)> _lastAllStats
+            = new() { { 1, (0, 0, 0) }, { 2, (0, 0, 0) }, { 3, (0, 0, 0) }, { 4, (0, 0, 0) } };
         public MainWindow(IConfiguration configuration, IDbContextFactory<YourDbContext> dbFactory, ILogger<MainWindow> logger, OperatorService operatorService, StatsService statsService, COMController comController, IStatsRepository statsRepository)
         {
             InitializeComponent();
@@ -110,9 +123,20 @@ namespace Bucking_Unit_App.Views
             _statsService = statsService ?? throw new ArgumentNullException(nameof(statsService));
             _comController = comController ?? throw new ArgumentNullException(nameof(comController));
             _statsRepository = statsRepository ?? throw new ArgumentNullException(nameof(statsRepository));
+            var config = new ConfigurationBuilder()
+                .SetBasePath(AppDomain.CurrentDomain.BaseDirectory)
+                .AddJsonFile("appsettings.json", optional: true, reloadOnChange: true)
+                .Build();
             _conn = new SqlConnection(configuration.GetConnectionString("DefaultConnection")
                 ?? "Data Source=192.168.11.222,1433;Initial Catalog=Runtime;User ID=UserNotTrend;Password=NotTrend");
-
+            _logger.LogInformation("SQL Connection initialized.{_conn}", _conn);
+            _ConnectionString = config.GetConnectionString("DefaultConnection");
+            _logger.LogInformation("MainWindow initialized with connection string: {ConnectionString}", _ConnectionString);
+            _runtimeConnectionString = config.GetConnectionString("RuntimeConnection");
+            _logger.LogInformation("Путь для приложения Техосмотр {InspectionWorkAppUrl}", InspectionWorkAppUrl);
+            _logger.LogInformation("Runtime connection string set: {RuntimeConnectionString}", _runtimeConnectionString);
+            PLC_Connection = config.GetConnectionString("PLCConnection");
+            _logger.LogInformation("PLC connection IP is {PLC_Connection}", PLC_Connection);
             _comController.StateChanged += ComController_StateChanged;
             _comController.IsReading = true;
             _operatorService.OnOperatorChanged += OperatorService_OnOperatorChanged;
@@ -278,6 +302,91 @@ namespace Bucking_Unit_App.Views
                     _logger.LogError(ex, "Task canceled while launching InspectionWorkApp for shiftStart={ShiftStart}", shiftStart);
                     Dispatcher.Invoke(() => MessageBox.Show("Ошибка запуска InspectionWorkApp: операция была отменена.", "Ошибка", MessageBoxButton.OK, MessageBoxImage.Error));
                 }
+            }
+            //await CheckMechanic();
+
+
+        }
+        private async Task CheckMechanic()
+        {
+            try
+            {
+                _isShiftCompleted = false;
+                using var connection = new SqlConnection(_ConnectionString);
+                await connection.OpenAsync();
+
+                if (_operatorService.CurrentOperator == null || string.IsNullOrEmpty(_operatorService.CurrentOperator.PersonnelNumber))
+                {
+                    _logger.LogWarning("CurrentOperator or PersonnelNumber is null (no card in reader)");
+                    return;
+                }
+
+                using var command = new SqlCommand(
+                    "SELECT TORoleId FROM Pilot.dbo.dic_SKUD WHERE TabNumber=@tabnumber",
+                    connection);
+                command.Parameters.AddWithValue("@tabnumber", _operatorService.CurrentOperator.PersonnelNumber);
+
+                var result = await command.ExecuteScalarAsync();
+
+                if (result != null && result != DBNull.Value)
+                {
+                    roleId = Convert.ToInt32(result);
+                }
+
+                _logger.LogInformation("Текущая роль оператора:{roleId}, {_operatorService.CurrentOperator.PersonnelNumber}", roleId, _operatorService.CurrentOperator.PersonnelNumber);
+
+                if (roleId == 2 && !_isMechanicAppLaunched)
+                {
+                    _isMechanicAppLaunched = true;
+
+                    var now = DateTime.Now;
+                    var today = now.Date;
+                    DateTime shiftStart;
+                    if (now.Hour >= 8 && now.Hour < 20)
+                    {
+                        shiftStart = today.AddHours(8);
+                    }
+                    else if (now.Hour >= 0 && now.Hour < 8)
+                    {
+                        shiftStart = today.AddDays(-1).AddHours(20);
+                    }
+                    else
+                    {
+                        shiftStart = today.AddHours(20);
+                    }
+
+                    _comController.IsReading = false;
+                    await LaunchInspectionWorkApp();
+                    await BlockAppUntilShiftComplete(shiftStart);
+
+                    // Добавляем цикл проверки
+                    while (!_isShiftCompleted)
+                    {
+                        try
+                        {
+                            _isShiftCompleted = await IsShiftCompleteAsync(shiftStart);
+                            if (_isShiftCompleted)
+                            {
+                                _logger.LogInformation("Shift completed at {Now} for {ShiftStart}. Closing InspectionWorkApp and unblocking app.", DateTime.Now, shiftStart);
+                                await CloseInspectionWorkAppAsync();
+                                UnblockApp();
+                                _fixedRequiredTasksCountCache.Remove(shiftStart);
+                                _isMechanicAppLaunched = false;
+                                break; // Выходим из цикла
+                            }
+                            await Task.Delay(5000); // Пауза между проверками, чтобы не нагружать
+                        }
+                        catch (Exception ex)
+                        {
+                            _logger.LogError(ex, "Error in shift completion check loop");
+                        }
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Ошибка получения роли оператора из базы Pilot.dbo.dic_SKUD");
+                Dispatcher.Invoke(() => MessageBox.Show($"Ошибка получения роли оператора. Потеряно соединение с БД проверьте соединение с сетью 192.168.0.230", "Ошибка", MessageBoxButton.OK, MessageBoxImage.Error));
             }
         }
         // Импорт WinAPI
@@ -480,7 +589,43 @@ namespace Bucking_Unit_App.Views
                 {
                     throw new FileNotFoundException($"Файл {InspectionWorkAppUrl} не найден или недоступен.");
                 }
+                // Получаем параметры оператора
+                int? roleId = null;
+                string cardNumber = null;
+                if (_operatorService.CurrentOperator != null)
+                {
+                    cardNumber = _operatorService.CurrentOperator.CardNumber;
+                    using var connection = new SqlConnection(_ConnectionString);
+                    await connection.OpenAsync();
+                    using var command = new SqlCommand(
+                        "SELECT TORoleId FROM Pilot.dbo.dic_SKUD WHERE TabNumber = @tabnumber",
+                        connection);
+                    command.Parameters.AddWithValue("@tabnumber", _operatorService.CurrentOperator.PersonnelNumber);
+                    var result = await command.ExecuteScalarAsync();
+                    if (result != null && result != DBNull.Value)
+                    {
+                        roleId = Convert.ToInt32(result);
+                    }
+                }
 
+                Guid sessionId = Guid.NewGuid();
+
+                // **ЗАПИСЫВАЕМ В БД**
+                if (roleId.HasValue && !string.IsNullOrEmpty(cardNumber))
+                {
+                    using var connection = new SqlConnection(_ConnectionString);
+                    await connection.OpenAsync();
+                    using var command = new SqlCommand(@"
+                INSERT INTO Pilot.dbo.InspectionWorkAppExchange (RoleId, CardNumber, LaunchSession)
+                VALUES (@roleId, @cardNumber, @sessionId)", connection);
+                    command.Parameters.AddWithValue("@roleId", roleId.Value);
+                    command.Parameters.AddWithValue("@cardNumber", cardNumber);
+                    command.Parameters.AddWithValue("@sessionId", sessionId);
+                    await command.ExecuteNonQueryAsync();
+
+                    _logger.LogInformation("Parameters saved to DB: RoleId={RoleId}, CardNumber={CardNumber}, Session={SessionId}",
+                        roleId, cardNumber, sessionId);
+                }
                 // Приостанавливаем чтение COM-порта
                 _comController.IsReading = false;
                 _logger.LogInformation("Paused COMController reading before launching InspectionWorkApp.");
@@ -506,6 +651,7 @@ namespace Bucking_Unit_App.Views
                     // Можно добавить MessageBox или отмену запуска
                 }
 
+                // Запускаем БЕЗ параметров
                 var process = new Process
                 {
                     StartInfo = new ProcessStartInfo
@@ -516,7 +662,7 @@ namespace Bucking_Unit_App.Views
                     }
                 };
                 process.Start();
-                _logger.LogInformation("Launched InspectionWorkApp via ClickOnce: {Url}", InspectionWorkAppUrl);
+                _logger.LogInformation("Launched InspectionWorkApp (parameters in DB, Session={SessionId})", sessionId);
             }
             catch (FileNotFoundException ex)
             {
@@ -910,16 +1056,15 @@ namespace Bucking_Unit_App.Views
 
                 return isComplete;
             }
-            catch (SqlException ex) when (ex.Number == -2146232060) // Ошибка недоверенного сертификата
+            catch (SqlException ex) when (ex.Number == 0 || ex.Number == -2 || ex.Number == -2146232060)
             {
-                _logger.LogError(ex, "SSL certificate error connecting to database for shiftStart={ShiftStart}. Check TrustServerCertificate or install trusted certificate.", shiftStart);
-                Dispatcher.Invoke(() => MessageBox.Show("Ошибка подключения к базе данных: недоверенный SSL-сертификат. Обратитесь к администратору.", "Ошибка", MessageBoxButton.OK, MessageBoxImage.Error));
+                HandleDbConnectionError("проверки завершения смены");
                 return false;
             }
             catch (Exception ex)
             {
-                //_logger.LogError(ex, "Error checking shift completion for shiftStart={ShiftStart}. SQL query: {Query}", assignmentsQuery.ToQueryString(), shiftStart);
-                Dispatcher.Invoke(() => MessageBox.Show($"Ошибка проверки завершения смены: {ex.Message}", "Ошибка", MessageBoxButton.OK, MessageBoxImage.Error));
+                _logger.LogError(ex, "Ошибка проверки смены");
+                Dispatcher.Invoke(() => MessageBox.Show("Ошибка проверки смены.", "Ошибка", MessageBoxButton.OK, MessageBoxImage.Error));
                 return false;
             }
         }
@@ -930,7 +1075,7 @@ namespace Bucking_Unit_App.Views
             int retryDelayMs = 1000;
             for (int i = 0; i < maxRetries; i++)
             {
-                int result = s7Client.ConnectTo("192.168.11.241", 0, 1);
+                int result = s7Client.ConnectTo(PLC_Connection, 0, 1);
                 if (result == 0)
                 {
                     System.Diagnostics.Debug.WriteLine("MainWindow: Успешное подключение к PLC.");
@@ -1007,7 +1152,58 @@ namespace Bucking_Unit_App.Views
                 System.Diagnostics.Debug.WriteLine($"MainWindow: Ошибка в проверке состояния подключения: {ex.Message}");
             }
         }
+        private void HandleDbConnectionError(string context = "обновления данных")
+        {
+            _logger.LogError("Потеряно соединение с базой данных при {Context}", context);
 
+            Dispatcher.Invoke(() =>
+            {
+                MessageBox.Show(
+                    "Потеряно соединение с базой данных.\nОтображается последняя доступная статистика.",
+                    "Нет связи с БД",
+                    MessageBoxButton.OK,
+                    MessageBoxImage.Warning);
+
+                // Восстанавливаем статистику из кэша
+                UpdateStatsFromCache();
+            });
+        }
+        private void UpdateStatsFromCache()
+        {
+            Dispatcher.Invoke(() =>
+            {
+                // Оператор
+                if (!string.IsNullOrEmpty(_lastShiftItems))
+                {
+                    lblShiftItems.Content = _lastShiftItems;
+                    lblShiftDowntime.Content = _lastShiftDowntime;
+                    lblMonthItems.Content = _lastMonthItems;
+                    lblMonthDowntime.Content = _lastMonthDowntime;
+                    lblShiftPlanItems.Content = _lastShiftPlanItems;
+                    lblMonthPlanItems.Content = _lastMonthPlanItems;
+                    statsDataPanel.Visibility = Visibility.Visible;
+                }
+
+                // Общая статистика
+                lblShiftAPlanItems.Content = _lastAllStats[1].Plan.ToString();
+                lblShiftAFactItems.Content = _lastAllStats[1].Fact.ToString();
+                lblShiftADowntime.Content = _lastAllStats[1].Downtime.ToString("F2");
+
+                lblShiftBPlanItems.Content = _lastAllStats[2].Plan.ToString();
+                lblShiftBFactItems.Content = _lastAllStats[2].Fact.ToString();
+                lblShiftBDowntime.Content = _lastAllStats[2].Downtime.ToString("F2");
+
+                lblShiftVPlanItems.Content = _lastAllStats[3].Plan.ToString();
+                lblShiftVFactItems.Content = _lastAllStats[3].Fact.ToString();
+                lblShiftVDowntime.Content = _lastAllStats[3].Downtime.ToString("F2");
+
+                lblShiftGPlanItems.Content = _lastAllStats[4].Plan.ToString();
+                lblShiftGFactItems.Content = _lastAllStats[4].Fact.ToString();
+                lblShiftGDowntime.Content = _lastAllStats[4].Downtime.ToString("F2");
+
+                allStatsDataPanel.Visibility = Visibility.Visible;
+            });
+        }
         private async Task StartGraphUpdateLoop(CancellationToken token)
         {
             Debug.WriteLine($"MainWindow: Цикл обновления графика начат для PipeCounter={_selectedPipeCounter}, вызван из {new StackTrace().GetFrame(1).GetMethod().Name}");
@@ -1055,13 +1251,13 @@ namespace Bucking_Unit_App.Views
                     }
                 }
             }
+
             catch (Exception ex)
             {
                 Debug.WriteLine($"MainWindow: Ошибка при проверке NOT_MN3_SCREW_ON: {ex.Message}");
                 return false; // Если ошибка, считаем процесс неактивным
             }
         }
-
         private bool _isUpdatingGraph = false;
         private CancellationTokenSource _cts;
 
@@ -1338,18 +1534,22 @@ namespace Bucking_Unit_App.Views
                     Debug.WriteLine($"MainWindow: Обновлены точки графика для PipeCounter={_selectedPipeCounter}, всего точек: {_torquePoints.Count}, xAxes[0].Labels.Count={_xAxisLabels.Count}");
                 });
             }
-            catch (Exception ex)
+            catch (Exception ex) when (ex is SqlException sqlEx && (sqlEx.Number == 0 || sqlEx.Number == -2))
             {
+                HandleDbConnectionError("построения графика");
                 Dispatcher.Invoke(() =>
                 {
-                    Debug.WriteLine($"MainWindow: Ошибка в UpdateGraphAsync: {ex.Message}\nStackTrace: {ex.StackTrace}");
-                    MessageBox.Show($"Ошибка при обновлении графика: {ex.Message}", "Ошибка", MessageBoxButton.OK, MessageBoxImage.Error);
-                    lblGraphStatus.Content = $"Ошибка отрисовки: {ex.Message}";
-                    canvasGraph.Children.Clear();
-                    _torquePoints = null;
-                    _currentChart = null;
-                    _currentGraphPipeCounter = null;
-                    _xAxisLabels = null; // Сбрасываем метки при ошибке
+                    lblGraphStatus.Content = "Нет связи с БД";
+                    //canvasGraph.Children.Clear();
+                });
+            }
+            catch (Exception ex)
+            {
+                // Обычные ошибки (не сеть)
+                Dispatcher.Invoke(() =>
+                {
+                    MessageBox.Show($"Ошибка графика: {ex.Message}", "Ошибка", MessageBoxButton.OK, MessageBoxImage.Error);
+                    lblGraphStatus.Content = "Ошибка";
                 });
             }
             finally
@@ -1471,24 +1671,21 @@ namespace Bucking_Unit_App.Views
                         }
                     }
                 }
-                catch (SqlException ex)
+                catch (SqlException sqlEx) when (sqlEx.Number == 0 || sqlEx.Number == -2)
                 {
-                    Debug.WriteLine($"MainWindow: Ошибка подключения к БД: {ex.Message}");
+                    HandleDbConnectionError("обновления крутящего момента");
                     Dispatcher.Invoke(() =>
                     {
                         foreach (var tag in tagNames)
                         {
                             var label = FindName(tag.Key) as Label;
-                            if (label != null)
-                            {
-                                label.Content = "N/A";
-                            }
+                            if (label != null) label.Content = "Нет связи";
                         }
                     });
                 }
                 catch (Exception ex)
                 {
-                    Debug.WriteLine($"MainWindow: Ошибка при чтении из БД: {ex.Message}");
+                    _logger.LogError(ex, "Ошибка чтения крутящего момента");
                 }
                 await Task.Delay(200);
             }
@@ -1576,7 +1773,7 @@ namespace Bucking_Unit_App.Views
             }
             catch (Exception ex)
             {
-                Dispatcher.Invoke(() => MessageBox.Show($"Ошибка загрузки годов из базы данных: {ex.Message}"));
+                Dispatcher.Invoke(() => MessageBox.Show($"Ошибка загрузки годов из базы данных. Потеряно соединение с БД. Проверьте соединение с сетью 192.168.0.230!"));
                 System.Diagnostics.Debug.WriteLine($"MainWindow: Ошибка загрузки годов: {ex.Message}");
             }
         }
@@ -1704,11 +1901,12 @@ namespace Bucking_Unit_App.Views
 
                     if (isOperatorFixed)
                     {
+
                         // Проверяем, совпадает ли новый CardId с зафиксированным
                         if (e.CardId != _operatorService.CurrentOperator?.CardNumber)
                         {
                             Debug.WriteLine($"MainWindow: Обнаружен новый пропуск (CardId={e.CardId}) при зафиксированном операторе — снимаем фиксацию и деаутентифицируем предыдущего.");
-
+                            
                             // Снимаем фиксацию (синхронно, но вызовет деаутентификацию асинхронно, если нужно)
                             UnfixOperator();
 
@@ -1717,6 +1915,10 @@ namespace Bucking_Unit_App.Views
                         }
                         else
                         {
+                            Dispatcher.Invoke(() =>
+                            {
+                                btnUnfixOperator.Visibility = Visibility.Visible; // ✅ Теперь безопасно
+                            });
                             Debug.WriteLine($"MainWindow: Пропуск обнаружен, но это тот же оператор (CardId={e.CardId}) — игнорируем повторную аутентификацию.");
                             return;
                         }
@@ -1726,6 +1928,7 @@ namespace Bucking_Unit_App.Views
                         // Обычная аутентификация
                         await _operatorService.AuthenticateOperatorAsync(e.CardId, true, DateTime.Now);
                         Debug.WriteLine($"MainWindow: Оператор авторизован, CardId={e.CardId}, SectorId=8");
+                        await CheckMechanic();
                     }
 
                     if (_operatorService.CurrentOperator != null)
@@ -1751,6 +1954,7 @@ namespace Bucking_Unit_App.Views
                             statsDataPanel.Visibility = Visibility.Visible;
                             txtInsertCardPrompt.Visibility = Visibility.Collapsed;
                             txtNoStatsPrompt.Visibility = Visibility.Collapsed;
+                            btnUnfixOperator.Visibility = Visibility.Collapsed;
                         }));
                         return;
                     }
@@ -1981,8 +2185,21 @@ namespace Bucking_Unit_App.Views
                                         else
                                         {
                                             txtNoStatsPrompt.Visibility = Visibility.Collapsed;
+                                            // СОХРАНЯЕМ В КЭШ
+                                            _lastShiftItems = shiftItems ?? "";
+                                            _lastShiftDowntime = shiftDowntime ?? "";
+                                            _lastMonthItems = monthItems ?? "";
+                                            _lastMonthDowntime = monthDowntime ?? "";
+                                            _lastShiftPlanItems = shiftPlan ?? "";
+                                            _lastMonthPlanItems = monthPlan ?? "";
+
+                                            // Обновляем UI
                                             lblShiftItems.Content = shiftItems;
                                             lblShiftDowntime.Content = shiftDowntime;
+                                            lblMonthItems.Content = monthItems;
+                                            lblMonthDowntime.Content = monthDowntime;
+                                            lblShiftPlanItems.Content = shiftPlan;
+                                            lblMonthPlanItems.Content = monthPlan;
                                             lblMonthItems.Content = monthItems;
                                             lblMonthDowntime.Content = monthDowntime;
                                             lblShiftPlanItems.Content = shiftPlan;
@@ -1992,14 +2209,19 @@ namespace Bucking_Unit_App.Views
                                     }
                                     catch (Exception ex)
                                     {
-                                        Debug.WriteLine($"MainWindow: StartOperatorUpdateLoop: Ошибка UI-обновления: {ex.Message}");
+                                        Debug.WriteLine($"MainWindow: {nameof(StartOperatorUpdateLoop)}: Ошибка UI-обновления: {ex.Message}");
                                     }
                                 }), DispatcherPriority.Background);
                             }).ConfigureAwait(false);
                         }
+                        catch (Exception ex) when (ex is SqlException sqlEx && (sqlEx.Number == 0 || sqlEx.Number == -2))
+                        {
+                            Debug.WriteLine("ПОТЕРЯ СОЕДИНЕНИЯ С БД — показываем кэш");
+                            HandleDbConnectionError();
+                        }
                         catch (Exception ex)
                         {
-                            Debug.WriteLine($"MainWindow: StartOperatorUpdateLoop: Ошибка при обновлении статистики: {ex.Message}");
+                            Debug.WriteLine($"MainWindow: {nameof(StartOperatorUpdateLoop)}: Ошибка при обновлении статистики: {ex.Message}");
                         }
 
                         await Task.Delay(5000, token).ConfigureAwait(false);
@@ -2067,13 +2289,13 @@ namespace Bucking_Unit_App.Views
         {
             _currentPipeUpdateCts?.Dispose();
             _currentPipeUpdateCts = new CancellationTokenSource();
-            UpdateNomenclatureAsync();
             var token = _currentPipeUpdateCts.Token;
 
             _currentPipeUpdateTask = Task.Run(async () =>
             {
                 while (!token.IsCancellationRequested)
                 {
+                    await UpdateNomenclatureAsync();
                     await UpdateCurrentPipeCounter();
                     await Task.Delay(5000, token);
                 }
@@ -2090,56 +2312,78 @@ namespace Bucking_Unit_App.Views
             {
                 while (!token.IsCancellationRequested)
                 {
-                    await _statsService.UpdateStatsForAllOperatorsAsync((monthlyDowntimeByShift, monthlyOperationCountByShift, monthlyPlanByShift) =>
+                    try
                     {
-                        Dispatcher.Invoke(() =>
+                        await _statsService.UpdateStatsForAllOperatorsAsync((monthlyDowntimeByShift, monthlyOperationCountByShift, monthlyPlanByShift) =>
                         {
-                            // Обнуляем общие суммы для каждой итерации
-                            decimal totalDowntime = 0;
-                            int totalFactItems = 0;
-                            double totalPlanItems = 0;
-
-                            // Суммируем данные по всем сменам
-                            foreach (var kvp in monthlyDowntimeByShift)
+                            Dispatcher.Invoke(() =>
                             {
-                                totalDowntime += kvp.Value;
-                            }
-                            foreach (var kvp in monthlyOperationCountByShift)
-                            {
-                                totalFactItems += kvp.Value;
-                            }
-                            foreach (var kvp in monthlyPlanByShift)
-                            {
-                                totalPlanItems += kvp.Value;
-                            }
+                                // Обнуляем общие суммы для каждой итерации
+                                decimal totalDowntime = 0;
+                                int totalFactItems = 0;
+                                double totalPlanItems = 0;
 
-                            // Обновляем общие метки (если они есть в UI)
-                            //lblAllMonthItems.Content = totalFactItems.ToString();
-                            //lblAllMonthDowntime.Content = totalDowntime.ToString("F2");
-                            // lblAllShiftItems и lblAllShiftDowntime можно убрать или адаптировать, если они не используются
-                            // lblAllShiftItems.Content = ""; // Очистить, если не нужно
-                            // lblAllShiftDowntime.Content = ""; // Очистить, если не нужно
+                                // Суммируем данные по всем сменам
+                                foreach (var kvp in monthlyDowntimeByShift)
+                                {
+                                    totalDowntime += kvp.Value;
+                                }
+                                foreach (var kvp in monthlyOperationCountByShift)
+                                {
+                                    totalFactItems += kvp.Value;
+                                }
+                                foreach (var kvp in monthlyPlanByShift)
+                                {
+                                    totalPlanItems += kvp.Value;
+                                }
 
-                            // Обновляем метки для каждой смены в allStatsDataPanel
-                            lblShiftAPlanItems.Content = monthlyPlanByShift.GetValueOrDefault(1, 0).ToString();
-                            lblShiftAFactItems.Content = monthlyOperationCountByShift.GetValueOrDefault(1, 0).ToString();
-                            lblShiftADowntime.Content = monthlyDowntimeByShift.GetValueOrDefault(1, 0).ToString("F2");
+                                // Обновляем общие метки (если они есть в UI)
+                                //lblAllMonthItems.Content = totalFactItems.ToString();
+                                //lblAllMonthDowntime.Content = totalDowntime.ToString("F2");
+                                // lblAllShiftItems и lblAllShiftDowntime можно убрать или адаптировать, если они не используются
+                                // lblAllShiftItems.Content = ""; // Очистить, если не нужно
+                                // lblAllShiftDowntime.Content = ""; // Очистить, если не нужно
 
-                            lblShiftBPlanItems.Content = monthlyPlanByShift.GetValueOrDefault(2, 0).ToString();
-                            lblShiftBFactItems.Content = monthlyOperationCountByShift.GetValueOrDefault(2, 0).ToString();
-                            lblShiftBDowntime.Content = monthlyDowntimeByShift.GetValueOrDefault(2, 0).ToString("F2");
+                                // Обновляем метки для каждой смены в allStatsDataPanel
+                                // СОХРАНЯЕМ В КЭШ
+                                foreach (var kvp in monthlyPlanByShift)
+                                {
+                                    int shift = kvp.Key;
+                                    _lastAllStats[shift] = (
+                                        Plan: kvp.Value,
+                                        Fact: monthlyOperationCountByShift.GetValueOrDefault(shift, 0),
+                                        Downtime: monthlyDowntimeByShift.GetValueOrDefault(shift, 0m)
+                                    );
+                                }
+                                lblShiftAPlanItems.Content = monthlyPlanByShift.GetValueOrDefault(1, 0).ToString();
+                                lblShiftAFactItems.Content = monthlyOperationCountByShift.GetValueOrDefault(1, 0).ToString();
+                                lblShiftADowntime.Content = monthlyDowntimeByShift.GetValueOrDefault(1, 0).ToString("F2");
 
-                            lblShiftVPlanItems.Content = monthlyPlanByShift.GetValueOrDefault(3, 0).ToString();
-                            lblShiftVFactItems.Content = monthlyOperationCountByShift.GetValueOrDefault(3, 0).ToString();
-                            lblShiftVDowntime.Content = monthlyDowntimeByShift.GetValueOrDefault(3, 0).ToString("F2");
+                                lblShiftBPlanItems.Content = monthlyPlanByShift.GetValueOrDefault(2, 0).ToString();
+                                lblShiftBFactItems.Content = monthlyOperationCountByShift.GetValueOrDefault(2, 0).ToString();
+                                lblShiftBDowntime.Content = monthlyDowntimeByShift.GetValueOrDefault(2, 0).ToString("F2");
 
-                            lblShiftGPlanItems.Content = monthlyPlanByShift.GetValueOrDefault(4, 0).ToString();
-                            lblShiftGFactItems.Content = monthlyOperationCountByShift.GetValueOrDefault(4, 0).ToString();
-                            lblShiftGDowntime.Content = monthlyDowntimeByShift.GetValueOrDefault(4, 0).ToString("F2");
+                                lblShiftVPlanItems.Content = monthlyPlanByShift.GetValueOrDefault(3, 0).ToString();
+                                lblShiftVFactItems.Content = monthlyOperationCountByShift.GetValueOrDefault(3, 0).ToString();
+                                lblShiftVDowntime.Content = monthlyDowntimeByShift.GetValueOrDefault(3, 0).ToString("F2");
 
-                            allStatsDataPanel.Visibility = Visibility.Visible;
+                                lblShiftGPlanItems.Content = monthlyPlanByShift.GetValueOrDefault(4, 0).ToString();
+                                lblShiftGFactItems.Content = monthlyOperationCountByShift.GetValueOrDefault(4, 0).ToString();
+                                lblShiftGDowntime.Content = monthlyDowntimeByShift.GetValueOrDefault(4, 0).ToString("F2");
+
+                                allStatsDataPanel.Visibility = Visibility.Visible;
+                            });
                         });
-                    });
+                        
+                    }
+                    catch (Exception ex) when (ex is SqlException sqlEx && (sqlEx.Number == 0 || sqlEx.Number == -2))
+                    {
+                        HandleDbConnectionError();
+                    }
+                    catch (Exception ex)
+                    {
+                        Debug.WriteLine($"ОШИБКА общей статистики: {ex.Message}");
+                    }
                     await Task.Delay(5000, token); // Интервал 5 секунд
                 }
             }, token);
@@ -2230,14 +2474,15 @@ namespace Bucking_Unit_App.Views
                     }
                 }
             }
-            catch (Exception ex)
+            catch (SqlException sqlEx) when (sqlEx.Number == 0 || sqlEx.Number == -2 || sqlEx.Message.Contains("timeout"))
             {
-                Dispatcher.Invoke(() =>
-                {
-                    MessageBox.Show($"Ошибка при обновлении текущей трубы: {ex.Message}");
-                    txtCurrentPipe.Content = "Ошибка";
-                    Debug.WriteLine($"MainWindow: Ошибка обновления PipeCounter: {ex.Message}");
-                });
+                HandleDbConnectionError("получения текущей трубы");
+                Dispatcher.Invoke(() => txtCurrentPipe.Content = "Нет связи");
+            }
+            catch (Exception)
+            {
+                MessageBox.Show("Ошибка обновления текущей трубы, потеряно соединения с БД, проверьте соединение с сетью 192.168.0.230!");
+                Dispatcher.Invoke(() => txtCurrentPipe.Content = "Ошибка");
             }
         }
         private void UpdatePipeCounter(int? newPipeCounter)
@@ -2332,7 +2577,7 @@ namespace Bucking_Unit_App.Views
             catch (Exception ex)
             {
                 Debug.WriteLine($"MainWindow: Ошибка в btnShowGraph_Click: {ex.Message}\nStackTrace: {ex.StackTrace}");
-                MessageBox.Show($"Ошибка: {ex.Message}", "Ошибка", MessageBoxButton.OK, MessageBoxImage.Error);
+                MessageBox.Show($"Ошибка: Потеряно соединение с БД!", "Ошибка", MessageBoxButton.OK, MessageBoxImage.Error);
             }
         }
 
@@ -2473,7 +2718,7 @@ namespace Bucking_Unit_App.Views
                         Debug.WriteLine($"MainWindow: btnResumeUpdate_Click: Ошибка получения PipeCounter: {ex.Message}");
                         Dispatcher.Invoke(() =>
                         {
-                            MessageBox.Show($"Ошибка при получении номера трубы: {ex.Message}", "Ошибка", MessageBoxButton.OK, MessageBoxImage.Error);
+                            MessageBox.Show($"Ошибка при получении номера трубы. Потеряно соединение с БД!", "Ошибка", MessageBoxButton.OK, MessageBoxImage.Error);
                             txtCurrentPipe.Content = "Ошибка";
                         });
                         return;
@@ -2514,6 +2759,7 @@ namespace Bucking_Unit_App.Views
 
         private async Task UpdateNomenclatureAsync()
         {
+            Debug.WriteLine("MainWindow: Обновление текущей номенклатуры трубы");
             try
             {
                 using (SqlConnection conn = new SqlConnection(_ConnectionString))
@@ -2632,6 +2878,7 @@ namespace Bucking_Unit_App.Views
             _connectionCheckCts?.Dispose();
             _graphUpdateCts?.Dispose();
             _torqueUpdateCts?.Dispose();
+            _isMechanicAppLaunched = false;
 
             try
             {
