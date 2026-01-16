@@ -1,17 +1,19 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Windows;
-using System.Windows.Media;
-using Bucking_Unit_App.Services;
+﻿using Bucking_Unit_App.Services;
 using Bucking_Unit_App.SiemensPLC.Models;
-using Sharp7;
-using System.Globalization;
-using System.Threading.Tasks;
 using Bucking_Unit_App.Utilities;
-using System.Windows.Controls;
-using System.Xml.Serialization;
-using System.IO;
 using Microsoft.Win32;
+using Sharp7;
+using System;
+using System.Collections.Generic;
+using System.Globalization;
+using System.IO;
+using System.Runtime.InteropServices;
+using System.Threading.Tasks;
+using System.Windows;
+using System.Windows.Controls;
+using System.Windows.Interop;
+using System.Windows.Media;
+using System.Xml.Serialization;
 using static Bucking_Unit_App.SiemensPLC.Models.SiemensPLCModels.DBAddressModel;
 
 namespace Bucking_Unit_App.Views
@@ -27,6 +29,7 @@ namespace Bucking_Unit_App.Views
         public PLCDataWindow(ReadFromPLC plcReader, S7Client s7Client)
         {
             InitializeComponent();
+            SourceInitialized += OnSourceInitialized;
             _plcReader = plcReader;
             _s7Client = s7Client;
             _plcWriter = new WriteToPLC(_s7Client);
@@ -41,7 +44,7 @@ namespace Bucking_Unit_App.Views
         "TorqueUpperLimitHMI", "IdleTorqueHMI", "StopTorqueHMI",
         "TorqueLowerLimitHMI", "QuantityHMI", "StartingTorqueHMI",
         "FeedDelayTimeHMI", "ReturnDelayTimeHMI", "RPMUpperLimitHMI"
-    };
+            };
 
             foreach (var param in parameters)
             {
@@ -54,6 +57,22 @@ namespace Bucking_Unit_App.Views
             Directory.CreateDirectory("logs");
             UpdateConnectionStatus();
         }
+        private void OnSourceInitialized(object sender, EventArgs e)
+        {
+            var hwnd = new WindowInteropHelper(this).Handle;
+            int style = GetWindowLong(hwnd, GWL_STYLE);
+            SetWindowLong(hwnd, GWL_STYLE, style & ~WS_MINIMIZEBOX & ~WS_MAXIMIZEBOX);
+        }
+
+        private const int GWL_STYLE = -16;
+        private const int WS_MINIMIZEBOX = 0x20000;
+        private const int WS_MAXIMIZEBOX = 0x10000;
+
+        [DllImport("user32.dll", SetLastError = true)]
+        private static extern int GetWindowLong(IntPtr hWnd, int nIndex);
+
+        [DllImport("user32.dll")]
+        private static extern int SetWindowLong(IntPtr hWnd, int nIndex, int dwNewLong);
 
         // Обработчик события изменения состояния подключения
         private void Plc_ConnectionStateChanged(object sender, bool isConnected)
@@ -227,7 +246,7 @@ namespace Bucking_Unit_App.Views
 
                 var parameters = new[]
                 {
-                    "TorqueUpperLimitHMI", "IdleTorqueHMI", "StopTorqueHMI",
+                     "IdleTorqueHMI", "StopTorqueHMI",
                     "TorqueLowerLimitHMI", "QuantityHMI", "StartingTorqueHMI",
                     "FeedDelayTimeHMI", "ReturnDelayTimeHMI", "RPMUpperLimitHMI"
                 };

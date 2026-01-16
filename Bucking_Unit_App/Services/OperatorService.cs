@@ -82,7 +82,36 @@ namespace Bucking_Unit_App.Services
         }
         public async Task InitializeOperatorAsync(string cardNumber)
         {
-            CurrentOperator = await _employeeRepository.GetEmployeeAsync(cardNumber) ?? await FetchAndSaveFrom1C(cardNumber);
+            try
+            {
+                Debug.WriteLine("InitializeOperatorAsync called for cardNumber: {CardNumber}", cardNumber);
+                var employeeFrom1C = await _controller1C.GetResp1CSKUD(cardNumber);
+
+                if (employeeFrom1C.ErrorCode != 0 || string.IsNullOrEmpty(employeeFrom1C.PersonnelNumber))
+                {
+                    Debug.WriteLine("Failed to fetch valid employee from 1C for cardNumber: {CardNumber}. ErrorCode: {ErrorCode}, ErrorText: {ErrorText}",
+                        cardNumber, employeeFrom1C.ErrorCode, employeeFrom1C.ErrorText);
+                    CurrentOperator = null;
+                    return;
+                }
+
+                var syncedEmployee = await _employeeRepository.SyncEmployeeAsync(employeeFrom1C);
+
+                if (syncedEmployee.ErrorCode != (int)Employee1CModel.ErrorCodes.EmployeeFound)
+                {
+                    Debug.WriteLine("Failed to sync employee for cardNumber: {CardNumber}. ErrorCode: {ErrorCode}, ErrorText: {ErrorText}",
+                        cardNumber, syncedEmployee.ErrorCode, syncedEmployee.ErrorText);
+                    CurrentOperator = null;
+                    return;
+                }
+
+                CurrentOperator = syncedEmployee;
+            }
+            catch (Exception ex)
+            {
+                Debug.WriteLine("Error in InitializeOperatorAsync for cardNumber: {CardNumber}", cardNumber);
+                CurrentOperator = null;
+            }
         }
 
         private async Task<Employee1CModel> FetchAndSaveFrom1C(string cardNumber)

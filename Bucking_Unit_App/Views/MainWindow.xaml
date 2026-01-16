@@ -464,6 +464,12 @@
                     </Border>
                     <Rectangle Grid.Row="9" Grid.Column="0" Grid.ColumnSpan="4" Fill="Black" Height="1"/>
                 </Grid>
+                <StackPanel Grid.Row="0" Orientation="Horizontal" Margin="0,0,0,10">
+                    <TextBlock Text="Статус ПЛК:" FontWeight="Bold"/>
+                    <TextBlock x:Name="txtPLCStatus" Text="Проверяется..." Margin="5,0,0,0" Foreground="Orange"/>
+                    <TextBlock Text="Статус БД:" FontWeight="Bold" Margin="10,0,0,0" HorizontalAlignment="Right"/>
+                    <TextBlock x:Name="txtDatabaseStatus" Text="Проверяется..." Margin="5,0,0,0" Foreground="Orange" HorizontalAlignment="Right"/>
+                </StackPanel>
             </StackPanel>
         </Border>
 

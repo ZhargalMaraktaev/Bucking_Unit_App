@@ -38,8 +38,11 @@ using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Data;
 using System.Windows.Media;
+using System.Windows.Media.Animation;
 using System.Windows.Media.Imaging;
 using System.Windows.Threading;
+using Serilog;
+using Microsoft.Extensions.DependencyInjection;
 
 namespace Bucking_Unit_App.Views
 {
@@ -115,6 +118,35 @@ namespace Bucking_Unit_App.Views
             = new() { { 1, (0, 0, 0) }, { 2, (0, 0, 0) }, { 3, (0, 0, 0) }, { 4, (0, 0, 0) } };
         public MainWindow(IConfiguration configuration, IDbContextFactory<YourDbContext> dbFactory, ILogger<MainWindow> logger, OperatorService operatorService, StatsService statsService, COMController comController, IStatsRepository statsRepository)
         {
+            Log.Logger = new LoggerConfiguration()
+            .MinimumLevel.Information()
+            .WriteTo.Console()  // ← для отладки, если нужно
+
+            // Основной логгер (можно вообще ничего не писать, или писать в другой файл/консоль)
+            .WriteTo.File(
+                path: "logs/general-{Date}.log",  // опционально — общий лог
+                rollingInterval: RollingInterval.Day,
+                buffered: false,
+                flushToDiskInterval: TimeSpan.FromSeconds(1)
+            )
+
+            // Отдельный подлоггер ТОЛЬКО для сообщений про БД
+            .WriteTo.Logger(lc => lc
+                .Filter.ByIncludingOnly(e =>
+                    e.MessageTemplate.Text.Contains("соединение с БД") ||
+                    e.MessageTemplate.Text.Contains("БД") ||
+                    e.Exception is SqlException
+                )
+                .WriteTo.File(
+                    path: "logs/database-events-{Date}.log",
+                    rollingInterval: RollingInterval.Day,
+                    buffered: false,                     // важно для редких событий
+                    flushToDiskInterval: TimeSpan.FromSeconds(1)
+                )
+            )
+
+            .Enrich.FromLogContext()
+            .CreateLogger();
             InitializeComponent();
             _configuration = configuration ?? throw new ArgumentNullException(nameof(configuration));
             _dbFactory = dbFactory ?? throw new ArgumentNullException(nameof(dbFactory));
@@ -149,7 +181,6 @@ namespace Bucking_Unit_App.Views
             StartPLCUpdateLoop();
             StartTorqueDataUpdateLoop();
             txtPipeCounter.LostFocus += txtPipeCounter_LostFocus;
-
             fixTimer = new DispatcherTimer();
             fixTimer.Interval = TimeSpan.FromSeconds(1);
             fixTimer.Tick += FixTimer_Tick;
@@ -386,7 +417,7 @@ namespace Bucking_Unit_App.Views
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Ошибка получения роли оператора из базы Pilot.dbo.dic_SKUD");
-                Dispatcher.Invoke(() => MessageBox.Show($"Ошибка получения роли оператора. Потеряно соединение с БД проверьте соединение с сетью 192.168.0.230", "Ошибка", MessageBoxButton.OK, MessageBoxImage.Error));
+                //Dispatcher.Invoke(() => MessageBox.Show($"Ошибка получения роли оператора. Потеряно соединение с БД проверьте соединение с сетью 192.168.0.230", "Ошибка", MessageBoxButton.OK, MessageBoxImage.Error));
             }
         }
         // Импорт WinAPI
@@ -430,7 +461,7 @@ namespace Bucking_Unit_App.Views
             try
             {
                 const string processName = "InspectionWorkApp";
-                const int maxWaitTimeMs = 30000; // 30 секунд максимального ожидания
+                const int maxWaitTimeMs = 10000; // 10 секунд максимального ожидания
                 const int checkIntervalMs = 1000; // Проверяем каждую секунду
 
                 _logger.LogInformation("Waiting for InspectionWorkApp to start...");
@@ -1079,12 +1110,14 @@ namespace Bucking_Unit_App.Views
                 if (result == 0)
                 {
                     System.Diagnostics.Debug.WriteLine("MainWindow: Успешное подключение к PLC.");
+                    UpdatePLCStatus(true);
                     return true;
                 }
                 System.Diagnostics.Debug.WriteLine($"MainWindow: Ошибка подключения к PLC, попытка {i + 1}/{maxRetries}, код: {s7Client.ErrorText(result)}");
                 Thread.Sleep(retryDelayMs);
             }
             System.Diagnostics.Debug.WriteLine("MainWindow: Не удалось подключиться к PLC после всех попыток.");
+            UpdatePLCStatus(false);
             return false;
         }
 
@@ -1158,11 +1191,11 @@ namespace Bucking_Unit_App.Views
 
             Dispatcher.Invoke(() =>
             {
-                MessageBox.Show(
-                    "Потеряно соединение с базой данных.\nОтображается последняя доступная статистика.",
-                    "Нет связи с БД",
-                    MessageBoxButton.OK,
-                    MessageBoxImage.Warning);
+                //MessageBox.Show(
+                //    "Потеряно соединение с базой данных.\nОтображается последняя доступная статистика.",
+                //    "Нет связи с БД",
+                //    MessageBoxButton.OK,
+                //    MessageBoxImage.Warning);
 
                 // Восстанавливаем статистику из кэша
                 UpdateStatsFromCache();
@@ -1399,12 +1432,12 @@ namespace Bucking_Unit_App.Views
                     Debug.WriteLine($"MainWindow: adjustedStartTime={adjustedStartTime:yyyy-MM-ddTHH:mm:ss.fff}, adjustedEndTime={adjustedEndTime:yyyy-MM-ddTHH:mm:ss.fff}, isActiveProcess={isActiveProcess}");
                 }
 
-                if (adjustedStartTime.Year > _selectedYear || (endTime.HasValue && endTime.Value.Year < _selectedYear))
-                {
-                    adjustedStartTime = new DateTime(_selectedYear, 1, 1);
-                    adjustedEndTime = new DateTime(_selectedYear, 12, 31, 23, 59, 59);
-                    Debug.WriteLine($"MainWindow: Временной диапазон скорректирован: adjustedStartTime={adjustedStartTime:yyyy-MM-ddTHH:mm:ss.fff}, adjustedEndTime={adjustedEndTime:yyyy-MM-ddTHH:mm:ss.fff}");
-                }
+                //if (adjustedStartTime.Year > _selectedYear || (endTime.HasValue && endTime.Value.Year < _selectedYear))
+                //{
+                //    adjustedStartTime = new DateTime(_selectedYear, 1, 1);
+                //    adjustedEndTime = new DateTime(_selectedYear, 12, 31, 23, 59, 59);
+                //    Debug.WriteLine($"MainWindow: Временной диапазон скорректирован: adjustedStartTime={adjustedStartTime:yyyy-MM-ddTHH:mm:ss.fff}, adjustedEndTime={adjustedEndTime:yyyy-MM-ddTHH:mm:ss.fff}");
+                //}
 
                 double maxTorqueLimit = 25000;
                 Dispatcher.Invoke(() =>
@@ -1567,18 +1600,45 @@ namespace Bucking_Unit_App.Views
                 Debug.WriteLine($"MainWindow: Окно изменило размер, обновляем размеры графика: Width={_currentChart.Width}, Height={_currentChart.Height}");
             }
         }
+        private void UpdatePLCStatus(bool isConnected)
+        {
+            Dispatcher.Invoke(() =>
+            {
+                txtPLCStatus.Text = isConnected ? "Подключено" : "Ошибка подключения";
+                txtPLCStatus.Foreground = isConnected ? Brushes.Green : Brushes.Red;
+                Debug.WriteLine($"MainWindow: PLC статус обновлен: {isConnected}");
+            });
+        }
 
+        private void UpdateDatabaseStatus(bool isConnected, string errorMessage = null)
+        {
+            Dispatcher.Invoke(() =>
+            {
+                if (isConnected)
+                {
+                    txtDatabaseStatus.Text = "Подключено";
+                    txtDatabaseStatus.Foreground = Brushes.Green;
+                }
+                else
+                {
+                    txtDatabaseStatus.Text = errorMessage ?? "Ошибка подключения";
+                    txtDatabaseStatus.Foreground = Brushes.Red;
+                    Log.Error("$Обрыв соединения с БД");
+                }
+                _logger.LogDebug($"MainWindow: БД статус обновлен: {isConnected}, сообщение: {errorMessage ?? "N/A"}");
+            });
+        }
         private async void StartPLCUpdateLoop()
         {
             s7Client = new S7Client();
+            
             _plcReader = new Services.ReadFromPLC(s7Client);
             var writer = new Services.WriteToPLC(s7Client);
-
             if (!TryConnectToPLC())
             {
                 Dispatcher.Invoke(() =>
                 {
-                    MessageBox.Show("Ошибка подключения к PLC. Периодическое чтение не запущено.");
+                    //MessageBox.Show("Ошибка подключения к PLC. Периодическое чтение не запущено.");
                     System.Diagnostics.Debug.WriteLine("MainWindow: Периодическое чтение не запущено из-за ошибки подключения.");
                     //StartConnectionStatusCheck();
                 });
@@ -1765,7 +1825,8 @@ namespace Bucking_Unit_App.Views
                         cbYear.ItemsSource = dt.DefaultView;
                         if (dt.Rows.Count > 0)
                         {
-                            cbYear.SelectedIndex = 0;
+                            int lastIndex = dt.Rows.Count - 1;
+                            cbYear.SelectedIndex = lastIndex;
                             _selectedYear = Convert.ToInt32(dt.Rows[0]["Year"]);
                         }
                     });
@@ -1773,7 +1834,7 @@ namespace Bucking_Unit_App.Views
             }
             catch (Exception ex)
             {
-                Dispatcher.Invoke(() => MessageBox.Show($"Ошибка загрузки годов из базы данных. Потеряно соединение с БД. Проверьте соединение с сетью 192.168.0.230!"));
+                //Dispatcher.Invoke(() => MessageBox.Show($"Ошибка загрузки годов из базы данных. Потеряно соединение с БД. Проверьте соединение с сетью 192.168.0.230!"));
                 System.Diagnostics.Debug.WriteLine($"MainWindow: Ошибка загрузки годов: {ex.Message}");
             }
         }
@@ -1826,7 +1887,7 @@ namespace Bucking_Unit_App.Views
                 if (selectedRow != null)
                 {
                     _selectedYear = Convert.ToInt32(selectedRow["Year"]);
-                    Console.WriteLine($"Выбранный год: {_selectedYear}");
+                    Debug.WriteLine($"Выбранный год: {_selectedYear}");
                     if (_selectedPipeCounter.HasValue)
                         btnShowGraph_Click(null, null);
                 }
@@ -2396,6 +2457,7 @@ namespace Bucking_Unit_App.Views
                 using (var conn = new SqlConnection(_runtimeConnectionString))
                 {
                     await conn.OpenAsync();
+                    UpdateDatabaseStatus(true);
                     var cmd = new SqlCommand("SELECT TOP 1 PipeCounter FROM Pilot.dbo.MuftN3_REP WHERE PipeCounter IS NOT NULL ORDER BY PipeCounter DESC", conn);
                     var result = await cmd.ExecuteScalarAsync();
                     if (result != null && result != DBNull.Value && int.TryParse(result.ToString(), out int pipeCounter))
@@ -2481,10 +2543,10 @@ namespace Bucking_Unit_App.Views
             }
             catch (Exception)
             {
-                MessageBox.Show("Ошибка обновления текущей трубы, потеряно соединения с БД, проверьте соединение с сетью 192.168.0.230!");
                 Dispatcher.Invoke(() => txtCurrentPipe.Content = "Ошибка");
             }
         }
+
         private void UpdatePipeCounter(int? newPipeCounter)
         {
             if (_selectedPipeCounter != newPipeCounter)
@@ -2577,7 +2639,7 @@ namespace Bucking_Unit_App.Views
             catch (Exception ex)
             {
                 Debug.WriteLine($"MainWindow: Ошибка в btnShowGraph_Click: {ex.Message}\nStackTrace: {ex.StackTrace}");
-                MessageBox.Show($"Ошибка: Потеряно соединение с БД!", "Ошибка", MessageBoxButton.OK, MessageBoxImage.Error);
+                //MessageBox.Show($"Ошибка: Потеряно соединение с БД!", "Ошибка", MessageBoxButton.OK, MessageBoxImage.Error);
             }
         }
 
@@ -2718,7 +2780,7 @@ namespace Bucking_Unit_App.Views
                         Debug.WriteLine($"MainWindow: btnResumeUpdate_Click: Ошибка получения PipeCounter: {ex.Message}");
                         Dispatcher.Invoke(() =>
                         {
-                            MessageBox.Show($"Ошибка при получении номера трубы. Потеряно соединение с БД!", "Ошибка", MessageBoxButton.OK, MessageBoxImage.Error);
+                            //MessageBox.Show($"Ошибка при получении номера трубы. Потеряно соединение с БД!", "Ошибка", MessageBoxButton.OK, MessageBoxImage.Error);
                             txtCurrentPipe.Content = "Ошибка";
                         });
                         return;
@@ -2804,6 +2866,7 @@ namespace Bucking_Unit_App.Views
             {
                 Debug.WriteLine($"Ошибка обновления номенклатуры: {ex.Message}");
                 Dispatcher.Invoke(() => lblNomenclature.Text = "Ошибка загрузки");
+                UpdateDatabaseStatus(false, "Потеряно соединение");
             }
         }
 
